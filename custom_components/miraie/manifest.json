@@ -4,7 +4,7 @@
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/miraie",
   "requirements": [
-    "miraie-ac==1.1.1",
+    "miraie-ac @ git+https://github.com/selvakk2k/miraie-ac.git@main",
     "aiomqtt>=2.0.1"
   ],
   "ssdp": [],
