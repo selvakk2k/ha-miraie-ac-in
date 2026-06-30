@@ -49,14 +49,7 @@ from .const import (
     H4,
     H5,
     PRESET_CLEAN,
-    PRESET_CONVERTI_C110,
-    PRESET_CONVERTI_C100,
-    PRESET_CONVERTI_C90,
-    PRESET_CONVERTI_C80,
-    PRESET_CONVERTI_C70,
-    PRESET_CONVERTI_C55,
-    PRESET_CONVERTI_C40,
-    PRESET_CONVERTI_C0,
+    get_converti_preset_modes,
 )
 
 from .logger import LOGGER
@@ -89,7 +82,15 @@ class MirAIeClimate(ClimateEntity):
             HVACMode.DRY,
             HVACMode.FAN_ONLY,
         ]
-        self._attr_preset_modes = [PRESET_NONE, PRESET_ECO, PRESET_BOOST, PRESET_CLEAN, PRESET_CONVERTI_C110, PRESET_CONVERTI_C100, PRESET_CONVERTI_C90, PRESET_CONVERTI_C80, PRESET_CONVERTI_C70, PRESET_CONVERTI_C55, PRESET_CONVERTI_C40, PRESET_CONVERTI_C0]
+        model_number = getattr(getattr(device, "details", None), "model_number", None)
+        converti_presets = get_converti_preset_modes(model_number)
+        self._attr_preset_modes = [
+            PRESET_NONE, PRESET_ECO, PRESET_BOOST, PRESET_CLEAN
+        ] + converti_presets
+        LOGGER.debug(
+            f"Model {model_number!r}: using Converti preset set {converti_presets}"
+        )
+
         self._attr_fan_mode = FAN_OFF
         self._attr_fan_modes = [
             FAN_AUTO,
