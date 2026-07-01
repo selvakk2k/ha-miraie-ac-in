@@ -12,9 +12,6 @@
   "homekit": {},
   "dependencies": [],
   "codeowners": [
-    "@deCodeIt",
-    "@rkzofficial",
-    "@gutpull",
     "@selvakk2k"
   ],
   "iot_class": "cloud_push",
