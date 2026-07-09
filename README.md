@@ -24,16 +24,27 @@ Panasonic's Converti variable-capacity mode comes in two variants:
 
 | Variant | Capacity Steps |
 |---|---|
-| Converti 7-in-1 (older models) | 110% / 100% / 90% / 80% / 70% / **55%** / 40% / 0% |
-| Converti 8-in-1 (2026 models + some 2025 exceptions) | 110% / 100% / 90% / 80% / 70% / **60% / 50%** / 40% / 0% |
+| Converti 7-in-1 | 110% / 100% / 90% / 80% / 70% / **55%** / 40% / 0% |
+| Converti 8-in-1 | 110% / 100% / 90% / 80% / 70% / **60% / 50%** / 40% / 0% |
 
-The upstream integration exposed the 7-in-1 preset list to all devices. This fork selects the correct preset set automatically based on the device's model number:
+The upstream integration exposed the 7-in-1 preset list to all devices. This fork selects the correct preset set automatically based on the device's model number.
 
-- All **2026-range** models (identified by `CKY` in the model number) get the **8-in-1** preset set.
-- Two known **2025-range** exceptions (`CS-EU12BKY3FM`, `CS-NU24BKY5W`) also get the **8-in-1** preset set.
-- All other models fall back to the **7-in-1** preset set, preserving the original behaviour.
+**Methodology:** this was verified directly against Panasonic's own `store.in.panasonic.com` `/2025-model/` and `/2026-model/` catalog pages — not third-party retailers or trackers, which were found during development to have inconsistent year labelling for the same model. Every model confirmed under the 2026 catalog is 8-in-1; every one still under the 2025 catalog is 7-in-1. However, the generation letter in the model number that marks "2026" is **not the same across every series** — it's a per-series revision counter, not a fleet-wide year code:
 
-This means a household with a mix of old and new Panasonic AC units will correctly see different preset options per device.
+| Series group | 2025 (7-in-1) | 2026 (8-in-1) |
+|---|---|---|
+| `NU`, `SU` | letter `A` | letter `B` |
+| `EZ`, `HU`, `EU` | letter `B` | letter `C` |
+
+A model is classified as 8-in-1 if its series matches one of the groups above **and** its generation letter is at or past that group's threshold. Anything unrecognised (unknown series, missing model number, or an older generation letter like `Z`) safely falls back to the original 7-in-1 preset list.
+
+**Known gaps:**
+- `QU` (e.g. `CS-CU-QU26BKYFM`) is confirmed 7-in-1 for 2025, but isn't in either group above — its 2026 behaviour is unverified, so it currently defaults to 7-in-1.
+- Older (pre-2024) generation letters are unmapped by design, since older models are out of scope for this fork.
+
+There are currently no confirmed exceptions to the two-group rule above. An earlier version of this fix incorrectly listed `CS-EU12BKY3FM` as an 8-in-1 exception, based on unverified early research — Panasonic's own retailer listings (Croma, Amazon, and others) explicitly describe it as **7-in-1 Convertible**, and it's correctly classified as such by the general rule (its generation letter `B` is below the `EU` group's `C` threshold). If you find a genuine exception, please open an issue/PR with a link to an official Panasonic listing confirming it.
+
+This means a household with a mix of AC models will correctly see different preset options per device.
 
 ---
 
