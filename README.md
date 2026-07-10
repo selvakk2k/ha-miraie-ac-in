@@ -12,7 +12,7 @@
 
 ## About This Fork
 
-This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), with the following changes developed with the assistance of [Claude](https://claude.ai) (Anthropic):
+This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), renamed to `ha-miraie-ac-in` as a clean split focused on Indian-market MirAIe models. The `v1.0.0` release marks the fork point — depending on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/), the matching library fork — and includes the following changes developed with the assistance of [Claude](https://claude.ai) (Anthropic):
 
 ### 1. Room Temperature Sensor Fix (Firmware 3.02+)
 Panasonic AC units running firmware 3.02 and above report the room temperature (`rmtmp`) in a packed string format where the actual temperature value is encoded in the decimal portion of the string (e.g., `"134.30"` means `30°C`, not `134.3°C`). The upstream library (`miraie-ac`) used a plain `float()` cast which produced wildly incorrect room temperature readings on affected firmware.
