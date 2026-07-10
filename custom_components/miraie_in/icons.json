@@ -1,7 +1,7 @@
 {
   "entity": {
     "climate": {
-      "miraie": {
+      "miraie_in": {
         "state_attributes": {
           "swing_mode": {
             "state": {

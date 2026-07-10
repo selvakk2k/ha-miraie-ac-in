@@ -20,7 +20,7 @@
     },
     "entity": {
         "climate": {
-            "miraie": {
+            "miraie_in": {
                 "state_attributes": {
                     "preset_mode": {
                         "state": {
