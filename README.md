@@ -12,51 +12,25 @@
 
 ## About This Fork
 
-This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), renamed to `ha-miraie-ac-in` as a clean split focused on Indian-market MirAIe models. The `v1.0.0` release marks the fork point — depending on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/), the matching library fork — and includes the following changes developed with the assistance of [Claude](https://claude.ai) (Anthropic):
+This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), renamed to `ha-miraie-ac-in` as a clean split focused on Indian-market MirAIe models. The `v1.0.0` release marks the fork point — depending on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/), the matching library fork.
 
-### 1. Room Temperature Sensor Fix (Firmware 3.02+)
-Panasonic AC units running firmware 3.02 and above report the room temperature (`rmtmp`) in a packed string format where the actual temperature value is encoded in the decimal portion of the string (e.g., `"134.30"` means `30°C`, not `134.3°C`). The upstream library (`miraie-ac`) used a plain `float()` cast which produced wildly incorrect room temperature readings on affected firmware.
+The changes introduced in this fork are developed with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind), categorized as follows:
 
-This fix is implemented in the companion library fork [selvakk2k/miraie-ac-in](https://github.com/selvakk2k/miraie-ac-in), published to PyPI as `miraie-ac-in`, and this integration's `manifest.json` points to that package instead of the upstream `miraie-ac` release. The fix is firmware-version-aware: units on older firmware (pre-3.02) continue to use the original parsing behaviour.
+### 1. Indian-Market Hardware Adaptations
+* **Room Temperature Sensor Fix (Firmware 3.02+)**: Panasonic AC units running firmware 3.02+ report room temperature in a packed string format where the actual value is in the decimals (e.g., `"134.30"` means `30°C`). The fork introduces version-aware parsing to correctly display this temperature while keeping standard parsing for older pre-3.02 firmware.
+* **Converti Mode: 7-in-1 vs. 8-in-1 Support**: Automatically decides between 7-in-1 and 8-in-1 capacity step presets (e.g. mapping the 55% step vs. 60%/50% steps) based on the model's series and generation letter (e.g., threshold `B` for `NU/SU` and `C` for `EZ/HU/EU`). Unrecognized models safely fallback to 7-in-1.
+* **Heat Mode ("Hot & Cold" Gating)**: Restricts `HVACMode.HEAT` controls in Home Assistant specifically to Hot & Cold models (`EZ` and `KZ` series) to prevent displaying unusable heat controls on cooling-only units.
 
-### 2. Converti Mode: 7-in-1 vs 8-in-1 Support
-Panasonic's Converti variable-capacity mode comes in two variants:
-
-| Variant | Capacity Steps |
-|---|---|
-| Converti 7-in-1 | 110% / 100% / 90% / 80% / 70% / **55%** / 40% / 0% |
-| Converti 8-in-1 | 110% / 100% / 90% / 80% / 70% / **60% / 50%** / 40% / 0% |
-
-The upstream integration exposed the 7-in-1 preset list to all devices. This fork selects the correct preset set automatically based on the device's model number.
-
-**Methodology:** this was verified directly against Panasonic's own `store.in.panasonic.com` `/2025-model/` and `/2026-model/` catalog pages — not third-party retailers or trackers, which were found during development to have inconsistent year labelling for the same model. Every model confirmed under the 2026 catalog is 8-in-1; every one still under the 2025 catalog is 7-in-1. However, the generation letter in the model number that marks "2026" is **not the same across every series** — it's a per-series revision counter, not a fleet-wide year code:
-
-| Series group | 2025 (7-in-1) | 2026 (8-in-1) |
-|---|---|---|
-| `NU`, `SU` | letter `A` | letter `B` |
-| `EZ`, `HU`, `EU` | letter `B` | letter `C` |
-
-A model is classified as 8-in-1 if its series matches one of the groups above **and** its generation letter is at or past that group's threshold. Anything unrecognised (unknown series, missing model number, or an older generation letter like `Z`) safely falls back to the original 7-in-1 preset list.
-
-**Known gaps:**
-- `QU` (e.g. `CS-CU-QU26BKYFM`) is confirmed 7-in-1 for 2025, but isn't in either group above — its 2026 behaviour is unverified, so it currently defaults to 7-in-1.
-- Older (pre-2024) generation letters are unmapped by design, since older models are out of scope for this fork.
-
-There are currently no confirmed exceptions to the two-group rule above. An earlier version of this fix incorrectly listed `CS-EU12BKY3FM` as an 8-in-1 exception, based on unverified early research — Panasonic's own retailer listings (Croma, Amazon, and others) explicitly describe it as **7-in-1 Convertible**, and it's correctly classified as such by the general rule (its generation letter `B` is below the `EU` group's `C` threshold). If you find a genuine exception, please open an issue/PR with a link to an official Panasonic listing confirming it.
-
-This means a household with a mix of AC models will correctly see different preset options per device.
-
-### 3. Stability & Lifecycle Refactoring
-Resolved critical background resource leaks. The MQTT broker connection task and sensor update timers are now properly cancelled and awaited when the integration is reloaded or unloaded. The HTTP ClientSession lifecycle has been fixed to persist for the duration of the config entry instead of closing prematurely, preventing race conditions among sensor updates.
-
-### 4. Gated Nanoe Air Purifier Control (Untested)
-Adds support for toggling Panasonic's Nanoe™ (nanoe-G / nanoe-X) air purification technology using a new switch (`switch.<ac_name>_nanoe`). The switch is gated strictly to verified premium series (`XU` and `HU`) that have the purification hardware. Note: This feature is currently **untested** due to a lack of a physical device with the feature to verify.
-
-### 5. Diagnostics, Standalone Sensors & Alerts
+### 2. New Sensors, Switches & Alerts
+* **Gated Nanoe Air Purifier Control (Untested)**: Adds a switch entity (`switch.<ac_name>_nanoe`) to control the built-in Nanoe™ (nanoe-G / nanoe-X) air purifier, gated to supported premium series (`XU` and `HU`). *Note: This feature is currently untested due to a lack of a physical device with the feature to verify.*
 * **Standalone Room Temperature**: Exposes the room temperature as a separate `sensor.<ac_name>_room_temperature` entity for easier historical charting.
-* **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` (using the `problem` device class) which alerts you when the physical mesh filter needs cleaning.
+* **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` using the `problem` class to notify you when the physical mesh filter needs cleaning (~500 run hours).
 * **WiFi Signal Strength (RSSI)**: Diagnostic sensor to track WiFi dBm signal strength (disabled by default).
 * **Last Control Source**: Diagnostic sensor showing whether the AC was last adjusted via the App/API or the physical remote (disabled by default).
+
+### 3. Stability & Code Cleanup
+* **Resource Leak Fixes**: Decoupled `ClientSession` closing from individual sensors, letting it live cleanly for the lifetime of the config entry. Added registration of the 30-minute sensor update timer to prevent background leaks when unloading/reloading the integration.
+* **Config Flow Unique Verification**: Enforced unique ID verification in the configuration flow based on the username to prevent creating duplicate integration entries for the same account.
 
 ---
 
