@@ -183,3 +183,20 @@ def get_converti_preset_modes(model_number: str | None) -> list[str]:
                 return CONVERTI_8IN1_PRESET_MODES
 
     return CONVERTI_7IN1_PRESET_MODES
+
+
+# --- Nanoe air purifier gating (Untested - no physical device to verify) ---
+#
+# nanoe-G and nanoe-X air purification technologies are available on premium
+# series (primarily the XU series and HU Amaze Grey series) in the Panasonic
+# India catalog.
+NANOE_CAPABLE_SERIES = ("XU", "HU")
+
+
+def supports_nanoe(model_number: str | None) -> bool:
+    """Return whether a given model supports nanoe air purification."""
+    if not model_number:
+        return False
+
+    model_number = model_number.upper()
+    return any(series in model_number for series in NANOE_CAPABLE_SERIES)
