@@ -127,6 +127,29 @@ def _extract_generation_letter(model_number: str, series: str) -> str | None:
     return None
 
 
+# --- Heat mode ("Hot & Cold") model support ---
+#
+# Verified directly against Panasonic's own store.in.panasonic.com
+# listings: EZ-series and KZ-series models are explicitly labelled
+# "Hot & Cold" in their product titles/descriptions. Series such as
+# NU, SU, and HU carry no such designation and are cooling-only.
+# Unlike Converti gating, this isn't generation-letter-dependent --
+# every EZ/KZ model found (2024 through 2026 catalogs) supports heat,
+# so a simple series-prefix match is sufficient. If a cooling-only
+# EZ/KZ variant or a heat-capable model outside these two series turns
+# up, please open an issue/PR with a link to the official listing.
+HEAT_CAPABLE_SERIES = ("EZ", "KZ")
+
+
+def supports_heat_mode(model_number: str | None) -> bool:
+    """Return whether a given model supports heat ("Hot & Cold") mode."""
+    if not model_number:
+        return False
+
+    model_number = model_number.upper()
+    return any(series in model_number for series in HEAT_CAPABLE_SERIES)
+
+
 def get_converti_preset_modes(model_number: str | None) -> list[str]:
     """Return the Converti preset list appropriate for a given model.
 
