@@ -73,8 +73,6 @@ class MirAIeEnergySensor(SensorEntity, ABC):
     async def async_will_remove_from_hass(self):
         """Entity being removed from hass."""
         LOGGER.debug(f"Removing energy consumption entity ({self._attr_name}) from HA")
-        if self.hub.http and not self.hub.http.closed:
-            await self.hub.http.close()
         return await super().async_will_remove_from_hass()
 
     @abstractmethod
@@ -207,4 +205,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             await sensor.async_update()
             sensor.async_write_ha_state()  # Ensure HA is notified of new data
 
-    async_track_time_interval(hass, update_sensors, timedelta(minutes=30))
+    cancel_interval = async_track_time_interval(hass, update_sensors, timedelta(minutes=30))
+    entry.async_on_unload(cancel_interval)
