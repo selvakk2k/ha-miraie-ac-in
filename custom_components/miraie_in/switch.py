@@ -18,6 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
+    supports_nanoe,
 )
 
 from .logger import LOGGER
@@ -29,7 +30,14 @@ async def async_setup_entry(
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = hass.data[DOMAIN][entry.entry_id]
 
-    entities = list(map(MirAIeDisplaySwitch, hub.home.devices))
+    entities = []
+    for device in hub.home.devices:
+        entities.append(MirAIeDisplaySwitch(device))
+        
+        # Untested: Expose Nanoe switch only if the model supports it
+        model_number = getattr(getattr(device, "details", None), "model_number", None)
+        if supports_nanoe(model_number):
+            entities.append(MirAIeNanoeSwitch(device))
 
     async_add_entities(entities)
 
@@ -101,4 +109,69 @@ class MirAIeDisplaySwitch(SwitchEntity):
         LOGGER.debug("Successfully removed display switch from HA")
         
         # The opposite of async_added_to_hass. Remove any registered call backs here.
+        self.device.remove_callback(self.async_write_ha_state)
+
+
+class MirAIeNanoeSwitch(SwitchEntity):
+    """Representation of a MirAIe Nanoe Air Purification switch.
+    
+    WARNING: Untested feature, added based on protocol structure but lacking a
+    physical Nanoe-compatible device to verify active MQTT control.
+    """
+
+    def __init__(self, device: MirAIeDevice) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_unique_id = f"{device.id}_nanoe"
+        self.device = device
+
+    @property
+    def name(self) -> str:
+        """Return the name of this switch."""
+        return f"{self.device.friendly_name} Nanoe"
+
+    @property
+    def translation_key(self) -> str:
+        """Return the translation key."""
+        return DOMAIN
+
+    @property
+    def icon(self) -> str | None:
+        return "mdi:air-filter"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={
+                (DOMAIN, self.device.id)
+            },
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+            sw_version=self.device.details.firmware_version,
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if Nanoe is on."""
+        return getattr(self.device.status, "nanoe_mode", "off") == "on"
+
+    @property
+    def available(self) -> bool:
+        return self.device.status.is_online
+
+    async def async_turn_off(self) -> None:
+        await self.device.set_nanoe(False)
+
+    async def async_turn_on(self) -> None:
+        await self.device.set_nanoe(True)
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+        LOGGER.debug("Successfully added Nanoe switch to HA")
+        self.device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        LOGGER.debug("Successfully removed Nanoe switch from HA")
         self.device.remove_callback(self.async_write_ha_state)

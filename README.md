@@ -46,6 +46,18 @@ There are currently no confirmed exceptions to the two-group rule above. An earl
 
 This means a household with a mix of AC models will correctly see different preset options per device.
 
+### 3. Stability & Lifecycle Refactoring
+Resolved critical background resource leaks. The MQTT broker connection task and sensor update timers are now properly cancelled and awaited when the integration is reloaded or unloaded. The HTTP ClientSession lifecycle has been fixed to persist for the duration of the config entry instead of closing prematurely, preventing race conditions among sensor updates.
+
+### 4. Gated Nanoe Air Purifier Control (Untested)
+Adds support for toggling Panasonic's Nanoe™ (nanoe-G / nanoe-X) air purification technology using a new switch (`switch.<ac_name>_nanoe`). The switch is gated strictly to verified premium series (`XU` and `HU`) that have the purification hardware. Note: This feature is currently **untested** due to a lack of a physical device with the feature to verify.
+
+### 5. Diagnostics, Standalone Sensors & Alerts
+* **Standalone Room Temperature**: Exposes the room temperature as a separate `sensor.<ac_name>_room_temperature` entity for easier historical charting.
+* **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` (using the `problem` device class) which alerts you when the physical mesh filter needs cleaning.
+* **WiFi Signal Strength (RSSI)**: Diagnostic sensor to track WiFi dBm signal strength (disabled by default).
+* **Last Control Source**: Diagnostic sensor showing whether the AC was last adjusted via the App/API or the physical remote (disabled by default).
+
 ---
 
 ## Tested On
@@ -137,4 +149,4 @@ logger:
 ## Credits
 
 - Original integration by [@rkzofficial](https://github.com/rkzofficial), [@deCodeIt](https://github.com/deCodeIt), and [@gutpull](https://github.com/gutpull).
-- Fork changes (firmware 3.02+ temperature fix, Converti 8-in-1 model support) developed by [@selvakk2k](https://github.com/selvakk2k) with the assistance of [Claude](https://claude.ai) (Anthropic).
+- Fork changes (firmware 3.02+ temperature fix, Converti 8-in-1 model support, stability refactoring, diagnostic sensors, and Nanoe toggle support) developed by [@selvakk2k](https://github.com/selvakk2k) with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind).
