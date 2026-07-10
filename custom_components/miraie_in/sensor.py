@@ -26,12 +26,23 @@ class MirAIeEnergySensor(SensorEntity, ABC):
     def period_type(self) -> ConsumptionPeriodType:
         return None
 
+    @property
+    def sensor_label(self) -> str:
+        """Human-facing label used for the entity name/unique_id.
+
+        Defaults to period_type's value, but can be overridden -- needed
+        for sensors that share the same underlying period_type (e.g.
+        Yesterday and Today both use ConsumptionPeriodType.DAILY, just
+        with different dates) but must still get distinct names/IDs.
+        """
+        return self.period_type.value
+
     def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
         """Initialize the sensor."""
         self.hub = hub
         self.device = device
-        self._attr_name = f"{device.name} {self.period_type.value} Energy"
-        self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_{self.period_type.value.lower()}_energy"
+        self._attr_name = f"{device.name} {self.sensor_label} Energy"
+        self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_{self.sensor_label.lower()}_energy"
         self._attr_should_poll = False
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_state_class = SensorStateClass.TOTAL
@@ -90,21 +101,49 @@ class MirAIeEnergySensor(SensorEntity, ABC):
             sw_version=self.device.details.firmware_version,
         )
 
-class MirAIeDailyEnergySensor(MirAIeEnergySensor):
+class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
     @property
     def period_type(self) -> ConsumptionPeriodType:
         return ConsumptionPeriodType.DAILY
 
+    @property
+    def sensor_label(self) -> str:
+        return "Yesterday"
+
     async def get_energy_consumption(self) -> float | None:
-        """Fetch the latest daily energy consumption data."""
+        """Fetch yesterday's total energy consumption data."""
         yesterday = datetime.today().date() - timedelta(days=1)
         date_string = yesterday.strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self._attr_name}, period: {date_string}")
+        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self._attr_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
         return consumption.get(date_string)
 
     async def _set_last_reset_time(self):
-        """Set the last reset time for the daily energy sensor entity."""
+        """Set the last reset time for the yesterday energy sensor entity."""
+        now = datetime.now(timezone.utc).astimezone()
+        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        if not getattr(self, "_attr_last_reset", None) or self._attr_last_reset < start_of_today:
+            self._attr_last_reset = now
+
+class MirAIeTodayEnergySensor(MirAIeEnergySensor):
+    @property
+    def period_type(self) -> ConsumptionPeriodType:
+        return ConsumptionPeriodType.DAILY
+
+    @property
+    def sensor_label(self) -> str:
+        return "Today"
+
+    async def get_energy_consumption(self) -> float | None:
+        """Fetch today's (live, rolling) energy consumption data so far."""
+        today = datetime.today().date()
+        date_string = today.strftime("%d%m%Y")
+        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self._attr_name}, period: {date_string}")
+        consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
+        return consumption.get(date_string)
+
+    async def _set_last_reset_time(self):
+        """Set the last reset time for the today energy sensor entity."""
         now = datetime.now(timezone.utc).astimezone()
         start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
         if not getattr(self, "_attr_last_reset", None) or self._attr_last_reset < start_of_today:
@@ -156,7 +195,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     sensors = []
     for device in hub.home.devices:
         sensors += [
-            MirAIeDailyEnergySensor(hub, device),
+            MirAIeYesterdayEnergySensor(hub, device),
+            MirAIeTodayEnergySensor(hub, device),
             MirAIeWeeklyEnergySensor(hub, device),
             MirAIeMonthlyEnergySensor(hub, device),
         ]
