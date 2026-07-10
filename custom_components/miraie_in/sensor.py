@@ -12,6 +12,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .logger import LOGGER
@@ -54,8 +55,8 @@ class MirAIeEnergySensor(SensorEntity, ABC):
 
     async def async_update(self):
         """Update the sensor state with the latest energy consumption data."""
-        now = datetime.now().astimezone()
-        cutoff_time = now.replace(hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
+        now = dt_util.now()
+        cutoff_time = dt_util.start_of_local_day(now).replace(hour=CUTOFF_HOUR)
         if not self.hub.http or self.hub.http.closed:
             self.hub.http = aiohttp.ClientSession()
         consumption = await self.get_energy_consumption()
@@ -111,7 +112,7 @@ class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
 
     async def get_energy_consumption(self) -> float | None:
         """Fetch yesterday's total energy consumption data."""
-        yesterday = datetime.today().date() - timedelta(days=1)
+        yesterday = dt_util.now().date() - timedelta(days=1)
         date_string = yesterday.strftime("%d%m%Y")
         LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self._attr_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
@@ -119,8 +120,8 @@ class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the yesterday energy sensor entity."""
-        now = datetime.now(timezone.utc).astimezone()
-        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        now = dt_util.now()
+        start_of_today = dt_util.start_of_local_day(now)
         if not getattr(self, "_attr_last_reset", None) or self._attr_last_reset < start_of_today:
             self._attr_last_reset = now
 
@@ -135,7 +136,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
 
     async def get_energy_consumption(self) -> float | None:
         """Fetch today's (live, rolling) energy consumption data so far."""
-        today = datetime.today().date()
+        today = dt_util.now().date()
         date_string = today.strftime("%d%m%Y")
         LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self._attr_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
@@ -143,8 +144,8 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the today energy sensor entity."""
-        now = datetime.now(timezone.utc).astimezone()
-        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        now = dt_util.now()
+        start_of_today = dt_util.start_of_local_day(now)
         if not getattr(self, "_attr_last_reset", None) or self._attr_last_reset < start_of_today:
             self._attr_last_reset = now
 
@@ -162,8 +163,8 @@ class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the weekly energy sensor entity."""
-        now = datetime.now(timezone.utc).astimezone()
-        start_of_week = (now - timedelta(days=now.weekday() + 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        now = dt_util.now()
+        start_of_week = dt_util.start_of_local_day(now - timedelta(days=now.weekday() + 1))
         if not getattr(self, "_attr_last_reset", None) or self._attr_last_reset < start_of_week:
             self._attr_last_reset = now
 
@@ -174,7 +175,7 @@ class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
 
     async def get_energy_consumption(self) -> float | None:
         """Fetch the latest monthly energy consumption data."""
-        yesterday = datetime.today().date() - timedelta(days=1)
+        yesterday = dt_util.now().date() - timedelta(days=1)
         date_string = yesterday.strftime("%m%Y")
         LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self._attr_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
@@ -182,8 +183,8 @@ class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the monthly energy sensor entity."""
-        now = datetime.now(timezone.utc).astimezone()
-        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        now = dt_util.now()
+        start_of_month = dt_util.start_of_local_day(now.replace(day=1))
         if not getattr(self, "_attr_last_reset", None) or self._attr_last_reset < start_of_month:
             self._attr_last_reset = now
 
