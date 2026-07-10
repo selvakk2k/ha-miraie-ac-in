@@ -1,7 +1,7 @@
 """Constants for the mirAIe integration."""
 
-DOMAIN = "miraie"
-PACKAGE_NAME = "custom_components.miraie"
+DOMAIN = "miraie_in"
+PACKAGE_NAME = "custom_components.miraie_in"
 
 # Possible swing state
 H0 = "H0"

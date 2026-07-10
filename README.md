@@ -17,7 +17,7 @@ This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-m
 ### 1. Room Temperature Sensor Fix (Firmware 3.02+)
 Panasonic AC units running firmware 3.02 and above report the room temperature (`rmtmp`) in a packed string format where the actual temperature value is encoded in the decimal portion of the string (e.g., `"134.30"` means `30°C`, not `134.3°C`). The upstream library (`miraie-ac`) used a plain `float()` cast which produced wildly incorrect room temperature readings on affected firmware.
 
-This fix is implemented in the companion library fork [selvakk2k/miraie-ac](https://github.com/selvakk2k/miraie-ac), and this integration's `manifest.json` points to that fork instead of the upstream PyPI release. The fix is firmware-version-aware: units on older firmware (pre-3.02) continue to use the original parsing behaviour.
+This fix is implemented in the companion library fork [selvakk2k/miraie-ac-in](https://github.com/selvakk2k/miraie-ac-in), published to PyPI as `miraie-ac-in`, and this integration's `manifest.json` points to that package instead of the upstream `miraie-ac` release. The fix is firmware-version-aware: units on older firmware (pre-3.02) continue to use the original parsing behaviour.
 
 ### 2. Converti Mode: 7-in-1 vs 8-in-1 Support
 Panasonic's Converti variable-capacity mode comes in two variants:
@@ -55,6 +55,12 @@ This means a household with a mix of AC models will correctly see different pres
 
 ---
 
+## Migrating from the old `MirAIe` integration
+
+This fork's integration domain changed from `miraie` to `miraie_in` as part of a clean split from upstream. If you previously had the original `MirAIe` integration installed, this is a fresh integration to Home Assistant — you'll need to remove the old config entry and add this one again; existing entity IDs and automations referencing the old entities will need to be updated.
+
+---
+
 ## Installation
 
 ### Method 1: Using [HACS](https://hacs.xyz) (Recommended)
@@ -63,11 +69,11 @@ This means a household with a mix of AC models will correctly see different pres
 2. Go to **HACS** (Home Assistant Community Store).
 3. Click the three dots in the upper right corner and select **Custom repositories**.
 4. Under **Add custom repository**, enter:
-    - **URL:** `https://github.com/selvakk2k/ha-miraie-ac`
+    - **URL:** `https://github.com/selvakk2k/ha-miraie-ac-in`
     - **Category:** Integration
 5. Click **Add**.
 6. Go back to the HACS search.
-7. Search for **MirAIe** and select it from the list.
+7. Search for **MirAIe India** and select it from the list.
 8. Click **Install** and follow any prompts to complete the installation.
 9. Restart Home Assistant.
 
@@ -75,12 +81,12 @@ This means a household with a mix of AC models will correctly see different pres
 
 1. Open the directory for your HA configuration (where `configuration.yaml` lives).
 2. If you do not have a `custom_components` directory, create one.
-3. Inside `custom_components`, create a new folder called `miraie`.
-4. Download all the files from `custom_components/miraie/` in this repository.
+3. Inside `custom_components`, create a new folder called `miraie_in`.
+4. Download all the files from `custom_components/miraie_in/` in this repository.
 5. Place them in the folder you just created.
 6. Restart Home Assistant.
 
-> **Note:** Because this fork depends on [selvakk2k/miraie-ac](https://github.com/selvakk2k/miraie-ac) (installed via the git URL in `manifest.json`) rather than the upstream PyPI release, Home Assistant will install the library from GitHub on first load. This requires your HA instance to have outbound internet access, which is standard for most setups.
+> **Note:** This fork depends on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/) (published on PyPI) rather than the upstream `miraie-ac` release. Home Assistant will install it automatically like any other Python dependency listed in `manifest.json`.
 
 ---
 
@@ -97,7 +103,7 @@ This means a household with a mix of AC models will correctly see different pres
 1. Open your Home Assistant UI.
 2. Navigate to **Settings → Devices & Services**.
 3. Click **+ Add Integration**.
-4. Search for **MirAIe** and select it.
+4. Search for **MirAIe India** and select it.
 
 ### Step 3: Enter Your Credentials
 
@@ -123,7 +129,7 @@ This means a household with a mix of AC models will correctly see different pres
 ```yaml
 logger:
   logs:
-    custom_components.miraie: debug
+    custom_components.miraie_in: debug
 ```
 
 ---
