@@ -50,6 +50,7 @@ from .const import (
     H5,
     PRESET_CLEAN,
     get_converti_preset_modes,
+    supports_heat_mode,
 )
 
 from .logger import LOGGER
@@ -70,19 +71,28 @@ class MirAIeClimate(ClimateEntity):
     """Representation of a MirAIe Climate."""
 
     def __init__(self, device: MirAIeDevice) -> None:
-        
+
         self._attr_should_poll: bool = False
         self._attr_has_entity_name: bool = True
+
+        model_number = getattr(getattr(device, "details", None), "model_number", None)
 
         self._attr_hvac_modes = [
             HVACMode.AUTO,
             HVACMode.COOL,
-            HVACMode.HEAT,
+        ]
+        if supports_heat_mode(model_number):
+            self._attr_hvac_modes.append(HVACMode.HEAT)
+        self._attr_hvac_modes += [
             HVACMode.OFF,
             HVACMode.DRY,
             HVACMode.FAN_ONLY,
         ]
-        model_number = getattr(getattr(device, "details", None), "model_number", None)
+        LOGGER.debug(
+            f"Model {model_number!r}: heat mode "
+            f"{'enabled (EZ/KZ series)' if supports_heat_mode(model_number) else 'disabled (cooling-only series)'}"
+        )
+
         converti_presets = get_converti_preset_modes(model_number)
         self._attr_preset_modes = [
             PRESET_NONE, PRESET_ECO, PRESET_BOOST, PRESET_CLEAN
@@ -123,7 +133,7 @@ class MirAIeClimate(ClimateEntity):
     def name(self) -> str:
         """Return the display name of this light."""
         return self.device.friendly_name
-    
+
     @property
     def translation_key(self) -> str:
         """Return the translation key."""
@@ -208,11 +218,11 @@ class MirAIeClimate(ClimateEntity):
             return V5
         else:
             return V0
-        
+
     @property
     def swing_horizontal_mode(self) -> str | None:
         mode = self.device.status.h_swing_mode.value
-        
+
         if mode == 1:
             return H1
         elif mode == 2:
@@ -225,7 +235,7 @@ class MirAIeClimate(ClimateEntity):
             return H5
         else:
             return H0
-    
+
     async def async_turn_off(self) -> None:
         await self.async_set_hvac_mode(HVACMode.OFF)
 
@@ -233,15 +243,15 @@ class MirAIeClimate(ClimateEntity):
         await self.async_set_hvac_mode(HVACMode.COOL)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        
+
         LOGGER.debug(f"Set temperature to {kwargs["temperature"]}")
-        
+
         await self.device.set_temperature(kwargs["temperature"])
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        
+
         LOGGER.debug(f"Set hvac mode to {hvac_mode}")
-        
+
         if hvac_mode == HVACMode.OFF:
             await self.device.turn_off()
         else:
@@ -255,9 +265,9 @@ class MirAIeClimate(ClimateEntity):
                 await self.device.set_hvac_mode(MHVACMode(hvac_mode.value))
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
-        
+
         LOGGER.debug(f"Set fan mode to {fan_mode}")
-        
+
         if fan_mode == FAN_OFF:
             await self.device.set_fan_mode(FanMode("quiet"))
         else:
@@ -277,9 +287,9 @@ class MirAIeClimate(ClimateEntity):
             await self.device.set_v_swing_mode(SwingMode(5))
         else:
             await self.device.set_v_swing_mode(SwingMode(0))
-            
+
     async def async_set_swing_horizontal_mode(self, swing_mode: str) -> None:
-        LOGGER.debug(f"Set swing horizontal mode to {swing_mode}")    
+        LOGGER.debug(f"Set swing horizontal mode to {swing_mode}")
         if swing_mode == H1:
             await self.device.set_h_swing_mode(SwingMode(1))
         elif swing_mode == H2:
@@ -294,9 +304,9 @@ class MirAIeClimate(ClimateEntity):
             await self.device.set_h_swing_mode(SwingMode(0))
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        
+
         LOGGER.debug(f"Set preset mode to {preset_mode}")
-        
+
         if preset_mode.startswith("cv"):
             preset_mode = int(preset_mode.split(" ")[1])
             await self.device.set_converti_mode(ConvertiMode(preset_mode))
@@ -305,16 +315,16 @@ class MirAIeClimate(ClimateEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        
+
         LOGGER.debug("Successfully added to HA")
-        
+
         # Sensors should also register callbacks to HA when their state changes
         self.device.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        
+
         LOGGER.debug("Successfully removed from HA")
-        
+
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self.device.remove_callback(self.async_write_ha_state)
