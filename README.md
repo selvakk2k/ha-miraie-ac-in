@@ -27,6 +27,8 @@ The changes introduced in this fork are developed with the assistance of [Claude
 * **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` using the `problem` class to notify you when the physical mesh filter needs cleaning (as reported by the AC unit's internal status).
 * **WiFi Signal Strength (RSSI)**: Diagnostic sensor to track WiFi dBm signal strength (disabled by default).
 * **Last Control Source**: Diagnostic sensor showing whether the AC was last adjusted via the App/API or the physical remote (disabled by default).
+* **Coil Cleaning Button & Binary Sensor**: Exposes a stateless trigger button (`button.<ac_name>_start_coil_clean`) to start the indoor coil clean cycle and a binary sensor (`binary_sensor.<ac_name>_coil_cleaning`) to monitor when the self-cleaning cycle is running.
+* **Standalone Convertible Mode Select**: Exposes a separate select entity (`select.<ac_name>_convertible_mode`) under the Configuration section to easily control and automate the compressor capacity steps (40% to 110%) without using the climate preset dropdown. Changing this automatically synchronizes with the main climate entity's preset state.
 
 ### 3. Stability & Code Cleanup
 * **Resource Leak Fixes**: Decoupled `ClientSession` closing from individual sensors, letting it live cleanly for the lifetime of the config entry. Added registration of the 30-minute sensor update timer to prevent background leaks when unloading/reloading the integration.
@@ -123,4 +125,4 @@ logger:
 ## Credits
 
 - Original integration by [@rkzofficial](https://github.com/rkzofficial), [@deCodeIt](https://github.com/deCodeIt), and [@gutpull](https://github.com/gutpull).
-- Fork changes (firmware 3.02+ temperature fix, Converti 8-in-1 model support, stability refactoring, diagnostic sensors, and Nanoe toggle support) developed by [@selvakk2k](https://github.com/selvakk2k) with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind).
+- Fork changes (firmware 3.02+ temperature fix, Converti 8-in-1 model support, stability refactoring, diagnostic sensors, Nanoe toggle support, and split convertible mode / coil clean entities) developed by [@selvakk2k](https://github.com/selvakk2k) with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind).
