@@ -189,7 +189,7 @@ class MirAIeClimate(ClimateEntity):
             if preset == PresetMode.CLEAN:
                 return PRESET_NONE
             return preset.value
-        return f"cv {self.device.status.converti_mode.value}"
+        return f"cv_{self.device.status.converti_mode.value}"
 
     @property
     def fan_mode(self) -> str | None:
@@ -306,9 +306,9 @@ class MirAIeClimate(ClimateEntity):
 
         LOGGER.debug(f"Set preset mode to {preset_mode}")
 
-        if preset_mode.startswith("cv"):
-            preset_mode_val = int(preset_mode.split(" ")[1])
-            await self.device.set_converti_mode(ConvertiMode(preset_mode_val))
+        if preset_mode.startswith("cv_"):
+            mode = int(preset_mode.split("_")[1])
+            await self.device.set_converti_mode(ConvertiMode(mode))
         else:
             await self.device.set_preset_mode(PresetMode(preset_mode))
 
