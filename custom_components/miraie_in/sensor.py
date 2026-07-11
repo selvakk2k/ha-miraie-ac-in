@@ -288,7 +288,7 @@ class MirAIeWifiSignalSensor(SensorEntity):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_wifi_signal"
-        self._attr_name = "WiFi Signal"
+        self._attr_name = "AC Wi-Fi Signal Strength"
         self.device = device
         self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -324,7 +324,7 @@ class MirAIeControlSourceSensor(SensorEntity):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_control_source"
-        self._attr_name = "Last Control Source"
+        self._attr_name = "Last Controlled Via"
         self.device = device
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_registry_enabled_default = False
