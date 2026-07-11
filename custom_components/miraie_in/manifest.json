@@ -11,10 +11,10 @@
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/selvakk2k/ha-miraie-ac-in/issues",
   "requirements": [
-    "miraie-ac-in==1.0.5",
+    "miraie-ac-in==1.0.6",
     "aiomqtt>=2.0.1"
   ],
   "ssdp": [],
-  "version": "1.3.6",
+  "version": "1.3.7",
   "zeroconf": []
 }

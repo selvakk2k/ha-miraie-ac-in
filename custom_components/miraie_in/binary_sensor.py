@@ -18,6 +18,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+
+PARALLEL_UPDATES = 0
 from .logger import LOGGER
 
 
@@ -25,7 +27,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the MirAIe Binary Sensors."""
-    hub: MirAIeHub = hass.data[DOMAIN][entry.entry_id]
+    hub: MirAIeHub = entry.runtime_data
 
     entities = []
     for device in hub.home.devices:
