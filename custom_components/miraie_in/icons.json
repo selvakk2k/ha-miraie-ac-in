@@ -5,38 +5,38 @@
         "state_attributes": {
           "swing_mode": {
             "state": {
-              "V0": "mdi:swap-vertical",
-              "V1": "mdi:arrow-up-thin",
-              "V2": "mdi:format-vertical-align-top",
-              "V3": "mdi:format-vertical-align-center",
-              "V4": "mdi:format-vertical-align-bottom",
-              "V5": "mdi:arrow-down-thin"
+              "v0": "mdi:swap-vertical",
+              "v1": "mdi:arrow-up-thin",
+              "v2": "mdi:format-vertical-align-top",
+              "v3": "mdi:format-vertical-align-center",
+              "v4": "mdi:format-vertical-align-bottom",
+              "v5": "mdi:arrow-down-thin"
             }
           },
           "swing_horizontal_mode": {
             "state": {
-              "H0": "mdi:swap-horizontal",
-              "H1": "mdi:format-horizontal-align-center",
-              "H2": "mdi:arrow-left-thin",
-              "H3": "mdi:arrow-expand-left",
-              "H4": "mdi:arrow-expand-right",
-              "H5": "mdi:arrow-right-thin"
+              "h0": "mdi:swap-horizontal",
+              "h1": "mdi:format-horizontal-align-center",
+              "h2": "mdi:arrow-left-thin",
+              "h3": "mdi:arrow-expand-left",
+              "h4": "mdi:arrow-expand-right",
+              "h5": "mdi:arrow-right-thin"
             }
           },
           "preset_mode": {
             "state": {
               "none": "mdi:air-conditioner",
               "clean": "mdi:air-filter",
-              "cv 110": "mdi:alpha-h-circle",
-              "cv 100": "mdi:alpha-f-circle",
-              "cv 90": "mdi:circle-slice-8",
-              "cv 80": "mdi:circle-slice-7",
-              "cv 70": "mdi:circle-slice-6",
-              "cv 60": "mdi:circle-slice-5",
-              "cv 55": "mdi:circle-slice-5",
-              "cv 50": "mdi:circle-slice-4",
-              "cv 40": "mdi:circle-slice-3",
-              "cv 0": "mdi:circle-outline"
+              "cv_110": "mdi:alpha-h-circle",
+              "cv_100": "mdi:alpha-f-circle",
+              "cv_90": "mdi:circle-slice-8",
+              "cv_80": "mdi:circle-slice-7",
+              "cv_70": "mdi:circle-slice-6",
+              "cv_60": "mdi:circle-slice-5",
+              "cv_55": "mdi:circle-slice-5",
+              "cv_50": "mdi:circle-slice-4",
+              "cv_40": "mdi:circle-slice-3",
+              "cv_0": "mdi:circle-outline"
             }
           }
         }
