@@ -121,7 +121,7 @@ class MirAIeNanoeSwitch(SwitchEntity):
 
     def __init__(self, device: MirAIeDevice) -> None:
         self._attr_should_poll: bool = False
-        self._attr_unique_id = f"{device.id}_nanoe"
+        self._attr_unique_id = f"switch.{device.name.lower()}_{device.id}_nanoe"
         self.device = device
 
     @property

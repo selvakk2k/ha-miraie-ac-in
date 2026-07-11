@@ -306,7 +306,13 @@ class MirAIeControlSourceSensor(SensorEntity):
     @property
     def native_value(self) -> str:
         source = getattr(self.device.status, "control_source", "an")
-        return "App" if source == "an" else "Remote"
+        mapping = {
+            "an": "App",
+            "ai": "AI Mode",
+            "rem": "Remote",
+            "auto": "Auto",
+        }
+        return mapping.get(source, source)
 
     @property
     def device_info(self) -> DeviceInfo:
