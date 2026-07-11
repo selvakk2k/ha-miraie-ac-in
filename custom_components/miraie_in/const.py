@@ -31,12 +31,10 @@ PRESET_CONVERTI_C70 = "cv_70"
 PRESET_CONVERTI_C40 = "cv_40"
 PRESET_CONVERTI_C0 = "cv_0"
 
-# added in new version
-PRESET_CONVERTI_C75 = "cv_75"
+# Converti 7-in-1 only.
 PRESET_CONVERTI_C55 = "cv_55"
-PRESET_CONVERTI_C45 = "cv_45"
 
-# adding to resolve issues for 1.5 tonnage (issue 195)
+# Converti 8-in-1 only (replaces the 55% step with 60%/50%).
 PRESET_CONVERTI_C60 = "cv_60"
 PRESET_CONVERTI_C50 = "cv_50"
 
