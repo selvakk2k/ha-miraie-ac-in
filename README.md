@@ -24,7 +24,7 @@ The changes introduced in this fork are developed with the assistance of [Claude
 ### 2. New Sensors, Switches & Alerts
 * **Gated Nanoe Air Purifier Control (Untested)**: Adds a switch entity (`switch.<ac_name>_nanoe`) to control the built-in Nanoe™ (nanoe-G / nanoe-X) air purifier, gated to supported premium series (`XU` and `HU`). *Note: This feature is currently untested due to a lack of a physical device with the feature to verify.*
 * **Standalone Room Temperature**: Exposes the room temperature as a separate `sensor.<ac_name>_room_temperature` entity for easier historical charting.
-* **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` using the `problem` class to notify you when the physical mesh filter needs cleaning (~500 run hours).
+* **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` using the `problem` class to notify you when the physical mesh filter needs cleaning (as reported by the AC unit's internal status).
 * **WiFi Signal Strength (RSSI)**: Diagnostic sensor to track WiFi dBm signal strength (disabled by default).
 * **Last Control Source**: Diagnostic sensor showing whether the AC was last adjusted via the App/API or the physical remote (disabled by default).
 
