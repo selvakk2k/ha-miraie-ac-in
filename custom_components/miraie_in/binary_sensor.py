@@ -36,14 +36,11 @@ class MirAIeFilterCleanBinarySensor(BinarySensorEntity):
 
     def __init__(self, device: MirAIeDevice) -> None:
         self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_name = "Filter Clean Alert"
         self._attr_unique_id = f"binary_sensor.{device.name.lower()}_{device.id}_filter_clean_alert"
         self.device = device
         self._attr_device_class = BinarySensorDeviceClass.PROBLEM
-
-    @property
-    def name(self) -> str:
-        """Return the name of this binary sensor."""
-        return f"{self.device.friendly_name} Filter Clean Alert"
 
     @property
     def icon(self) -> str | None:

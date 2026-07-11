@@ -44,7 +44,8 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         """Initialize the sensor."""
         self.hub = hub
         self.device = device
-        self._attr_name = f"{device.name} {self.sensor_label} Energy"
+        self._attr_has_entity_name = True
+        self._attr_name = f"{self.sensor_label} Energy"
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_{self.sensor_label.lower()}_energy"
         self._attr_should_poll = False
         self._attr_device_class = SensorDeviceClass.ENERGY
@@ -104,6 +105,10 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         )
 
 class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
+        super().__init__(hub, device)
+        self._attr_name = "Yesterday's Consumption"
+
     @property
     def period_type(self) -> ConsumptionPeriodType:
         return ConsumptionPeriodType.DAILY
@@ -128,6 +133,10 @@ class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
             self._attr_last_reset = now
 
 class MirAIeTodayEnergySensor(MirAIeEnergySensor):
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
+        super().__init__(hub, device)
+        self._attr_name = "Current Consumption"
+
     @property
     def period_type(self) -> ConsumptionPeriodType:
         return ConsumptionPeriodType.DAILY
@@ -152,6 +161,10 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
             self._attr_last_reset = now
 
 class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
+        super().__init__(hub, device)
+        self._attr_name = "Weekly Consumption"
+
     @property
     def period_type(self) -> ConsumptionPeriodType:
         return ConsumptionPeriodType.WEEKLY
@@ -171,6 +184,10 @@ class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
             self._attr_last_reset = now
 
 class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
+        super().__init__(hub, device)
+        self._attr_name = "Monthly Consumption"
+
     @property
     def period_type(self) -> ConsumptionPeriodType:
         return ConsumptionPeriodType.MONTHLY
@@ -234,8 +251,9 @@ class MirAIeRoomTemperatureSensor(SensorEntity):
 
     def __init__(self, device: MirAIeDevice):
         self._attr_should_poll = False
+        self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_room_temperature"
-        self._attr_name = f"{device.name} Room Temperature"
+        self._attr_name = "AC Temperature Sensor"
         self.device = device
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -268,8 +286,9 @@ class MirAIeWifiSignalSensor(SensorEntity):
 
     def __init__(self, device: MirAIeDevice):
         self._attr_should_poll = False
+        self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_wifi_signal"
-        self._attr_name = f"{device.name} WiFi Signal"
+        self._attr_name = "WiFi Signal"
         self.device = device
         self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -303,8 +322,9 @@ class MirAIeControlSourceSensor(SensorEntity):
 
     def __init__(self, device: MirAIeDevice):
         self._attr_should_poll = False
+        self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_control_source"
-        self._attr_name = f"{device.name} Last Control Source"
+        self._attr_name = "Last Control Source"
         self.device = device
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_registry_enabled_default = False
