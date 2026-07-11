@@ -243,7 +243,7 @@ class MirAIeClimate(ClimateEntity):
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
 
-        LOGGER.debug(f"Set temperature to {kwargs["temperature"]}")
+        LOGGER.debug(f"Set temperature to {kwargs['temperature']}")
 
         await self.device.set_temperature(kwargs["temperature"])
 

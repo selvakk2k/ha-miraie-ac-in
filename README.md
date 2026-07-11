@@ -53,7 +53,7 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 1. In Home Assistant, navigate to **Settings → Devices & Services** → **+ Add Integration**.
 2. Search for **MirAIe India**.
 3. Enter your MirAIe App credentials:
-   * **Username**: Your email or mobile number (include country code, e.g. `+91XXXXXXXXXX`).
+   * **Username**: Your email or mobile number (10-digit number without country code).
    * **Password**: Your password.
 4. Submit the form to discover your air conditioning units.
 

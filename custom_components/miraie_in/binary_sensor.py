@@ -42,7 +42,7 @@ class MirAIeFilterCleanBinarySensor(BinarySensorEntity):
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "filter_clean_alert"
-        self._attr_unique_id = f"binary_sensor.{device.name.lower()}_{device.id}_filter_clean_alert"
+        self._attr_unique_id = f"{device.id}_filter_clean_alert"
         self.device = device
         self._attr_device_class = BinarySensorDeviceClass.PROBLEM
 
@@ -90,7 +90,7 @@ class MirAIeCoilCleanBinarySensor(BinarySensorEntity):
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "coil_cleaning"
-        self._attr_unique_id = f"binary_sensor.{device.name.lower()}_{device.id}_coil_cleaning"
+        self._attr_unique_id = f"{device.id}_coil_cleaning"
         self.device = device
         self._attr_device_class = BinarySensorDeviceClass.RUNNING
 

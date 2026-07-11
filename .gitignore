@@ -3,3 +3,9 @@
 .venv
 __pycache__/
 *.pyc
+
+# Agent working artifacts
+implementation_plan.md
+task.md
+walkthrough.md
+info.md

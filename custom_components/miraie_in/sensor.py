@@ -45,7 +45,7 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         self.hub = hub
         self.device = device
         self._attr_has_entity_name = True
-        self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_{self.sensor_label.lower()}_energy"
+        self._attr_unique_id = f"{device.id}_{self.sensor_label.lower()}_energy"
         self._attr_should_poll = False
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_state_class = SensorStateClass.TOTAL
@@ -251,7 +251,7 @@ class MirAIeRoomTemperatureSensor(SensorEntity):
     def __init__(self, device: MirAIeDevice):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
-        self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_room_temperature"
+        self._attr_unique_id = f"{device.id}_room_temperature"
         self._attr_translation_key = "ac_temperature"
         self.device = device
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -286,7 +286,7 @@ class MirAIeWifiSignalSensor(SensorEntity):
     def __init__(self, device: MirAIeDevice):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
-        self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_wifi_signal"
+        self._attr_unique_id = f"{device.id}_wifi_signal"
         self._attr_translation_key = "wifi_signal"
         self.device = device
         self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
@@ -322,7 +322,7 @@ class MirAIeControlSourceSensor(SensorEntity):
     def __init__(self, device: MirAIeDevice):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
-        self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_control_source"
+        self._attr_unique_id = f"{device.id}_control_source"
         self._attr_translation_key = "last_controlled_via"
         self.device = device
         self._attr_entity_category = EntityCategory.DIAGNOSTIC

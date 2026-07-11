@@ -36,7 +36,7 @@ class MirAIeCoilCleanButton(ButtonEntity):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "start_coil_clean"
-        self._attr_unique_id = f"button.{device.name.lower()}_{device.id}_start_coil_clean"
+        self._attr_unique_id = f"{device.id}_start_coil_clean"
         self.device = device
 
 

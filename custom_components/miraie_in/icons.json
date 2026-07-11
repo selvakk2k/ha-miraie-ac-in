@@ -62,23 +62,6 @@
       "coil_cleaning": {
         "default": "mdi:spray-bottle"
       }
-    },
-    "select": {
-      "convertible_mode": {
-        "default": "mdi:speedometer",
-        "state": {
-          "cv 110": "mdi:alpha-h-circle",
-          "cv 100": "mdi:alpha-f-circle",
-          "cv 90": "mdi:circle-slice-8",
-          "cv 80": "mdi:circle-slice-7",
-          "cv 70": "mdi:circle-slice-6",
-          "cv 60": "mdi:circle-slice-5",
-          "cv 55": "mdi:circle-slice-5",
-          "cv 50": "mdi:circle-slice-4",
-          "cv 40": "mdi:circle-slice-3",
-          "cv 0": "mdi:circle-outline"
-        }
-      }
     }
   }
 }
