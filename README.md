@@ -6,7 +6,8 @@
 
 *Integration for **[Panasonic MirAIe App enabled ACs](https://store.in.panasonic.com/air-conditioners/split-ac.html)***
 
-> **Note:** This integration is designed around Panasonic India air conditioners that use the [MirAIe App](https://play.google.com/store/apps/details?id=com.panasonic.in.miraie&hl=en_IN&gl=US). It has not been tested on models sold outside India and may not work with them.
+> [!IMPORTANT]
+> This integration **exclusively** works with Indian-market Panasonic air conditioners that utilize the [MirAIe App](https://play.google.com/store/apps/details?id=com.panasonic.in.miraie&hl=en_IN&gl=US). It is **not compatible** with global/European models using the **Panasonic Comfort Cloud** app.
 
 ---
 
@@ -108,7 +109,7 @@ This fork's integration domain changed from `miraie` to `miraie_in` as part of a
   - They update with a delay of a few reporting cycles, as the AC unit only reports its internal sensor reading periodically over MQTT. This is a firmware behaviour, not an integration bug.
   - While the AC is actively cooling, the room temperature reading will be inaccurate — the internal sensor sits close to the coil/intake and reads significantly lower than the actual ambient room temperature. Readings will normalise once the AC is no longer in an active cooling cycle. This behaviour has been verified by comparing the integration's room temperature value against the reading shown on the physical AC display in fan-only mode (where internal heating from the compressor is absent), which matched the parsed value from the integration accurately.
   - For more reliable ambient temperature tracking, an external temperature sensor (e.g. a Wi-Fi temperature/humidity sensor) is strongly recommended, especially if using automations that depend on room temperature.
-- This integration has only been tested on **Indian market Panasonic MirAIe-enabled ACs**. Compatibility with models sold in other regions is unknown.
+- **Regional Compatibility**: This integration **only** works with Indian-market Panasonic ACs registered on the MirAIe platform. If your AC is registered in another region or uses the **Panasonic Comfort Cloud** app, this integration will not work.
 
 ---
 
