@@ -16,7 +16,9 @@ In addition, we migrated all hardcoded friendly names from the Python codebase t
   * Removed hardcoded entity names.
   * Added `self._attr_translation_key` to `MirAIeFilterCleanBinarySensor` (`"filter_clean_alert"`) and `MirAIeCoilCleanBinarySensor` (`"coil_cleaning"`).
 * **[select.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/select.py) [NEW]**: Added `MirAIeConvertiSelect` representing the convertible modes (capacity limit). Options now use raw identifiers (`cv 110`, `cv 100`, etc.) in python, delegating user-friendly localization to the translation files.
-* **[button.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/button.py) [NEW]**: Added `MirAIeCoilCleanButton` to trigger the start of the coil cleaning cycle via `device.set_preset_mode(PresetMode.CLEAN)`, with the translation key `start_coil_clean`.
+* **[button.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/button.py) [NEW]**: 
+  * Added `MirAIeCoilCleanButton` to trigger the start of the coil cleaning cycle via `device.set_preset_mode(PresetMode.CLEAN)`, with the translation key `start_coil_clean`.
+  * Fixed a bug where an overridden `translation_key` property was returning `DOMAIN` (instead of using `_attr_translation_key`), which caused the entity friendly name to default to the device name.
 * **[switch.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/switch.py)**:
   * Removed hardcoded entity names.
   * Replaced DOMAIN-bound translation keys with unique translation keys `display` and `nanoe`.

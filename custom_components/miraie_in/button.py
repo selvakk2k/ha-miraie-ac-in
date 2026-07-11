@@ -39,10 +39,7 @@ class MirAIeCoilCleanButton(ButtonEntity):
         self._attr_unique_id = f"button.{device.name.lower()}_{device.id}_start_coil_clean"
         self.device = device
 
-    @property
-    def translation_key(self) -> str:
-        """Return the translation key."""
-        return DOMAIN
+
 
     @property
     def icon(self) -> str | None:
