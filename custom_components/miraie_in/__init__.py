@@ -1,7 +1,7 @@
 """The mirAIe integration."""
 from __future__ import annotations
 
-import logging
+from .logger import LOGGER
 
 from miraie_ac import MirAIeBroker, MirAIeHub
 
@@ -13,7 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
 
-LOGGER = logging.getLogger(__name__)
+
 
 # For your initial PR, limit it to 1 platform.
 PLATFORMS: list[Platform] = [
@@ -26,22 +26,6 @@ PLATFORMS: list[Platform] = [
 
 # Mapping of entity-domain prefixes that appear in old-format unique_ids.
 _OLD_UID_PREFIXES = ("sensor.", "switch.", "button.", "binary_sensor.")
-
-# Known suffixes for each entity class. Used to reconstruct the new unique_id
-# from an old one by locating the device_id within the old string.
-_KNOWN_SUFFIXES = (
-    "_nanoe",
-    "_today_energy",
-    "_yesterday_energy",
-    "_weekly_energy",
-    "_monthly_energy",
-    "_room_temperature",
-    "_wifi_signal",
-    "_control_source",
-    "_start_coil_clean",
-    "_filter_clean_alert",
-    "_coil_cleaning",
-)
 
 
 def _migrate_unique_ids(

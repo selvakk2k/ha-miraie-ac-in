@@ -23,20 +23,22 @@ PRESET_CLEAN = "clean"
 
 # Preset for Converti
 # Shared across both Converti variants.
-PRESET_CONVERTI_C110 = "cv 110"
-PRESET_CONVERTI_C100 = "cv 100"
-PRESET_CONVERTI_C90 = "cv 90"
-PRESET_CONVERTI_C80 = "cv 80"
-PRESET_CONVERTI_C70 = "cv 70"
-PRESET_CONVERTI_C40 = "cv 40"
-PRESET_CONVERTI_C0 = "cv 0"
+PRESET_CONVERTI_C110 = "cv_110"
+PRESET_CONVERTI_C100 = "cv_100"
+PRESET_CONVERTI_C90 = "cv_90"
+PRESET_CONVERTI_C80 = "cv_80"
+PRESET_CONVERTI_C70 = "cv_70"
+PRESET_CONVERTI_C40 = "cv_40"
+PRESET_CONVERTI_C0 = "cv_0"
 
-# Converti 7-in-1 only.
-PRESET_CONVERTI_C55 = "cv 55"
+# added in new version
+PRESET_CONVERTI_C75 = "cv_75"
+PRESET_CONVERTI_C55 = "cv_55"
+PRESET_CONVERTI_C45 = "cv_45"
 
-# Converti 8-in-1 only (replaces the 55% step with 60%/50%).
-PRESET_CONVERTI_C60 = "cv 60"
-PRESET_CONVERTI_C50 = "cv 50"
+# adding to resolve issues for 1.5 tonnage (issue 195)
+PRESET_CONVERTI_C60 = "cv_60"
+PRESET_CONVERTI_C50 = "cv_50"
 
 # Converti 7-in-1 capacity steps: 110/100/90/80/70/55/40/0.
 CONVERTI_7IN1_PRESET_MODES = [
