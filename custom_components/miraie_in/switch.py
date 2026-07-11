@@ -23,12 +23,14 @@ from .const import (
 
 from .logger import LOGGER
 
+PARALLEL_UPDATES = 0
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
 
     """Set up the MirAIe Climate Hub."""
-    hub: MirAIeHub = hass.data[DOMAIN][entry.entry_id]
+    hub: MirAIeHub = entry.runtime_data
 
     entities = []
     for device in hub.home.devices:

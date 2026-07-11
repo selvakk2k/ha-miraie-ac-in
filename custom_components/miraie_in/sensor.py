@@ -16,6 +16,8 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+
+PARALLEL_UPDATES = 0
 from .logger import LOGGER
 from .utils import get_last_sunday
 
@@ -209,7 +211,7 @@ class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up MirAIe energy and status sensors from a config entry."""
-    hub: MirAIeHub = hass.data[DOMAIN][entry.entry_id]
+    hub: MirAIeHub = entry.runtime_data
     
     # 1. Setup Energy Sensors (which need active polling)
     energy_sensors = []

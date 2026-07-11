@@ -52,12 +52,14 @@ from .const import (
 
 from .logger import LOGGER
 
+PARALLEL_UPDATES = 0
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
 
     """Set up the MirAIe Climate Hub."""
-    hub: MirAIeHub = hass.data[DOMAIN][entry.entry_id]
+    hub: MirAIeHub = entry.runtime_data
 
     entities = list(map(MirAIeClimate, hub.home.devices))
 
@@ -243,7 +245,7 @@ class MirAIeClimate(ClimateEntity):
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
 
-        LOGGER.debug(f"Set temperature to {kwargs['temperature']}")
+        LOGGER.debug(f"Set temperature to {kwargs.get('temperature')}")
 
         await self.device.set_temperature(kwargs["temperature"])
 
