@@ -6,6 +6,7 @@ from miraie_ac import MirAIeBroker, MirAIeHub
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
 
@@ -17,7 +18,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
 
-    hub = MirAIeHub()
+    session = async_get_clientsession(hass)
+    hub = MirAIeHub(session)
     broker = MirAIeBroker()
     await hub.init(entry.data["username"], entry.data["password"], broker)
     hass.data[DOMAIN][entry.entry_id] = hub

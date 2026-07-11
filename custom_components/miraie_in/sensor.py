@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone, timedelta
 
@@ -58,7 +59,8 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         now = dt_util.now()
         cutoff_time = dt_util.start_of_local_day(now).replace(hour=CUTOFF_HOUR)
         if not self.hub.http or self.hub.http.closed:
-            self.hub.http = aiohttp.ClientSession()
+            LOGGER.error("MirAIe HTTP session is closed or unavailable")
+            return
         consumption = await self.get_energy_consumption()
 
         """Consumption figures are updated on the server some time between 7-10 am the next day.
@@ -205,8 +207,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(energy_sensors, update_before_add=True)
 
     async def update_sensors(now=None):
+        # Gather updates concurrently to avoid sequential HTTP requests
+        await asyncio.gather(
+            *(sensor.async_update() for sensor in energy_sensors),
+            return_exceptions=True
+        )
         for sensor in energy_sensors:
-            await sensor.async_update()
             sensor.async_write_ha_state()  # Ensure HA is notified of new data
 
     cancel_interval = async_track_time_interval(hass, update_sensors, timedelta(minutes=30))
