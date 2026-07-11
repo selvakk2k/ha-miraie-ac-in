@@ -1,129 +1,78 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/b430eac3-5971-4d6e-83e1-d216cddf8600">
-</p>
+# Panasonic MirAIe AC India Integration (`ha-miraie-ac-in`)
 
-# Home Assistant Integration for the Panasonic MirAIe Air Conditioner
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![Version](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in)](https://github.com/selvakk2k/ha-miraie-ac-in/releases)
 
-*Integration for **[Panasonic MirAIe App enabled ACs](https://store.in.panasonic.com/air-conditioners/split-ac.html)***
+A Home Assistant custom integration for Panasonic Air Conditioners operating on the Indian-market MirAIe IoT platform.
+
+This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designed to add support for 8-in-1 convertible models, integrate diagnostic sensors, and resolve temperature parsing issues on newer firmware.
 
 > [!IMPORTANT]
-> This integration **exclusively** works with Panasonic air conditioners that utilize the [MirAIe App](https://play.google.com/store/apps/details?id=com.panasonic.in.miraie&hl=en_IN&gl=US). It is **not compatible** with global/European models using the **Panasonic Comfort Cloud** app.
+> This project is designed **exclusively** for Panasonic Air Conditioners that use the **MirAIe** application. It is **not compatible** with Panasonic ACs that use the global **Comfort Cloud** application.
 
 ---
 
-## About This Fork
+## Features
 
-This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), renamed to `ha-miraie-ac-in` to expand features that may break if merged with upstream. The `v1.0.0` release marks the fork point — depending on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/), the matching library fork.
+### 1. Hardware Mappings
+* **Firmware 3.02+ Room Temperature Mappings**: Correctly parses packed decimal room temperature payloads returned by newer firmware models (e.g. decoding `"134.30"` to `30°C`), resolving inaccurate ambient temperature display.
+* **Dynamic Converti7 vs. Converti8 Support**: Automatically detects whether the connected AC model supports Converti7 or Converti8 capacity steps based on the model's series and generation letters, providing the correct notch options dynamically.
+* **Gated Heat Mode**: Hides `HEAT` controls on cooling-only units, showing them only on verified Hot & Cold models (such as the `EZ` and `KZ` series).
 
-The changes introduced in this fork are developed with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind), categorized as follows:
-
-### 1. Hardware Adaptations & Gating
-* **Room Temperature Sensor Fix (Firmware 3.02+)**: Panasonic AC units running firmware 3.02+ report room temperature in a packed string format where the actual value is in the decimals (e.g., `"134.30"` means `30°C`). The fork introduces version-aware parsing to correctly display this temperature while keeping standard parsing for older pre-3.02 firmware.
-* **Converti Mode: 7-in-1 vs. 8-in-1 Support**: Automatically decides between 7-in-1 and 8-in-1 capacity step presets (e.g. mapping the 55% step vs. 60%/50% steps) based on the model's series and generation letter (e.g., threshold `B` for `NU/SU` and `C` for `EZ/HU/EU`). Unrecognized models safely fallback to 7-in-1.
-* **Heat Mode ("Hot & Cold" Gating)**: Restricts `HVACMode.HEAT` controls in Home Assistant specifically to Hot & Cold models (`EZ` and `KZ` series) to prevent displaying unusable heat controls on cooling-only units.
-
-### 2. New Sensors, Switches & Alerts
-* **Gated Nanoe Air Purifier Control (Untested)**: Adds a switch entity (`switch.<ac_name>_nanoe`) to control the built-in Nanoe™ (nanoe-G / nanoe-X) air purifier, gated to supported premium series (`XU` and `HU`). *Note: This feature is currently untested due to a lack of a physical device with the feature to verify.*
-* **Standalone Room Temperature**: Exposes the room temperature as a separate `sensor.<ac_name>_room_temperature` entity for easier historical charting.
-* **Filter Clean Alert**: A binary sensor `binary_sensor.<ac_name>_filter_clean_alert` using the `problem` class to notify you when the physical mesh filter needs cleaning (as reported by the AC unit's internal status).
-* **WiFi Signal Strength (RSSI)**: Diagnostic sensor to track WiFi dBm signal strength (disabled by default).
-* **Last Control Source**: Diagnostic sensor showing whether the AC was last adjusted via the App/API or the physical remote (disabled by default).
-* **Coil Cleaning Button & Binary Sensor**: Exposes a stateless trigger button (`button.<ac_name>_start_coil_clean`) to start the indoor coil clean cycle and a binary sensor (`binary_sensor.<ac_name>_coil_cleaning`) to monitor when the self-cleaning cycle is running.
-* **Standalone Convertible Mode Select**: Exposes a separate select entity (`select.<ac_name>_convertible_mode`) under the Configuration section to easily control and automate the compressor capacity steps (40% to 110%) without using the climate preset dropdown. Changing this automatically synchronizes with the main climate entity's preset state.
+### 2. Controls & Diagnostics
+* **Nanoe™ Air Purifier Control**: Exposes a switch entity to toggle the built-in Nanoe™ (nanoe-G or nanoe-X) air purification systems on supported premium models (such as the `XU` and `HU` series).
+* **Coil Cleaning Cycle**: Adds a stateless trigger button to start the self-cleaning indoor coil cycle and a binary sensor to monitor when it is running.
+* **Filter Clean Notification**: Exposes a binary sensor that triggers when the AC's internal controller flags that the mesh air filter needs cleaning.
+* **Standalone Room Temperature**: Exposes a dedicated temperature sensor entity for easier historical tracking and graphing.
+* **Wi-Fi Strength & Last Control Source**: Sensors tracking Wi-Fi RSSI (in dBm) and whether the unit was last adjusted via the remote or the app.
 
 ### 3. Stability & Code Cleanup
-* **Resource Leak Fixes**: Decoupled `ClientSession` closing from individual sensors, letting it live cleanly for the lifetime of the config entry. Added registration of the 30-minute sensor update timer to prevent background leaks when unloading/reloading the integration.
-* **Config Flow Unique Verification**: Enforced unique ID verification in the configuration flow based on the username to prevent creating duplicate integration entries for the same account.
-
----
-
-## Tested On
-
-- **Panasonic CS-CU-EU18CKY5XFM** (1.5 Ton, 2026 range, Firmware 3.02)
-- **Panasonic CS-CU-SU18ZKYWT** (upstream integration)
-
----
-
-## Migrating from the old `MirAIe` integration
-
-This fork's integration domain changed from `miraie` to `miraie_in` as part of a clean split from upstream. If you previously had the original `MirAIe` integration installed, this is a fresh integration to Home Assistant — you'll need to remove the old config entry and add this one again; existing entity IDs and automations referencing the old entities will need to be updated.
+* **Resource Optimization**: Decoupled HTTP ClientSession scopes to prevent resource leaks when reloading.
+* **Duplicate Prevention**: Enforces a unique identifier constraint based on the username during the configuration flow.
 
 ---
 
 ## Installation
 
-### Method 1: Using [HACS](https://hacs.xyz) (Recommended)
-
-1. Open your Home Assistant UI.
-2. Go to **HACS** (Home Assistant Community Store).
-3. Click the three dots in the upper right corner and select **Custom repositories**.
-4. Under **Add custom repository**, enter:
-    - **URL:** `https://github.com/selvakk2k/ha-miraie-ac-in`
-    - **Category:** Integration
-5. Click **Add**.
-6. Go back to the HACS search.
-7. Search for **MirAIe India** and select it from the list.
-8. Click **Install** and follow any prompts to complete the installation.
-9. Restart Home Assistant.
+### Method 1: Using HACS (Recommended)
+1. In Home Assistant, open **HACS** → **Integration** → Click the three dots (⋮) in the top-right corner.
+2. Select **Custom repositories**.
+3. Under **URL**, add: `https://github.com/selvakk2k/ha-miraie-ac-in`
+4. Select **Integration** as the category and click **Add**.
+5. Search for **MirAIe India**, click **Install**, and restart Home Assistant.
 
 ### Method 2: Manual Installation
-
-1. Open the directory for your HA configuration (where `configuration.yaml` lives).
-2. If you do not have a `custom_components` directory, create one.
-3. Inside `custom_components`, create a new folder called `miraie_in`.
-4. Download all the files from `custom_components/miraie_in/` in this repository.
-5. Place them in the folder you just created.
-6. Restart Home Assistant.
-
-> **Note:** This fork depends on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/) (published on PyPI) rather than the upstream `miraie-ac` release. Home Assistant will install it automatically like any other Python dependency listed in `manifest.json`.
+1. Download this repository as a ZIP file.
+2. Copy the folder `custom_components/miraie_in` into your Home Assistant's `custom_components/` directory.
+3. Restart Home Assistant.
 
 ---
 
 ## Configuration
 
-### Step 1: Create a MirAIe Account
-
-1. Download the [Panasonic MirAIe App](https://play.google.com/store/apps/details?id=com.panasonic.in.miraie&hl=en_IN&gl=US).
-2. Create a new account using the in-app form.
-3. Note your username (email or phone number) and password for the next step.
-
-### Step 2: Add the Integration to Home Assistant
-
-1. Open your Home Assistant UI.
-2. Navigate to **Settings → Devices & Services**.
-3. Click **+ Add Integration**.
-4. Search for **MirAIe India** and select it.
-
-### Step 3: Enter Your Credentials
-
-1. Enter your `username` and `password`.
-    - If using a phone number, include the country code (e.g., `+91XXXXXXXXXX`).
-2. Submit the form.
+1. In Home Assistant, navigate to **Settings → Devices & Services** → **+ Add Integration**.
+2. Search for **MirAIe India**.
+3. Enter your MirAIe App credentials:
+   * **Username**: Your email or mobile number (include country code, e.g. `+91XXXXXXXXXX`).
+   * **Password**: Your password.
+4. Submit the form to discover your air conditioning units.
 
 ---
 
-## Caveats
+## Caveats & Firmware Limitations
 
-- The primary functions of the integration (reading and writing AC state) use `cloud_push`, while energy consumption sensor entities are updated via `cloud_polling`.
-- **Room temperature readings have two known limitations:**
-  - They update with a delay of a few reporting cycles, as the AC unit only reports its internal sensor reading periodically over MQTT. This is a firmware behaviour, not an integration bug.
-  - While the AC is actively cooling, the room temperature reading will be inaccurate — the internal sensor sits close to the coil/intake and reads significantly lower than the actual ambient room temperature. Readings will normalise once the AC is no longer in an active cooling cycle. This behaviour has been verified by comparing the integration's room temperature value against the reading shown on the physical AC display in fan-only mode (where internal heating from the compressor is absent), which matched the parsed value from the integration accurately.
-  - For more reliable ambient temperature tracking, an external temperature sensor (e.g. a Wi-Fi temperature/humidity sensor) is strongly recommended, especially if using automations that depend on room temperature.
-- **App & Platform Compatibility**: This integration **only** works with Panasonic ACs registered on the MirAIe app platform. If your AC uses the **Panasonic Comfort Cloud** app, this integration will not work.
+* **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
+* **Update Frequency**: Primary thermostat commands are sent instantly via `cloud_push` (MQTT), while aggregate energy consumption statistics are updated via background polling.
 
 ---
 
-## Enabling Debug Logs
+## Credits & License
 
-```yaml
-logger:
-  logs:
-    custom_components.miraie_in: debug
-```
+### Upstream Authors & Contributors
+* Originally designed and written by [@rkzofficial](https://github.com/rkzofficial).
+* Key features contributed by upstream community developers: [@deCodeIt](https://github.com/deCodeIt) and [@gutpull](https://github.com/gutpull).
 
----
+### Fork Authors & Contributors
+* Fork enhancements (firmware 3.02+ temperature fix, Converti 8-in-1, and MQTT resource leak resolutions) developed by [@selvakk2k](https://github.com/selvakk2k) with assistance from **Claude** (Anthropic) and **Gemini/Antigravity** (Google DeepMind).
 
-## Credits
-
-- Original integration by [@rkzofficial](https://github.com/rkzofficial), [@deCodeIt](https://github.com/deCodeIt), and [@gutpull](https://github.com/gutpull).
-- Fork changes (firmware 3.02+ temperature fix, Converti 8-in-1 model support, stability refactoring, diagnostic sensors, Nanoe toggle support, and split convertible mode / coil clean entities) developed by [@selvakk2k](https://github.com/selvakk2k) with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind).
+Licensed under the **Apache License 2.0**. See the `LICENSE` file for the original license text.
