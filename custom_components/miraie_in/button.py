@@ -44,7 +44,7 @@ class MirAIeCoilCleanButton(ButtonEntity):
     @property
     def icon(self) -> str | None:
         """Return the icon to use in the frontend, if any."""
-        return "mdi:sparkles"
+        return "mdi:spray-bottle"
 
     @property
     def device_info(self) -> DeviceInfo:

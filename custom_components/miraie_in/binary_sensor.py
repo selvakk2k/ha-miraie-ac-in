@@ -96,7 +96,7 @@ class MirAIeCoilCleanBinarySensor(BinarySensorEntity):
 
     @property
     def icon(self) -> str | None:
-        return "mdi:sparkles"
+        return "mdi:spray-bottle"
 
     @property
     def is_on(self) -> bool:

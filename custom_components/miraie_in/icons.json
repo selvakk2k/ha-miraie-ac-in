@@ -52,7 +52,7 @@
     },
     "button": {
       "start_coil_clean": {
-        "default": "mdi:sparkles"
+        "default": "mdi:spray-bottle"
       }
     },
     "binary_sensor": {
@@ -60,7 +60,7 @@
         "default": "mdi:air-filter"
       },
       "coil_cleaning": {
-        "default": "mdi:sparkles"
+        "default": "mdi:spray-bottle"
       }
     },
     "select": {

@@ -6,7 +6,7 @@ In addition, we migrated all hardcoded friendly names from the Python codebase t
 
 We also restored dual exposure of the convertible presets under the climate entity (for backward compatibility with the standard thermostat card) and assigned the select entity to the Configuration category so it doesn't clutter the main Controls card.
 
-Finally, we registered icons for all the newly created and modified entities in `icons.json`.
+Finally, we registered icons for all the newly created and modified entities in `icons.json` (using `"mdi:spray-bottle"` as the active/run icon for Coil Cleaning).
 
 ## Changes Made
 
@@ -18,11 +18,13 @@ Finally, we registered icons for all the newly created and modified entities in 
 * **[binary_sensor.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/binary_sensor.py)**: 
   * Removed hardcoded entity names.
   * Added `self._attr_translation_key` to `MirAIeFilterCleanBinarySensor` (`"filter_clean_alert"`) and `MirAIeCoilCleanBinarySensor` (`"coil_cleaning"`).
+  * Uses `mdi:spray-bottle` as the icon for Coil Cleaning.
 * **[select.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/select.py) [NEW]**: 
   * Added `MirAIeConvertiSelect` representing the convertible modes (capacity limit). 
   * Assigned `self._attr_entity_category = EntityCategory.CONFIG` to place the dropdown cleanly under "Configuration" on the device page rather than the main "Controls" card.
 * **[button.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/button.py) [NEW]**: 
   * Added `MirAIeCoilCleanButton` to trigger the start of the coil cleaning cycle via `device.set_preset_mode(PresetMode.CLEAN)`, with the translation key `start_coil_clean`.
+  * Uses `mdi:spray-bottle` as the icon.
 * **[switch.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/switch.py)**:
   * Removed hardcoded entity names.
   * Replaced DOMAIN-bound translation keys with unique translation keys `display` and `nanoe`.
@@ -33,7 +35,7 @@ Finally, we registered icons for all the newly created and modified entities in 
   * Restored climate preset translations (`cv 110` $\rightarrow$ `"HC"`, etc.).
   * Added translation dictionary mapping for all sensor, binary sensor, switch, select, and button entity names.
 * **[icons.json](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/icons.json)**:
-  * Added default icons for the newly introduced button (`mdi:sparkles`), switches (`mdi:eye-outline`, `mdi:air-filter`), binary sensors (`mdi:air-filter`, `mdi:sparkles`), and select (`mdi:speedometer`) entities.
+  * Added default icons for the newly introduced button (`mdi:spray-bottle`), switches (`mdi:eye-outline`, `mdi:air-filter`), binary sensors (`mdi:air-filter`, `mdi:spray-bottle`), and select (`mdi:speedometer`) entities.
   * Added state-specific icons for the convertible mode capacity steps (e.g. `cv 110` $\rightarrow$ `mdi:alpha-h-circle`, `cv 80` $\rightarrow$ `mdi:circle-slice-7`, etc.) matching their limits.
 
 ---
