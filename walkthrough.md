@@ -4,31 +4,32 @@ We have implemented and verified the backend refactoring to separate the capacit
 
 In addition, we migrated all hardcoded friendly names from the Python codebase to the translation file (`en.json`) to allow full localization of all entities in the integration.
 
+We also restored dual exposure of the convertible presets under the climate entity (for backward compatibility with the standard thermostat card) and assigned the select entity to the Configuration category so it doesn't clutter the main Controls card.
+
 ## Changes Made
 
 ### Custom Integration (`ha-miraie-ac-in`)
 * **[__init__.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/__init__.py)**: Registered `Platform.SELECT` and `Platform.BUTTON` platforms.
 * **[climate.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/climate.py)**:
-  * Restricted `_attr_preset_modes` to `none`, `eco`, and `boost`.
-  * Simplified the `preset_mode` property to return the device status preset directly (safely mapping the backend `CLEAN` preset to `none` at the climate entity level).
-  * Cleaned up `async_set_preset_mode` to remove the prefix parsing for `"cv "` since convertible capacity limits are now controlled by the select entity.
+  * Exposes comfort presets (`none`, `eco`, `boost`) and convertible capacity steps (`cv 110` to `cv 0`).
+  * Maps preset/convertible mode values to the AC command payload correctly.
 * **[binary_sensor.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/binary_sensor.py)**: 
   * Removed hardcoded entity names.
   * Added `self._attr_translation_key` to `MirAIeFilterCleanBinarySensor` (`"filter_clean_alert"`) and `MirAIeCoilCleanBinarySensor` (`"coil_cleaning"`).
-* **[select.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/select.py) [NEW]**: Added `MirAIeConvertiSelect` representing the convertible modes (capacity limit). Options now use raw identifiers (`cv 110`, `cv 100`, etc.) in python, delegating user-friendly localization to the translation files.
+* **[select.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/select.py) [NEW]**: 
+  * Added `MirAIeConvertiSelect` representing the convertible modes (capacity limit). 
+  * Assigned `self._attr_entity_category = EntityCategory.CONFIG` to place the dropdown cleanly under "Configuration" on the device page rather than the main "Controls" card.
 * **[button.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/button.py) [NEW]**: 
   * Added `MirAIeCoilCleanButton` to trigger the start of the coil cleaning cycle via `device.set_preset_mode(PresetMode.CLEAN)`, with the translation key `start_coil_clean`.
-  * Fixed a bug where an overridden `translation_key` property was returning `DOMAIN` (instead of using `_attr_translation_key`), which caused the entity friendly name to default to the device name.
 * **[switch.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/switch.py)**:
   * Removed hardcoded entity names.
   * Replaced DOMAIN-bound translation keys with unique translation keys `display` and `nanoe`.
 * **[sensor.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/sensor.py)**:
   * Removed all hardcoded energy and status sensor names.
-  * Configured `self._attr_translation_key` on all sensor subclasses (`yesterday_consumption`, `current_consumption`, `weekly_consumption`, `monthly_consumption`, `ac_temperature`, `wifi_signal`, `last_controlled_via`).
-  * Updated logging statements referencing `_attr_name` to use `entity_id` or `friendly_name`.
+  * Configured `self._attr_translation_key` on all sensor subclasses.
 * **[en.json](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/translations/en.json)**:
-  * Moved all sensor, binary sensor, switch, select, and button entity names into translation key objects.
-  * Localized the raw convertible select values (e.g. `cv 80` $\rightarrow$ `"80%"`, `cv 0` $\rightarrow$ `"Normal"`).
+  * Restored climate preset translations (`cv 110` $\rightarrow$ `"HC"`, etc.).
+  * Added translation dictionary mapping for all sensor, binary sensor, switch, select, and button entity names.
 
 ---
 

@@ -11,7 +11,7 @@ from miraie_ac import (
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
@@ -41,6 +41,7 @@ class MirAIeConvertiSelect(SelectEntity):
         self._attr_unique_id = f"select.{device.name.lower()}_{device.id}_convertible_mode"
         self.device = device
         self._attr_translation_key = "convertible_mode"
+        self._attr_entity_category = EntityCategory.CONFIG
 
         model_number = getattr(getattr(device, "details", None), "model_number", None)
         self._attr_options = get_converti_preset_modes(model_number)
