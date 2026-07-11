@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Lovelace Card Issue
+    url: https://github.com/selvakk2k/miraie-ac-card-in/issues/new/choose
+    about: If your issue is with the frontend card layout, controls, or styling.
+  - name: Underlying Python Library Issue
+    url: https://github.com/selvakk2k/miraie-ac-in/issues/new/choose
+    about: If your issue is related to the raw API calls or the underlying python library.

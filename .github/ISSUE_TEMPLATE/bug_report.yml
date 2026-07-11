@@ -1,0 +1,57 @@
+name: Bug Report
+description: Report a bug in the Home Assistant custom integration
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out this form as completely as possible to help us triage the issue.
+  - type: input
+    id: model_number
+    attributes:
+      label: AC Model Number
+      description: The exact model number of your AC unit (e.g. CS-CU-NU18YKY5W).
+      placeholder: e.g. CS-CU-NU18YKY5W
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration Version
+      description: What version of the integration are you running? (e.g. v1.3.7)
+      placeholder: e.g. v1.3.7
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant Version
+      placeholder: e.g. Core 2026.6.1
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Bug
+      description: Clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to consistently reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. See error
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug Logs
+      description: Relevant Home Assistant logs (please enable debug logging for `custom_components.miraie_in`).
+      render: shell
+    validations:
+      required: false
