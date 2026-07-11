@@ -7,17 +7,17 @@
 *Integration for **[Panasonic MirAIe App enabled ACs](https://store.in.panasonic.com/air-conditioners/split-ac.html)***
 
 > [!IMPORTANT]
-> This integration **exclusively** works with Indian-market Panasonic air conditioners that utilize the [MirAIe App](https://play.google.com/store/apps/details?id=com.panasonic.in.miraie&hl=en_IN&gl=US). It is **not compatible** with global/European models using the **Panasonic Comfort Cloud** app.
+> This integration **exclusively** works with Panasonic air conditioners that utilize the [MirAIe App](https://play.google.com/store/apps/details?id=com.panasonic.in.miraie&hl=en_IN&gl=US). It is **not compatible** with global/European models using the **Panasonic Comfort Cloud** app.
 
 ---
 
 ## About This Fork
 
-This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), renamed to `ha-miraie-ac-in` as a clean split focused on Indian-market MirAIe models. The `v1.0.0` release marks the fork point — depending on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/), the matching library fork.
+This is a fork of [rkzofficial/ha-miraie-ac](https://github.com/rkzofficial/ha-miraie-ac), renamed to `ha-miraie-ac-in` to expand features that may break if merged with upstream. The `v1.0.0` release marks the fork point — depending on [`miraie-ac-in`](https://pypi.org/project/miraie-ac-in/), the matching library fork.
 
 The changes introduced in this fork are developed with the assistance of [Claude](https://claude.ai) (Anthropic) and [Antigravity](https://github.com/google-deepmind) (Google DeepMind), categorized as follows:
 
-### 1. Indian-Market Hardware Adaptations
+### 1. Hardware Adaptations & Gating
 * **Room Temperature Sensor Fix (Firmware 3.02+)**: Panasonic AC units running firmware 3.02+ report room temperature in a packed string format where the actual value is in the decimals (e.g., `"134.30"` means `30°C`). The fork introduces version-aware parsing to correctly display this temperature while keeping standard parsing for older pre-3.02 firmware.
 * **Converti Mode: 7-in-1 vs. 8-in-1 Support**: Automatically decides between 7-in-1 and 8-in-1 capacity step presets (e.g. mapping the 55% step vs. 60%/50% steps) based on the model's series and generation letter (e.g., threshold `B` for `NU/SU` and `C` for `EZ/HU/EU`). Unrecognized models safely fallback to 7-in-1.
 * **Heat Mode ("Hot & Cold" Gating)**: Restricts `HVACMode.HEAT` controls in Home Assistant specifically to Hot & Cold models (`EZ` and `KZ` series) to prevent displaying unusable heat controls on cooling-only units.
@@ -109,7 +109,7 @@ This fork's integration domain changed from `miraie` to `miraie_in` as part of a
   - They update with a delay of a few reporting cycles, as the AC unit only reports its internal sensor reading periodically over MQTT. This is a firmware behaviour, not an integration bug.
   - While the AC is actively cooling, the room temperature reading will be inaccurate — the internal sensor sits close to the coil/intake and reads significantly lower than the actual ambient room temperature. Readings will normalise once the AC is no longer in an active cooling cycle. This behaviour has been verified by comparing the integration's room temperature value against the reading shown on the physical AC display in fan-only mode (where internal heating from the compressor is absent), which matched the parsed value from the integration accurately.
   - For more reliable ambient temperature tracking, an external temperature sensor (e.g. a Wi-Fi temperature/humidity sensor) is strongly recommended, especially if using automations that depend on room temperature.
-- **Regional Compatibility**: This integration **only** works with Indian-market Panasonic ACs registered on the MirAIe platform. If your AC is registered in another region or uses the **Panasonic Comfort Cloud** app, this integration will not work.
+- **App & Platform Compatibility**: This integration **only** works with Panasonic ACs registered on the MirAIe app platform. If your AC uses the **Panasonic Comfort Cloud** app, this integration will not work.
 
 ---
 
