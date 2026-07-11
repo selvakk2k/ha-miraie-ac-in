@@ -45,7 +45,6 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         self.hub = hub
         self.device = device
         self._attr_has_entity_name = True
-        self._attr_name = f"{self.sensor_label} Energy"
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_{self.sensor_label.lower()}_energy"
         self._attr_should_poll = False
         self._attr_device_class = SensorDeviceClass.ENERGY
@@ -77,7 +76,7 @@ class MirAIeEnergySensor(SensorEntity, ABC):
 
     async def async_will_remove_from_hass(self):
         """Entity being removed from hass."""
-        LOGGER.debug(f"Removing energy consumption entity ({self._attr_name}) from HA")
+        LOGGER.debug(f"Removing energy consumption entity ({self.entity_id}) from HA")
         return await super().async_will_remove_from_hass()
 
     @abstractmethod
@@ -107,7 +106,7 @@ class MirAIeEnergySensor(SensorEntity, ABC):
 class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
     def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
         super().__init__(hub, device)
-        self._attr_name = "Yesterday's Consumption"
+        self._attr_translation_key = "yesterday_consumption"
 
     @property
     def period_type(self) -> ConsumptionPeriodType:
@@ -121,7 +120,7 @@ class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
         """Fetch yesterday's total energy consumption data."""
         yesterday = dt_util.now().date() - timedelta(days=1)
         date_string = yesterday.strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self._attr_name}, period: {date_string}")
+        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
         return consumption.get(date_string)
 
@@ -135,7 +134,7 @@ class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
 class MirAIeTodayEnergySensor(MirAIeEnergySensor):
     def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
         super().__init__(hub, device)
-        self._attr_name = "Current Consumption"
+        self._attr_translation_key = "current_consumption"
 
     @property
     def period_type(self) -> ConsumptionPeriodType:
@@ -149,7 +148,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
         """Fetch today's (live, rolling) energy consumption data so far."""
         today = dt_util.now().date()
         date_string = today.strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self._attr_name}, period: {date_string}")
+        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
         return consumption.get(date_string)
 
@@ -163,7 +162,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
 class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
     def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
         super().__init__(hub, device)
-        self._attr_name = "Weekly Consumption"
+        self._attr_translation_key = "weekly_consumption"
 
     @property
     def period_type(self) -> ConsumptionPeriodType:
@@ -172,7 +171,7 @@ class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
     async def get_energy_consumption(self) -> float | None:
         """Fetch the latest weekly energy consumption data."""
         date_string = get_last_sunday().strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self._attr_name}, period: {date_string}")
+        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
         return consumption.get(date_string)
 
@@ -186,7 +185,7 @@ class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
 class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
     def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
         super().__init__(hub, device)
-        self._attr_name = "Monthly Consumption"
+        self._attr_translation_key = "monthly_consumption"
 
     @property
     def period_type(self) -> ConsumptionPeriodType:
@@ -196,7 +195,7 @@ class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
         """Fetch the latest monthly energy consumption data."""
         yesterday = dt_util.now().date() - timedelta(days=1)
         date_string = yesterday.strftime("%m%Y")
-        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self._attr_name}, period: {date_string}")
+        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
         consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
         return consumption.get(date_string)
 
@@ -253,7 +252,7 @@ class MirAIeRoomTemperatureSensor(SensorEntity):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_room_temperature"
-        self._attr_name = "AC Temperature Sensor"
+        self._attr_translation_key = "ac_temperature"
         self.device = device
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -288,7 +287,7 @@ class MirAIeWifiSignalSensor(SensorEntity):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_wifi_signal"
-        self._attr_name = "AC Wi-Fi Signal Strength"
+        self._attr_translation_key = "wifi_signal"
         self.device = device
         self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -324,7 +323,7 @@ class MirAIeControlSourceSensor(SensorEntity):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_unique_id = f"sensor.{device.name.lower()}_{device.id}_control_source"
-        self._attr_name = "Last Controlled Via"
+        self._attr_translation_key = "last_controlled_via"
         self.device = device
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_registry_enabled_default = False

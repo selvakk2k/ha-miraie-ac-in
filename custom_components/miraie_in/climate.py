@@ -46,8 +46,6 @@ from .const import (
     H3,
     H4,
     H5,
-    PRESET_CLEAN,
-    get_converti_preset_modes,
     supports_heat_mode,
 )
 
@@ -91,13 +89,11 @@ class MirAIeClimate(ClimateEntity):
             f"{'enabled (EZ/KZ series)' if supports_heat_mode(model_number) else 'disabled (cooling-only series)'}"
         )
 
-        converti_presets = get_converti_preset_modes(model_number)
         self._attr_preset_modes = [
-            PRESET_NONE, PRESET_ECO, PRESET_BOOST, PRESET_CLEAN
-        ] + converti_presets
-        LOGGER.debug(
-            f"Model {model_number!r}: using Converti preset set {converti_presets}"
-        )
+            PRESET_NONE,
+            PRESET_ECO,
+            PRESET_BOOST,
+        ]
 
         self._attr_fan_mode = FAN_OFF
         self._attr_fan_modes = [
@@ -186,9 +182,10 @@ class MirAIeClimate(ClimateEntity):
 
     @property
     def preset_mode(self) -> str | None:
-        if self.device.status.converti_mode in [ConvertiMode.OFF, ConvertiMode.NS]:
-            return self.device.status.preset_mode.value
-        return f"cv {self.device.status.converti_mode.value}"
+        preset = self.device.status.preset_mode
+        if preset == PresetMode.CLEAN:
+            return PRESET_NONE
+        return preset.value
 
     @property
     def fan_mode(self) -> str | None:
@@ -305,11 +302,7 @@ class MirAIeClimate(ClimateEntity):
 
         LOGGER.debug(f"Set preset mode to {preset_mode}")
 
-        if preset_mode.startswith("cv"):
-            preset_mode = int(preset_mode.split(" ")[1])
-            await self.device.set_converti_mode(ConvertiMode(preset_mode))
-        else:
-            await self.device.set_preset_mode(PresetMode(preset_mode))
+        await self.device.set_preset_mode(PresetMode(preset_mode))
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""

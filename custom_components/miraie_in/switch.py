@@ -48,14 +48,9 @@ class MirAIeDisplaySwitch(SwitchEntity):
     def __init__(self, device: MirAIeDevice) -> None:
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
-        self._attr_name = "Display"
+        self._attr_translation_key = "display"
         self._attr_unique_id = f"{device.id}_display"
         self.device = device
-    
-    @property
-    def translation_key(self) -> str:
-        """Return the translation key."""
-        return DOMAIN
 
     @property
     def icon(self) -> str | None:
@@ -119,14 +114,9 @@ class MirAIeNanoeSwitch(SwitchEntity):
     def __init__(self, device: MirAIeDevice) -> None:
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
-        self._attr_name = "Nanoe"
+        self._attr_translation_key = "nanoe"
         self._attr_unique_id = f"switch.{device.name.lower()}_{device.id}_nanoe"
         self.device = device
-
-    @property
-    def translation_key(self) -> str:
-        """Return the translation key."""
-        return DOMAIN
 
     @property
     def icon(self) -> str | None:

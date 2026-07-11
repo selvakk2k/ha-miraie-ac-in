@@ -24,20 +24,71 @@
                 "state_attributes": {
                     "preset_mode": {
                         "state": {
-                            "clean": "Clean",
-                            "cv 110": "HC",
-                            "cv 100": "FC",
-                            "cv 90": "90%",
-                            "cv 80": "80%",
-                            "cv 70": "70%",
-                            "cv 60": "60%",
-                            "cv 55": "55%",
-                            "cv 50": "50%",
-                            "cv 40": "40%",
-                            "cv 0": "Off"
+                            "clean": "Clean"
                         }
                     }
                 }
+            }
+        },
+        "switch": {
+            "display": {
+                "name": "Display"
+            },
+            "nanoe": {
+                "name": "Nanoe"
+            }
+        },
+        "button": {
+            "start_coil_clean": {
+                "name": "Start Coil Clean"
+            }
+        },
+        "binary_sensor": {
+            "filter_clean_alert": {
+                "name": "Filter Clean Alert"
+            },
+            "coil_cleaning": {
+                "name": "Coil Cleaning"
+            }
+        },
+        "select": {
+            "convertible_mode": {
+                "name": "Convertible Mode",
+                "state": {
+                    "cv 110": "110% (High)",
+                    "cv 100": "100% (Full)",
+                    "cv 90": "90%",
+                    "cv 80": "80%",
+                    "cv 70": "70%",
+                    "cv 60": "60%",
+                    "cv 55": "55%",
+                    "cv 50": "50%",
+                    "cv 40": "40%",
+                    "cv 0": "Normal"
+                }
+            }
+        },
+        "sensor": {
+            "yesterday_consumption": {
+                "name": "Yesterday's Consumption"
+            },
+            "current_consumption": {
+                "name": "Current Consumption"
+            },
+            "weekly_consumption": {
+                "name": "Weekly Consumption"
+            },
+            "monthly_consumption": {
+                "name": "Monthly Consumption"
+            },
+            "ac_temperature": {
+                "name": "AC Temperature Sensor"
+            },
+            "wifi_signal": {
+                "name": "AC Wi-Fi Signal Strength"
+            },
+            "last_controlled_via": {
+                "name": "Last Controlled Via"
             }
         }
     }

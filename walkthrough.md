@@ -1,33 +1,36 @@
-# Walkthrough - MirAIe Integration Hardening
+# Walkthrough - Split Convertible Mode and Coil Clean from Climate Presets
 
-We have implemented and verified all 10 fixes and enhancements outlined in the approved implementation plan.
+We have implemented and verified the backend refactoring to separate the capacity limit (Convertible Modes) and maintenance cycle (Coil Clean) out of the main climate entity's comfort presets.
+
+In addition, we migrated all hardcoded friendly names from the Python codebase to the translation file (`en.json`) to allow full localization of all entities in the integration.
 
 ## Changes Made
 
-### 1. Companion Library (`miraie-ac-in`)
-* **[device.py](file:///home/skk/Documents/GitHub/miraie-ac/miraie_ac/device.py)**: Removed Python's `__del__` method and introduced an explicit `close()` method to cleanly unregister status callbacks from the broker on integration reload.
-* **[hub.py](file:///home/skk/Documents/GitHub/miraie-ac/miraie_ac/hub.py)**:
-  * Allowed the hub to accept a shared `aiohttp.ClientSession` on initialization, keeping track of ownership (`self._close_session`).
-  * Propagated `close()` cleanup down to all registered devices and conditionally closed the HTTP session.
-  * Checked `acngs` (Nanoe operational status key) first before falling back to the `acng` command key.
-* **[broker.py](file:///home/skk/Documents/GitHub/miraie-ac/miraie_ac/broker.py)**:
-  * Safe-guarded the `on_message` callback execution within a `try...except` block to prevent exceptions from crashing the background MQTT client task.
-  * Corrected the type hint for the `access_token` parameter in `connect()` from `User` to `str`.
-  * Replaced the raw `print` statement inside `on_connect()` with `LOGGER.debug`.
-* **[utils.py](file:///home/skk/Documents/GitHub/miraie-ac/miraie_ac/utils.py)**:
-  * Modified the `toFloat` helper to return `None` (instead of `-1.0`) on parsing errors, allowing entities to report values as unavailable/unknown to Home Assistant.
-  * Cleaned the version string in `parse_room_temp` to filter out non-digit/non-dot characters (like a `v` prefix).
-* **[pyproject.toml](file:///home/skk/Documents/GitHub/miraie-ac/pyproject.toml)**: Removed the obsolete `asyncio` PyPI dependency.
-
-### 2. Custom Integration (`ha-miraie-ac-in`)
-* **[__init__.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/__init__.py)**: Passed Home Assistant's shared client session `async_get_clientsession(hass)` into the `MirAIeHub` instance.
-* **[switch.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/switch.py)**: Namespaced the `MirAIeDisplaySwitch` unique ID with a `_display` suffix to prevent collisions with the climate entity unique ID (leaving the climate entity unique ID alone to avoid configuration orphaning).
+### Custom Integration (`ha-miraie-ac-in`)
+* **[__init__.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/__init__.py)**: Registered `Platform.SELECT` and `Platform.BUTTON` platforms.
+* **[climate.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/climate.py)**:
+  * Restricted `_attr_preset_modes` to `none`, `eco`, and `boost`.
+  * Simplified the `preset_mode` property to return the device status preset directly (safely mapping the backend `CLEAN` preset to `none` at the climate entity level).
+  * Cleaned up `async_set_preset_mode` to remove the prefix parsing for `"cv "` since convertible capacity limits are now controlled by the select entity.
+* **[binary_sensor.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/binary_sensor.py)**: 
+  * Removed hardcoded entity names.
+  * Added `self._attr_translation_key` to `MirAIeFilterCleanBinarySensor` (`"filter_clean_alert"`) and `MirAIeCoilCleanBinarySensor` (`"coil_cleaning"`).
+* **[select.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/select.py) [NEW]**: Added `MirAIeConvertiSelect` representing the convertible modes (capacity limit). Options now use raw identifiers (`cv 110`, `cv 100`, etc.) in python, delegating user-friendly localization to the translation files.
+* **[button.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/button.py) [NEW]**: Added `MirAIeCoilCleanButton` to trigger the start of the coil cleaning cycle via `device.set_preset_mode(PresetMode.CLEAN)`, with the translation key `start_coil_clean`.
+* **[switch.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/switch.py)**:
+  * Removed hardcoded entity names.
+  * Replaced DOMAIN-bound translation keys with unique translation keys `display` and `nanoe`.
 * **[sensor.py](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/sensor.py)**:
-  * Removed inline `ClientSession` recreation and added error logging if the HTTP session is closed.
-  * Refactored `update_sensors()` to run updates concurrently using `asyncio.gather` rather than sequentially.
+  * Removed all hardcoded energy and status sensor names.
+  * Configured `self._attr_translation_key` on all sensor subclasses (`yesterday_consumption`, `current_consumption`, `weekly_consumption`, `monthly_consumption`, `ac_temperature`, `wifi_signal`, `last_controlled_via`).
+  * Updated logging statements referencing `_attr_name` to use `entity_id` or `friendly_name`.
+* **[en.json](file:///home/skk/Documents/GitHub/ha-miraie-ac/custom_components/miraie_in/translations/en.json)**:
+  * Moved all sensor, binary sensor, switch, select, and button entity names into translation key objects.
+  * Localized the raw convertible select values (e.g. `cv 80` $\rightarrow$ `"80%"`, `cv 0` $\rightarrow$ `"Normal"`).
 
 ---
 
 ## Validation Results
 
-* **Syntax Compilation**: Ran compilation checks on all Python files across both repositories using `python3 -m py_compile`. All files compiled successfully with no syntax or import errors.
+* **Syntax Verification**: Ran compilation checks on all Python files across the integration using `python3 -m py_compile`. All files compiled successfully with no syntax or import errors.
+* **JSON Verification**: Validated translation JSON structure using `json.tool`.
