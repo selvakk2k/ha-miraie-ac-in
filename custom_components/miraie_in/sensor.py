@@ -122,9 +122,20 @@ class MirAIeYesterdayEnergySensor(MirAIeEnergySensor):
         """Fetch yesterday's total energy consumption data."""
         yesterday = dt_util.now().date() - timedelta(days=1)
         date_string = yesterday.strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
-        consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
-        return consumption.get(date_string)
+        try:
+            consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
+            value = consumption.get(date_string)
+            LOGGER.debug(
+                "%s | %s | key=%s | raw=%s | value=%s",
+                self.sensor_label, self.device.friendly_name, date_string, consumption, value,
+            )
+            return value
+        except Exception:
+            LOGGER.exception(
+                "%s energy consumption fetch failed for %s [date_key=%s]",
+                self.sensor_label, self.device.friendly_name, date_string,
+            )
+            raise
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the yesterday energy sensor entity."""
@@ -150,9 +161,20 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
         """Fetch today's (live, rolling) energy consumption data so far."""
         today = dt_util.now().date()
         date_string = today.strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.sensor_label} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
-        consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
-        return consumption.get(date_string)
+        try:
+            consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
+            value = consumption.get(date_string)
+            LOGGER.debug(
+                "%s | %s | key=%s | raw=%s | value=%s",
+                self.sensor_label, self.device.friendly_name, date_string, consumption, value,
+            )
+            return value
+        except Exception:
+            LOGGER.exception(
+                "%s energy consumption fetch failed for %s [date_key=%s]",
+                self.sensor_label, self.device.friendly_name, date_string,
+            )
+            raise
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the today energy sensor entity."""
@@ -173,9 +195,20 @@ class MirAIeWeeklyEnergySensor(MirAIeEnergySensor):
     async def get_energy_consumption(self) -> float | None:
         """Fetch the latest weekly energy consumption data."""
         date_string = get_last_sunday().strftime("%d%m%Y")
-        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
-        consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
-        return consumption.get(date_string)
+        try:
+            consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
+            value = consumption.get(date_string)
+            LOGGER.debug(
+                "%s | %s | key=%s | raw=%s | value=%s",
+                self.period_type.value, self.device.friendly_name, date_string, consumption, value,
+            )
+            return value
+        except Exception:
+            LOGGER.exception(
+                "%s energy consumption fetch failed for %s [date_key=%s]",
+                self.period_type.value, self.device.friendly_name, date_string,
+            )
+            raise
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the weekly energy sensor entity."""
@@ -197,9 +230,20 @@ class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
         """Fetch the latest monthly energy consumption data."""
         yesterday = dt_util.now().date() - timedelta(days=1)
         date_string = yesterday.strftime("%m%Y")
-        LOGGER.debug(f"Fetching {self.period_type.value} energy consumption for device: {self.device.friendly_name}, period: {date_string}")
-        consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
-        return consumption.get(date_string)
+        try:
+            consumption = await self.hub.get_energy_consumption(self.device, self.period_type, from_date=date_string)
+            value = consumption.get(date_string)
+            LOGGER.debug(
+                "%s | %s | key=%s | raw=%s | value=%s",
+                self.period_type.value, self.device.friendly_name, date_string, consumption, value,
+            )
+            return value
+        except Exception:
+            LOGGER.exception(
+                "%s energy consumption fetch failed for %s [date_key=%s]",
+                self.period_type.value, self.device.friendly_name, date_string,
+            )
+            raise
 
     async def _set_last_reset_time(self):
         """Set the last reset time for the monthly energy sensor entity."""
