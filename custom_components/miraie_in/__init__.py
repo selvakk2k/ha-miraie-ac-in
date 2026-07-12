@@ -104,7 +104,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store = Store(hass, 1, f"{DOMAIN}.diagnostics")
     data = await store.async_load() or {}
     if data.get("enabled"):
-        enable_file_logger(hass.config.config_dir)
+        await hass.async_add_executor_job(
+            enable_file_logger, hass.config.config_dir
+        )
 
     session = async_get_clientsession(hass)
     hub = MirAIeHub(session)

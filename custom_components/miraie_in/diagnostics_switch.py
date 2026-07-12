@@ -77,14 +77,16 @@ class MirAIeDiagnosticsSwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        enable_file_logger(self.hass.config.config_dir)
+        await self.hass.async_add_executor_job(
+            enable_file_logger, self.hass.config.config_dir
+        )
         await self._store.async_save({"enabled": True})
         for switch in _ACTIVE_SWITCHES:
             switch.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        disable_file_logger()
+        await self.hass.async_add_executor_job(disable_file_logger)
         await self._store.async_save({"enabled": False})
         for switch in _ACTIVE_SWITCHES:
             switch.async_write_ha_state()
