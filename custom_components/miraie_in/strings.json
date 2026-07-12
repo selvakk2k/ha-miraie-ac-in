@@ -45,6 +45,9 @@
       },
       "nanoe": {
         "name": "Nanoe"
+      },
+      "diagnostics_logging": {
+        "name": "Diagnostics Logging"
       }
     },
     "button": {
