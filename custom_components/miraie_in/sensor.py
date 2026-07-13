@@ -22,7 +22,6 @@ from .logger import LOGGER
 from .utils import get_last_sunday
 
 
-CUTOFF_HOUR = 12
 
 class MirAIeEnergySensor(SensorEntity, ABC):
     """Sensor for AC Power Consumption."""
@@ -59,18 +58,13 @@ class MirAIeEnergySensor(SensorEntity, ABC):
     async def async_update(self):
         """Update the sensor state with the latest energy consumption data."""
         now = dt_util.now()
-        cutoff_time = dt_util.start_of_local_day(now).replace(hour=CUTOFF_HOUR)
         if not self.hub.http or self.hub.http.closed:
             LOGGER.error("MirAIe HTTP session is closed or unavailable")
             return
         consumption = await self.get_energy_consumption()
 
-        """Consumption figures are updated on the server some time between 7-10 am the next day.
-        This skips setting the state to unavailable if the value is None and it's not yet
-        past the cutoff time.
-        """
-        if consumption is None and now <= cutoff_time:
-            """Skip update if no new data and it's before the cutoff time."""
+        if consumption is None:
+            """Skip update if no new data."""
             return
 
         await self._set_last_reset_time()

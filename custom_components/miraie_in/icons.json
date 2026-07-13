@@ -48,9 +48,6 @@
       },
       "nanoe": {
         "default": "mdi:air-filter"
-      },
-      "diagnostics_logging": {
-        "default": "mdi:file-document-outline"
       }
     },
     "button": {
