@@ -25,7 +25,7 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 * **Filter Clean Notification**: Exposes a binary sensor that triggers when the AC's internal controller flags that the mesh air filter needs cleaning.
 * **Standalone Room Temperature**: Exposes a dedicated temperature sensor entity for easier historical tracking and graphing.
 * **Wi-Fi Strength & Last Control Source**: Sensors tracking Wi-Fi RSSI (in dBm) and whether the unit was last adjusted via the remote or the app.
-* **Diagnostics Logging Switch**: Adds a switch under the Diagnostics category to toggle integration-wide debug logging to a dedicated file (`custom_components/miraie_in/miraie.log`) at runtime. State persists across Home Assistant restarts, eliminating the need to modify `configuration.yaml` to troubleshoot issues.
+* **Core Diagnostics**: Supports Home Assistant Core Diagnostics. You can download a diagnostic file for the integration directly from the Device page, making it easier to troubleshoot issues without exposing sensitive credentials.
 
 ### 3. Stability & Code Cleanup
 * **Resource Optimization**: Decoupled HTTP ClientSession scopes to prevent resource leaks when reloading.

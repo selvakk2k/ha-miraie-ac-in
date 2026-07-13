@@ -25,7 +25,6 @@ from .logger import LOGGER
 
 PARALLEL_UPDATES = 0
 
-from .diagnostics_switch import async_setup_diagnostics_switch
 
 
 async def async_setup_entry(
@@ -35,7 +34,6 @@ async def async_setup_entry(
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = entry.runtime_data
 
-    await async_setup_diagnostics_switch(hass, entry, async_add_entities)
 
     entities = []
     for device in hub.home.devices:
