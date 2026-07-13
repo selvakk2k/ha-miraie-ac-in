@@ -60,6 +60,19 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 
 ---
 
+## Troubleshooting / Getting Diagnostics
+
+If you encounter an issue, the best way to help debug it is to provide a diagnostic log. This integration natively supports Home Assistant Core Diagnostics. Sensitive information (such as your phone number, passwords, and device serial numbers) is automatically redacted before the file is downloaded.
+
+**To download diagnostics for your AC:**
+1. In Home Assistant, navigate to **Settings → Devices & Services**.
+2. Click on the **MirAIe India** integration card to view your configured devices.
+3. Select the specific Air Conditioner you want to troubleshoot from the list of devices.
+4. On the Device page, under the **Device info** panel, click **Download diagnostics**.
+5. A `.json` file will be downloaded to your computer. You can attach this file to your GitHub issue.
+
+---
+
 ## Caveats & Firmware Limitations
 
 * **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
