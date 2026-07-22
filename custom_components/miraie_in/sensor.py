@@ -12,6 +12,7 @@ from homeassistant.components.recorder.statistics import (
     StatisticData,
     StatisticMetaData,
     async_import_statistics,
+    clear_statistics,
     get_last_statistics,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -448,6 +449,9 @@ async def async_backfill_energy_statistics(
     statistic_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_energy_history")
     if not statistic_id:
         statistic_id = f"sensor.{device.id}_energy_history"
+
+    # Clear any old/corrupted statistics for this entity before backfilling
+    await get_instance(hass).async_add_executor_job(clear_statistics, get_instance(hass), [statistic_id])
 
     last_stats = await get_instance(hass).async_add_executor_job(
         get_last_statistics, hass, 2, statistic_id, False, {"sum"}
