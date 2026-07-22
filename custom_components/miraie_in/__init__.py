@@ -10,8 +10,11 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_track_time_change
+from datetime import date
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_INSTALL_DATE
+from .sensor import async_backfill_energy_statistics, six_months_ago
 
 
 
@@ -110,6 +113,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _migrate_unique_ids(hass, entry, hub)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    default_start = entry.options.get(CONF_INSTALL_DATE)
+    if default_start:
+        start_date = date.fromisoformat(default_start)
+    else:
+        start_date = six_months_ago(date.today())
+    for device in hub.home.devices:
+        hass.async_create_task(
+            async_backfill_energy_statistics(hass, hub, device, start_date)
+        )
+
+    async def nightly_backfill(now=None):
+        for device in hub.home.devices:
+            hass.async_create_task(
+                async_backfill_energy_statistics(hass, hub, device, start_date)
+            )
+
+    async_track_time_change(hass, nightly_backfill, hour=0, minute=5, second=0)
 
     return True
 

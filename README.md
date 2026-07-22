@@ -33,6 +33,14 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 
 ---
 
+## Companion Lovelace Card
+
+To get the most out of this integration, check out the [**MirAIe AC Lovelace Card**](https://github.com/selvakk2k/miraie-ac-card-in)!
+
+It is a premium, custom Lovelace thermostat card specifically designed to work seamlessly with this integration. It supports all the custom features exposed by this integration (Converti 8-in-1 presets, Nanoe, Coil Clean, external temperature sensors, etc.) and includes full visual editor support.
+
+---
+
 ## Installation
 
 ### Method 1: Using HACS (Recommended)
@@ -60,16 +68,39 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 
 ---
 
-## Troubleshooting / Getting Diagnostics
+## Troubleshooting & Logs
 
-If you encounter an issue, the best way to help debug it is to provide a diagnostic log. This integration natively supports Home Assistant Core Diagnostics. Sensitive information (such as your phone number, passwords, and device serial numbers) is automatically redacted before the file is downloaded.
+If you encounter an issue, providing debug logs and diagnostic files helps tremendously in identifying the root cause. Sensitive information (such as your phone number, passwords, and device serial numbers) is automatically redacted before any files are downloaded or displayed.
 
-**To download diagnostics for your AC:**
-1. In Home Assistant, navigate to **Settings → Devices & Services**.
-2. Click on the **MirAIe India** integration card to view your configured devices.
-3. Select the specific Air Conditioner you want to troubleshoot from the list of devices.
-4. On the Device page, under the **Device info** panel, click **Download diagnostics**.
-5. A `.json` file will be downloaded to your computer. You can attach this file to your GitHub issue.
+### 1. Enabling Debug Logs (To capture events/errors)
+Debug logs record real-time operational messages (like commands and connection status) in the background.
+
+* **Via the UI (Dynamic, no restart required):**
+  1. Navigate to **Settings → Devices & Services**.
+  2. Locate the **MirAIe India** integration card.
+  3. Click the three dots (**⋮**) on the integration card and select **Enable debug logging**.
+  4. Reproduce the issue you are experiencing.
+  5. Go back to the same menu and select **Disable debug logging**. Home Assistant will automatically download the debug log file to your device.
+* **Via configuration.yaml (Persistent):**
+  Add the following lines to your `configuration.yaml` and restart Home Assistant:
+  ```yaml
+  logger:
+    default: warning
+    logs:
+      custom_components.miraie_in: debug
+      miraie_ac: debug
+  ```
+
+### 2. Downloading Diagnostics (Current state snapshot)
+Diagnostics provide a snapshot of the current device status, configuration, and raw JSON payloads.
+
+* **For the entire Integration (All Devices):**
+  1. Navigate to **Settings → Devices & Services**.
+  2. Click the three dots (**⋮**) on the **MirAIe India** integration card and click **Download diagnostics**.
+* **For a single Device:**
+  1. Navigate to **Settings → Devices & Services** → click the **MirAIe India** card.
+  2. Select the specific Air Conditioner device from the list.
+  3. On the Device page, under **Device info**, click **Download diagnostics**.
 
 ---
 
