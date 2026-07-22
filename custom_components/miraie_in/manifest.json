@@ -6,7 +6,9 @@
     "@shashi278"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "recorder"
+  ],
   "documentation": "https://github.com/selvakk2k/ha-miraie-ac-in",
   "homekit": {},
   "iot_class": "cloud_push",
