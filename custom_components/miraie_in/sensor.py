@@ -478,6 +478,7 @@ async def async_backfill_energy_statistics(
     metadata = StatisticMetaData(
         has_sum=True,
         mean_type=0,
+        unit_class="energy",
         name=f"{device.friendly_name} Daily Energy",
         source=DOMAIN,
         statistic_id=statistic_id,
