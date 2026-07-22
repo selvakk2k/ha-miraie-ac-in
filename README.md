@@ -118,6 +118,7 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 * Key features contributed by upstream community developers: [@deCodeIt](https://github.com/deCodeIt) and [@gutpull](https://github.com/gutpull).
 
 ### Fork Authors & Contributors
+* Historical energy statistics backfill feature contributed by [@shashi278](https://github.com/shashi278).
 * Fork enhancements (firmware 3.02+ temperature fix, Converti 8-in-1, and MQTT resource leak resolutions) developed by [@selvakk2k](https://github.com/selvakk2k) with assistance from **Claude** (Anthropic) and **Gemini/Antigravity** (Google DeepMind).
 
 Licensed under the **Apache License 2.0**. See the `LICENSE` file for the original license text.
