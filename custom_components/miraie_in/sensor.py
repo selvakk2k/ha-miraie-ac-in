@@ -458,7 +458,7 @@ async def async_backfill_energy_statistics(
     # )
     last_stats = None
 
-    end_date = datetime.today().date() - timedelta(days=2)
+    end_date = datetime.today().date()
     start_date = default_start_date
     last_sum = 0.0
 
