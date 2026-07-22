@@ -479,14 +479,12 @@ async def async_backfill_energy_statistics(
     if not statistic_id:
         statistic_id = f"sensor.{device.id}_energy_history"
 
-    # Clear any old/corrupted statistics for this entity before backfilling
-    # WARNING: Leaving this uncommented will wipe statistics on every HA restart.
-    get_instance(hass).async_clear_statistics([statistic_id])
+    # Clear any old/corrupted statistics for this entity before backfilling (disabled for production)
+    # get_instance(hass).async_clear_statistics([statistic_id])
 
-    # last_stats = await get_instance(hass).async_add_executor_job(
-    #     get_last_statistics, hass, 2, statistic_id, False, {"sum"}
-    # )
-    last_stats = None
+    last_stats = await get_instance(hass).async_add_executor_job(
+        get_last_statistics, hass, 2, statistic_id, False, {"sum"}
+    )
 
     end_date = datetime.today().date()
     start_date = default_start_date

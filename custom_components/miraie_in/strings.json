@@ -86,7 +86,7 @@
         "name": "Monthly Energy"
       },
       "energy_history": {
-        "name": "Energy History"
+        "name": "Total Energy"
       },
       "ac_temperature": {
         "name": "AC Temperature Sensor"
