@@ -85,7 +85,7 @@ class MirAIeEnergySensor(SensorEntity, ABC):
             """Skip update if no new data."""
             return
 
-        if self._attr_state_class in (SensorStateClass.TOTAL, SensorStateClass.TOTAL_INCREASING):
+        if self._attr_state_class == SensorStateClass.TOTAL:
             await self._set_last_reset_time()
         else:
             self._attr_last_reset = None
