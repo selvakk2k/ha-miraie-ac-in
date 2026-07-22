@@ -283,14 +283,6 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
     def sensor_label(self) -> str:
         return "Energy History"
 
-    async def get_energy_consumption(self) -> float | None:
-        """Fetch total cumulative energy consumption (backfilled sum + today's consumption)."""
-        today_value = await super().get_energy_consumption()
-        if today_value is None:
-            return None
-        base_sum = getattr(self.device, "backfilled_energy_sum", 0.0)
-        return round(base_sum + float(today_value), 2)
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up MirAIe energy and status sensors from a config entry."""
@@ -461,7 +453,7 @@ async def async_backfill_energy_statistics(
         get_last_statistics, hass, 2, statistic_id, False, {"sum"}
     )
 
-    end_date = datetime.today().date() - timedelta(days=1)
+    end_date = datetime.today().date() - timedelta(days=2)
     start_date = default_start_date
     last_sum = 0.0
 
@@ -469,7 +461,6 @@ async def async_backfill_energy_statistics(
         entries = last_stats[statistic_id]
         last = entries[0]
         last_start = datetime.fromtimestamp(last["start"], tz=timezone.utc)
-        # Only resume if the last stat is before yesterday (prevents HA auto-recorder on today's state from blocking history import)
         if last_start.date() < end_date:
             start_date = last_start.date() + timedelta(days=1)
             last_sum = float(last.get("sum") or 0.0)
@@ -506,25 +497,9 @@ async def async_backfill_energy_statistics(
             first_day = day
         last_day = day
 
-    # Include today's point so HA recorder sum does not drop back to 0.0 for today
-    today = datetime.today().date()
-    today_str = today.strftime("%d%m%Y")
-    try:
-        today_data = await hub.get_energy_consumption(device, ConsumptionPeriodType.DAILY, from_date=today_str)
-        today_val = float(today_data.get(today_str) or 0.0)
-    except Exception:
-        today_val = 0.0
-
-    today_sum = running_sum + today_val
-    today_dt = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
-    statistics.append(StatisticData(start=today_dt, sum=today_sum, state=today_sum))
-    last_day = today
-
     if not statistics:
         LOGGER.info("Backfill: no new points built for %s", device.friendly_name)
         return
-
-    setattr(device, "backfilled_energy_sum", running_sum)
 
     metadata = StatisticMetaData(
         has_sum=True,
