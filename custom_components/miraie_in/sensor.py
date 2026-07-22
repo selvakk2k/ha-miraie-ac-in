@@ -1,11 +1,19 @@
 import asyncio
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone, timedelta
+import calendar
+from datetime import date, datetime, timezone, timedelta
 
 import aiohttp
 from miraie_ac import Device as MirAIeDevice, MirAIeHub, ConsumptionPeriodType
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.recorder import get_instance
+from homeassistant.components.recorder.statistics import (
+    StatisticData,
+    StatisticMetaData,
+    async_add_external_statistics,
+    get_last_statistics,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy, UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 from homeassistant.core import HomeAssistant
@@ -22,6 +30,16 @@ from .logger import LOGGER
 from .utils import get_last_sunday
 
 
+
+
+def six_months_ago(today: date) -> date:
+    month = today.month - 6
+    year = today.year
+    if month <= 0:
+        month += 12
+        year -= 1
+    day = min(today.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
 
 class MirAIeEnergySensor(SensorEntity, ABC):
     """Sensor for AC Power Consumption."""
