@@ -467,8 +467,8 @@ async def async_backfill_energy_statistics(
         entries = last_stats[statistic_id]
         last = entries[0]
         last_start = datetime.fromtimestamp(last["start"], tz=timezone.utc)
-        start_date = last_start.date()
-        last_sum = float(entries[1].get("sum") or 0.0) if len(entries) > 1 else 0.0
+        start_date = last_start.date() + timedelta(days=1)
+        last_sum = float(last.get("sum") or 0.0)
 
     end_date = datetime.today().date()
     if start_date > end_date:
@@ -497,7 +497,7 @@ async def async_backfill_energy_statistics(
         if value is None:
             continue
         running_sum += float(value)
-        start_dt = dt_util.as_utc(datetime.combine(day, datetime.min.time(), tzinfo=dt_util.DEFAULT_TIME_ZONE))
+        start_dt = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
         statistics.append(StatisticData(start=start_dt, sum=running_sum, state=running_sum))
         if first_day is None:
             first_day = day
