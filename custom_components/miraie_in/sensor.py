@@ -461,16 +461,19 @@ async def async_backfill_energy_statistics(
         get_last_statistics, hass, 2, statistic_id, False, {"sum"}
     )
 
+    end_date = datetime.today().date() - timedelta(days=1)
     start_date = default_start_date
     last_sum = 0.0
+
     if last_stats and last_stats.get(statistic_id):
         entries = last_stats[statistic_id]
         last = entries[0]
         last_start = datetime.fromtimestamp(last["start"], tz=timezone.utc)
-        start_date = last_start.date() + timedelta(days=1)
-        last_sum = float(last.get("sum") or 0.0)
+        # Only resume if the last stat is before yesterday (prevents HA auto-recorder on today's state from blocking history import)
+        if last_start.date() < end_date:
+            start_date = last_start.date() + timedelta(days=1)
+            last_sum = float(last.get("sum") or 0.0)
 
-    end_date = datetime.today().date()
     if start_date > end_date:
         LOGGER.info(
             "Backfill: no new daily data for %s (up to %s)",
