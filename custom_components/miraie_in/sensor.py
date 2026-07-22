@@ -22,6 +22,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
@@ -283,8 +284,29 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
     def sensor_label(self) -> str:
         return "Energy History"
 
+    async def async_added_to_hass(self):
+        """Run when entity about to be added to hass."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"miraie_backfill_complete_{self.device.id}",
+                self._handle_backfill_complete,
+            )
+        )
+
+    async def _handle_backfill_complete(self):
+        """Update sensor state when backfill finishes."""
+        LOGGER.debug("%s: Backfill completed, updating state", self.sensor_label)
+        await self.async_update()
+        self.async_write_ha_state()
+
     async def get_energy_consumption(self) -> float | None:
         """Fetch total cumulative energy consumption (backfilled sum + today's consumption)."""
+        if not hasattr(self.device, "backfilled_energy_sum"):
+            LOGGER.debug("%s: Waiting for backfill to complete before reporting state", self.sensor_label)
+            return None
+            
         today_value = await super().get_energy_consumption()
         if today_value is None:
             return None
@@ -484,6 +506,8 @@ async def async_backfill_energy_statistics(
             device.friendly_name,
             end_date.isoformat(),
         )
+        setattr(device, "backfilled_energy_sum", last_sum)
+        async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
         return
 
     daily = await hub.get_energy_consumption_full(
@@ -491,6 +515,8 @@ async def async_backfill_energy_statistics(
     )
     if not daily:
         LOGGER.info("Backfill: no data returned for %s", device.friendly_name)
+        setattr(device, "backfilled_energy_sum", last_sum)
+        async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
         return
 
     statistics = []
@@ -512,6 +538,8 @@ async def async_backfill_energy_statistics(
 
     if not statistics:
         LOGGER.info("Backfill: no new points built for %s", device.friendly_name)
+        setattr(device, "backfilled_energy_sum", running_sum)
+        async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
         return
 
     setattr(device, "backfilled_energy_sum", running_sum)
@@ -533,3 +561,4 @@ async def async_backfill_energy_statistics(
         first_day.isoformat(),
         last_day.isoformat(),
     )
+    async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
