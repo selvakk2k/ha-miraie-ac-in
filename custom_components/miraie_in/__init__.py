@@ -11,10 +11,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
+from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from datetime import date
+import aiohttp
 
 from .const import DOMAIN, CONF_INSTALL_DATE
-from .sensor import async_backfill_energy_statistics, six_months_ago
+from .sensor import async_backfill_energy_statistics
+from .utils import six_months_ago
 
 
 
@@ -106,7 +109,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     hub = MirAIeHub(session)
     broker = MirAIeBroker()
-    await hub.init(entry.data["username"], entry.data["password"], broker)
+    try:
+        await hub.init(entry.data["username"], entry.data["password"], broker)
+    except (aiohttp.ClientError, TimeoutError) as err:
+        raise ConfigEntryNotReady from err
+    except Exception as err:
+        # Generic catch for miraie_ac auth failure or other unexpected init errors
+        raise ConfigEntryAuthFailed from err
+
     entry.runtime_data = hub
 
     # Migrate old-format unique_ids (idempotent, safe to run every startup)
@@ -124,12 +134,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def nightly_backfill(now=None):
+        current_install = entry.options.get(CONF_INSTALL_DATE)
+        if current_install:
+            backfill_start = date.fromisoformat(current_install)
+        else:
+            backfill_start = six_months_ago(date.today())
+            
         for device in hub.home.devices:
             hass.async_create_task(
-                async_backfill_energy_statistics(hass, hub, device, start_date)
+                async_backfill_energy_statistics(hass, hub, device, backfill_start)
             )
 
-    async_track_time_change(hass, nightly_backfill, hour=0, minute=5, second=0)
+    unsub = async_track_time_change(hass, nightly_backfill, hour=0, minute=5, second=0)
+    entry.async_on_unload(unsub)
 
     return True
 

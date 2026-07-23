@@ -23,25 +23,20 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
-
-PARALLEL_UPDATES = 0
+from .const import (
+    DOMAIN,
+    CONF_INSTALL_DATE,
+    get_converti_preset_modes,
+    supports_heat_mode,
+)
+from .utils import six_months_ago
 from .logger import LOGGER
 from .utils import get_last_sunday
 
 
-
-
-def six_months_ago(today: date) -> date:
-    month = today.month - 6
-    year = today.year
-    if month <= 0:
-        month += 12
-        year -= 1
-    day = min(today.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
 
 class MirAIeEnergySensor(SensorEntity, ABC):
     """Sensor for AC Power Consumption."""
@@ -472,7 +467,7 @@ async def async_backfill_energy_statistics(
 ) -> None:
     """Backfill daily energy history into HA recorder statistics."""
     if not hub.http or hub.http.closed:
-        hub.http = aiohttp.ClientSession()
+        hub.http = async_get_clientsession(hass)
 
     entity_reg = er.async_get(hass)
     statistic_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_energy_history")
@@ -544,7 +539,7 @@ async def async_backfill_energy_statistics(
 
     metadata = StatisticMetaData(
         has_sum=True,
-        mean_type=0,
+        has_mean=False,
         unit_class="energy",
         name=f"{device.friendly_name} Energy History",
         source="recorder",

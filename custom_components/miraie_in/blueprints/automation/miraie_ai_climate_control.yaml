@@ -1,0 +1,427 @@
+blueprint:
+  name: "Panasonic MirAIe AC - AI Climate Control"
+  description: >
+    Data-backed smart control loop for Panasonic MirAIe ACs. 
+    Dynamically regulates cooling, Converti capacity steps (initial cooldown vs energy-saving maintenance), 
+    vane positions per phase, and automatic dehumidification (Dry mode flush) based on real-time external temperature and humidity sensors.
+  domain: automation
+  input:
+    climate_device:
+      name: Panasonic MirAIe AC
+      description: Select your MirAIe AC climate entity.
+      selector:
+        entity:
+          domain: climate
+
+    temp_sensor:
+      name: External Room Temperature Sensor
+      description: Select an external room temperature sensor (e.g., Zigbee/WiFi sensor placed at bed height).
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+
+    humidity_sensor:
+      name: External Room Humidity Sensor
+      description: Select an external room humidity sensor.
+      selector:
+        entity:
+          domain: sensor
+          device_class: humidity
+
+    target_temp:
+      name: Target Room Temperature (°C)
+      description: Desired room temperature to maintain.
+      default: 25.0
+      selector:
+        number:
+          min: 18.0
+          max: 28.0
+          step: 0.5
+          unit_of_measurement: "°C"
+
+    # --- Phase 1: Cooldown Settings ---
+    high_capacity_preset:
+      name: Cooldown Capacity Preset
+      description: Converti preset used for initial rapid cooldown.
+      default: "cv_100"
+      selector:
+        select:
+          options:
+            - "cv_110"
+            - "cv_100"
+            - "cv_90"
+            - "boost"
+            - "none"
+
+    cooldown_fan_mode:
+      name: Cooldown Fan Speed
+      description: Fan speed during cooldown phase.
+      default: "medium"
+      selector:
+        select:
+          options:
+            - "auto"
+            - "low"
+            - "medium"
+            - "high"
+
+    cooldown_vertical_vane:
+      name: Cooldown Vertical Vane (Up/Down)
+      description: Vertical vane during cooldown (e.g., V1=Flat/Top for ceiling airflow circulation). Select 'ignore' to leave unchanged.
+      default: "V1"
+      selector:
+        select:
+          options:
+            - "ignore"
+            - "V0"
+            - "V1"
+            - "V2"
+            - "V3"
+            - "V4"
+            - "V5"
+
+    cooldown_horizontal_vane:
+      name: Cooldown Horizontal Vane (Left/Right)
+      description: Horizontal vane position during cooldown. Select 'ignore' to leave unchanged.
+      default: "ignore"
+      selector:
+        select:
+          options:
+            - "ignore"
+            - "H0"
+            - "H1"
+            - "H2"
+            - "H3"
+            - "H4"
+            - "H5"
+
+    # --- Phase 2: Maintenance Settings ---
+    low_capacity_preset:
+      name: Maintenance Capacity Preset
+      description: Energy-saving Converti preset used once room reaches target temperature.
+      default: "cv_50"
+      selector:
+        select:
+          options:
+            - "cv_60"
+            - "cv_50"
+            - "cv_40"
+            - "eco"
+            - "none"
+
+    maintenance_fan_mode:
+      name: Maintenance Fan Speed
+      description: Fan speed during maintenance phase.
+      default: "low"
+      selector:
+        select:
+          options:
+            - "auto"
+            - "low"
+            - "medium"
+
+    maintenance_vertical_vane:
+      name: Maintenance Vertical Vane (Up/Down)
+      description: Vertical vane position during maintenance (e.g., V3=Mid-level gentle airflow). Select 'ignore' to leave unchanged.
+      default: "V3"
+      selector:
+        select:
+          options:
+            - "ignore"
+            - "V0"
+            - "V1"
+            - "V2"
+            - "V3"
+            - "V4"
+            - "V5"
+
+    maintenance_horizontal_vane:
+      name: Maintenance Horizontal Vane (Left/Right)
+      description: Horizontal vane position during maintenance. Select 'ignore' to leave unchanged.
+      default: "ignore"
+      selector:
+        select:
+          options:
+            - "ignore"
+            - "H0"
+            - "H1"
+            - "H2"
+            - "H3"
+            - "H4"
+            - "H5"
+
+    # --- Phase 3: Dehumidification Flush Settings ---
+    humidity_threshold:
+      name: High Humidity Threshold (%)
+      description: If room humidity exceeds this level during maintenance, switch to Dry mode flush.
+      default: 72
+      selector:
+        number:
+          min: 50
+          max: 85
+          step: 1
+          unit_of_measurement: "%"
+
+    dry_vertical_vane:
+      name: Dry Mode Vertical Vane (Up/Down)
+      description: Vertical vane during Dry mode flush. Select 'ignore' to leave unchanged.
+      default: "ignore"
+      selector:
+        select:
+          options:
+            - "ignore"
+            - "V0"
+            - "V1"
+            - "V2"
+            - "V3"
+            - "V4"
+            - "V5"
+
+    dry_horizontal_vane:
+      name: Dry Mode Horizontal Vane (Left/Right)
+      description: Horizontal vane position during Dry mode flush. Select 'ignore' to leave unchanged.
+      default: "ignore"
+      selector:
+        select:
+          options:
+            - "ignore"
+            - "H0"
+            - "H1"
+            - "H2"
+            - "H3"
+            - "H4"
+            - "H5"
+
+mode: queued
+max: 2
+
+trigger:
+  - platform: state
+    entity_id: !input temp_sensor
+  - platform: state
+    entity_id: !input humidity_sensor
+  - platform: state
+    entity_id: !input climate_device
+    to: "cool"
+  - platform: state
+    entity_id: !input climate_device
+    to: "dry"
+
+condition:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input temp_sensor
+        state: "unavailable"
+      - condition: state
+        entity_id: !input temp_sensor
+        state: "unknown"
+      - condition: state
+        entity_id: !input humidity_sensor
+        state: "unavailable"
+      - condition: state
+        entity_id: !input humidity_sensor
+        state: "unknown"
+      - condition: state
+        entity_id: !input climate_device
+        state: "off"
+      - condition: state
+        entity_id: !input climate_device
+        state: "unavailable"
+      - condition: state
+        entity_id: !input climate_device
+        state: "unknown"
+
+action:
+  - variables:
+      ac_entity: !input climate_device
+      t_sensor: !input temp_sensor
+      h_sensor: !input humidity_sensor
+      set_target: !input target_temp
+
+      preset_high: !input high_capacity_preset
+      preset_low: !input low_capacity_preset
+      fan_cooldown: !input cooldown_fan_mode
+      fan_maintenance: !input maintenance_fan_mode
+
+      v_vane_cooldown: !input cooldown_vertical_vane
+      h_vane_cooldown: !input cooldown_horizontal_vane
+
+      v_vane_maint: !input maintenance_vertical_vane
+      h_vane_maint: !input maintenance_horizontal_vane
+
+      v_vane_dry: !input dry_vertical_vane
+      h_vane_dry: !input dry_horizontal_vane
+
+      hum_limit: !input humidity_threshold
+      current_room_temp: "{{ states(t_sensor) | float(25.0) }}"
+      current_room_hum: "{{ states(h_sensor) | float(50.0) }}"
+      current_ac_mode: "{{ states(ac_entity) }}"
+      current_ac_preset: "{{ state_attr(ac_entity, 'preset_mode') }}"
+      current_ac_fan: "{{ state_attr(ac_entity, 'fan_mode') }}"
+      current_ac_target: "{{ state_attr(ac_entity, 'temperature') | float(25.0) }}"
+      current_ac_v_vane: "{{ state_attr(ac_entity, 'swing_mode') }}"
+      current_ac_h_vane: "{{ state_attr(ac_entity, 'swing_horizontal_mode') }}"
+
+  # Ensure AC setpoint matches target_temp
+  - if:
+      - condition: template
+        value_template: "{{ current_ac_target != set_target }}"
+    then:
+      - service: climate.set_temperature
+        target:
+          entity_id: !input climate_device
+        data:
+          temperature: !input target_temp
+
+  - choose:
+      # Branch 1: Rapid Cooldown Phase (Room temp > Target + 0.5°C)
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ current_room_temp > (set_target + 0.5) or
+                 (current_ac_mode == 'cool' and current_ac_preset == preset_high and current_room_temp > (set_target + 0.2)) }}
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'cool' }}"
+            then:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  hvac_mode: "cool"
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'cool' or current_ac_preset != preset_high }}"
+            then:
+              - service: climate.set_preset_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  preset_mode: !input high_capacity_preset
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'cool' or current_ac_fan != fan_cooldown }}"
+            then:
+              - service: climate.set_fan_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  fan_mode: !input cooldown_fan_mode
+          - if:
+              - condition: template
+                value_template: "{{ v_vane_cooldown != 'ignore' and (current_ac_mode != 'cool' or current_ac_v_vane != v_vane_cooldown) }}"
+            then:
+              - service: climate.set_swing_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  swing_mode: !input cooldown_vertical_vane
+          - if:
+              - condition: template
+                value_template: "{{ h_vane_cooldown != 'ignore' and (current_ac_mode != 'cool' or current_ac_h_vane != h_vane_cooldown) }}"
+            then:
+              - service: climate.set_swing_horizontal_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  swing_horizontal_mode: !input cooldown_horizontal_vane
+
+      # Branch 2: High Humidity Dehumidification Flush (Room temp between Target and Target + 0.5°C AND Humidity >= Threshold)
+      - conditions:
+          - condition: template
+            value_template: "{{ current_room_temp >= set_target and current_room_temp <= (set_target + 0.5) and current_room_hum >= hum_limit }}"
+        sequence:
+          # Note: Dry mode intentionally does not touch the Converti preset mode.
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'dry' }}"
+            then:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  hvac_mode: "dry"
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'dry' or current_ac_fan != fan_maintenance }}"
+            then:
+              - service: climate.set_fan_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  fan_mode: !input maintenance_fan_mode
+          - if:
+              - condition: template
+                value_template: "{{ v_vane_dry != 'ignore' and (current_ac_mode != 'dry' or current_ac_v_vane != v_vane_dry) }}"
+            then:
+              - service: climate.set_swing_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  swing_mode: !input dry_vertical_vane
+          - if:
+              - condition: template
+                value_template: "{{ h_vane_dry != 'ignore' and (current_ac_mode != 'dry' or current_ac_h_vane != h_vane_dry) }}"
+            then:
+              - service: climate.set_swing_horizontal_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  swing_horizontal_mode: !input dry_horizontal_vane
+
+      # Branch 3: Energy-Saving Maintenance Phase (Room temp < Target OR Humidity < Threshold)
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ current_room_temp <= (set_target + 0.2) or
+                 (current_ac_mode == 'cool' and current_ac_preset == preset_low and current_room_temp <= (set_target + 0.5)) or
+                 current_room_hum < hum_limit }}
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'cool' }}"
+            then:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  hvac_mode: "cool"
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'cool' or current_ac_preset != preset_low }}"
+            then:
+              - service: climate.set_preset_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  preset_mode: !input low_capacity_preset
+          - if:
+              - condition: template
+                value_template: "{{ current_ac_mode != 'cool' or current_ac_fan != fan_maintenance }}"
+            then:
+              - service: climate.set_fan_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  fan_mode: !input maintenance_fan_mode
+          - if:
+              - condition: template
+                value_template: "{{ v_vane_maint != 'ignore' and (current_ac_mode != 'cool' or current_ac_v_vane != v_vane_maint) }}"
+            then:
+              - service: climate.set_swing_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  swing_mode: !input maintenance_vertical_vane
+          - if:
+              - condition: template
+                value_template: "{{ h_vane_maint != 'ignore' and (current_ac_mode != 'cool' or current_ac_h_vane != h_vane_maint) }}"
+            then:
+              - service: climate.set_swing_horizontal_mode
+                target:
+                  entity_id: !input climate_device
+                data:
+                  swing_horizontal_mode: !input maintenance_horizontal_vane

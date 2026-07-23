@@ -15,25 +15,11 @@ from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import CONF_INSTALL_DATE, DOMAIN
+from .utils import months_ago, six_months_ago, eight_months_ago
 
 _LOGGER = logging.getLogger(__name__)
 
-def months_ago(today: date, months: int) -> date:
-    month = today.month - months
-    year = today.year
-    if month <= 0:
-        month += 12
-        year -= 1
-    day = min(today.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
 
-
-def six_months_ago(today: date) -> date:
-    return months_ago(today, 6)
-
-
-def eight_months_ago(today: date) -> date:
-    return months_ago(today, 8)
 
 
 def parse_install_date(value: str) -> Optional[date]:
@@ -153,7 +139,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         if user_input is None:
             today = date.today()
             default_install = six_months_ago(today).isoformat()
