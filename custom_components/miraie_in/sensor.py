@@ -70,7 +70,7 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         self._attr_unique_id = f"{device.id}_{self.sensor_label.lower()}_energy"
         self._attr_should_poll = False
         self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = None
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_suggested_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_suggested_display_precision = 2
@@ -300,7 +300,6 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
         """Update sensor state when backfill finishes."""
         LOGGER.debug("%s: Backfill completed, updating state", self.sensor_label)
         await self.async_update()
-        self.async_write_ha_state()
 
     async def get_energy_consumption(self) -> float | None:
         """Fetch total cumulative energy consumption (backfilled sum + today's consumption)."""
@@ -487,7 +486,8 @@ async def async_backfill_energy_statistics(
         get_last_statistics, hass, 1, statistic_id, False, {"sum"}
     )
 
-    end_date = datetime.today().date()
+    # Stop backfilling at yesterday, because today is actively being recorded by HA
+    end_date = dt_util.now().date() - timedelta(days=1)
     start_date = default_start_date
     last_sum = 0.0
 
