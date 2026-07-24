@@ -14,6 +14,12 @@ from homeassistant.components.recorder.statistics import (
     async_import_statistics,
     get_last_statistics,
 )
+
+try:
+    from homeassistant.components.recorder.statistics import StatisticMeanType
+    MEAN_TYPE_NONE = StatisticMeanType.NONE
+except ImportError:
+    MEAN_TYPE_NONE = 0
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy, UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 from homeassistant.core import HomeAssistant
@@ -540,6 +546,7 @@ async def async_backfill_energy_statistics(
     metadata = StatisticMetaData(
         has_sum=True,
         has_mean=False,
+        mean_type=MEAN_TYPE_NONE,
         unit_class="energy",
         name=f"{device.friendly_name} Energy History",
         source="recorder",
