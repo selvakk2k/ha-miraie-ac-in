@@ -484,7 +484,7 @@ async def async_backfill_energy_statistics(
     # get_instance(hass).async_clear_statistics([statistic_id])
 
     last_stats = await get_instance(hass).async_add_executor_job(
-        get_last_statistics, hass, 2, statistic_id, False, {"sum"}
+        get_last_statistics, hass, 1, statistic_id, False, {"sum"}
     )
 
     end_date = datetime.today().date()
@@ -493,9 +493,9 @@ async def async_backfill_energy_statistics(
 
     if last_stats and last_stats.get(statistic_id):
         entries = last_stats[statistic_id]
-        last = entries[0]
-        last_start = datetime.fromtimestamp(last["start"], tz=timezone.utc)
-        if last_start.date() < end_date:
+        if entries:
+            last = entries[-1]
+            last_start = datetime.fromtimestamp(last["start"], tz=timezone.utc)
             start_date = last_start.date() + timedelta(days=1)
             last_sum = float(last.get("sum") or 0.0)
 
