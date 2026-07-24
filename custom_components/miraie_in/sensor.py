@@ -70,7 +70,7 @@ class MirAIeEnergySensor(SensorEntity, ABC):
         self._attr_unique_id = f"{device.id}_{self.sensor_label.lower()}_energy"
         self._attr_should_poll = False
         self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_state_class = None
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_suggested_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_suggested_display_precision = 2
