@@ -107,7 +107,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
     session = async_get_clientsession(hass)
-    hub = MirAIeHub(session)
+    try:
+        hub = MirAIeHub(session)
+    except TypeError:
+        hub = MirAIeHub()
     broker = MirAIeBroker()
     try:
         await hub.init(entry.data["username"], entry.data["password"], broker)
