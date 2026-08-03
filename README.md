@@ -109,6 +109,7 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 
 * **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
 * **Update Frequency**: Primary thermostat commands are sent instantly via `cloud_push` (MQTT), while aggregate energy consumption statistics are updated via background polling.
+* **Total Energy & Daily Backfill Scope**: The `Total Energy` sensor (`sensor.<device>_energy_history`) updates strictly once daily at `00:05 AM` with completed daily totals up to yesterday. Because the MirAIe API reports energy in daily aggregates, live intraday consumption for the current day is omitted from the long-term history sensor to prevent recorder race conditions and database corruption. Real-time consumption for the current day is reported separately by the `Today's Energy` sensor (`sensor.<device>_today_energy`).
 
 ---
 
