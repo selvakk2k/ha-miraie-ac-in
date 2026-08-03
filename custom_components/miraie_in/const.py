@@ -1,4 +1,5 @@
 """Constants for the mirAIe integration."""
+import re
 
 DOMAIN = "miraie_in"
 PACKAGE_NAME = "custom_components.miraie_in"
@@ -114,17 +115,9 @@ def _extract_generation_letter(model_number: str, series: str) -> str | None:
     known series prefix in a model number, e.g. "EU18CKY5XFM" with
     series "EU" -> "C" (the letter right after the tonnage digits).
     """
-    idx = model_number.find(series)
-    if idx == -1:
-        return None
-
-    pos = idx + len(series)
-    while pos < len(model_number) and model_number[pos].isdigit():
-        pos += 1
-
-    if pos < len(model_number) and model_number[pos].isalpha():
-        return model_number[pos]
-
+    match = re.search(rf"{re.escape(series)}(\d+)([A-Z])", model_number)
+    if match:
+        return match.group(2)
     return None
 
 

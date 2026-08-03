@@ -21,3 +21,6 @@
   - Lists changed items using bullet points.
   - Starts each bullet point with a bold term describing the feature/fix (e.g. `**Feature Name**: Description...`).
   - Codes/symbols should be highlighted in backticks (e.g. `__del__`, `close()`).
+
+## Explain Before Code Changes
+- **Rule**: Always explain clearly to the user what changes are being made and why **before** editing code or modifying files.

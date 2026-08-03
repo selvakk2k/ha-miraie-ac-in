@@ -5,6 +5,7 @@ import logging
 from datetime import date
 import calendar
 from typing import Any, Optional
+import aiohttp
 
 from miraie_ac import MirAIeHub
 import voluptuous as vol
@@ -18,8 +19,6 @@ from .const import CONF_INSTALL_DATE, DOMAIN
 from .utils import months_ago, six_months_ago, eight_months_ago
 
 _LOGGER = logging.getLogger(__name__)
-
-
 
 
 def parse_install_date(value: str) -> Optional[date]:
@@ -52,6 +51,8 @@ async def validate_input(
         # pylint: disable=protected-access
         try:
             await hub._authenticate(data["username"], data["password"])
+        except (aiohttp.ClientError, TimeoutError, OSError) as exc:
+            raise CannotConnect from exc
         except Exception as exc:
             raise InvalidAuth from exc
 
