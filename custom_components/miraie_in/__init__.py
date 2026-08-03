@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.start import async_at_started
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from datetime import date
 import aiohttp
@@ -107,7 +108,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
     session = async_get_clientsession(hass)
-    hub = MirAIeHub(session)
+    try:
+        hub = MirAIeHub(session)
+    except TypeError:
+        hub = MirAIeHub()
     broker = MirAIeBroker()
     try:
         await hub.init(entry.data["username"], entry.data["password"], broker)
@@ -123,15 +127,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _migrate_unique_ids(hass, entry, hub)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    def _log_backfill_result(task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            LOGGER.error("Energy statistics backfill task failed", exc_info=exc)
+
     default_start = entry.options.get(CONF_INSTALL_DATE)
     if default_start:
         start_date = date.fromisoformat(default_start)
     else:
         start_date = six_months_ago(date.today())
-    for device in hub.home.devices:
-        hass.async_create_task(
-            async_backfill_energy_statistics(hass, hub, device, start_date)
-        )
+
+    async def _run_startup_backfill(hass: HomeAssistant) -> None:
+        """Run the initial backfill only once HA has fully finished starting."""
+        for device in hub.home.devices:
+            task = hass.async_create_task(
+                async_backfill_energy_statistics(hass, hub, device, start_date)
+            )
+            task.add_done_callback(_log_backfill_result)
+
+    entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
 
     async def nightly_backfill(now=None):
         current_install = entry.options.get(CONF_INSTALL_DATE)
@@ -141,9 +158,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             backfill_start = six_months_ago(date.today())
             
         for device in hub.home.devices:
-            hass.async_create_task(
+            task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, backfill_start)
             )
+            task.add_done_callback(_log_backfill_result)
 
     unsub = async_track_time_change(hass, nightly_backfill, hour=0, minute=5, second=0)
     entry.async_on_unload(unsub)

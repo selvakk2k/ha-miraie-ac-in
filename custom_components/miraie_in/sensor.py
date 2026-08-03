@@ -296,22 +296,23 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
             )
         )
 
+    async def _set_last_reset_time(self):
+        """No last_reset for TOTAL_INCREASING sensors."""
+        pass
+
     async def _handle_backfill_complete(self):
         """Update sensor state when backfill finishes."""
         LOGGER.debug("%s: Backfill completed, updating state", self.sensor_label)
-        await self.async_update()
+        self.async_schedule_update_ha_state(True)
 
     async def get_energy_consumption(self) -> float | None:
-        """Fetch total cumulative energy consumption (backfilled sum + today's consumption)."""
+        """Fetch total cumulative energy consumption up to yesterday."""
         if not hasattr(self.device, "backfilled_energy_sum"):
             LOGGER.debug("%s: Waiting for backfill to complete before reporting state", self.sensor_label)
             return None
-            
-        today_value = await super().get_energy_consumption()
-        if today_value is None:
-            return None
-        base_sum = getattr(self.device, "backfilled_energy_sum", 0.0)
-        return round(base_sum + float(today_value), 2)
+
+        base_sum = max(0.0, float(getattr(self.device, "backfilled_energy_sum", 0.0)))
+        return round(base_sum, 2)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -320,7 +321,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     
     # 1. Setup Energy Sensors (which need active polling)
     energy_sensors = []
+    entity_reg = er.async_get(hass)
     for device in hub.home.devices:
+        statistic_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_energy_history")
+        if not statistic_id:
+            statistic_id = f"sensor.{device.id}_energy_history"
+        try:
+            last_stats = await get_instance(hass).async_add_executor_job(
+                get_last_statistics, hass, 1, statistic_id, False, {"sum"}
+            )
+            if last_stats and last_stats.get(statistic_id):
+                entries = last_stats[statistic_id]
+                if entries:
+                    last_sum = float(entries[-1].get("sum") or 0.0)
+                    if 0 <= last_sum <= 400:
+                        setattr(device, "backfilled_energy_sum", last_sum)
+        except Exception as e:
+            LOGGER.debug("Could not pre-initialize backfilled_energy_sum for %s: %s", device.friendly_name, e)
+
         energy_sensors += [
             MirAIeYesterdayEnergySensor(hub, device),
             MirAIeTodayEnergySensor(hub, device),
@@ -464,6 +482,19 @@ class MirAIeControlSourceSensor(SensorEntity):
         self.device.remove_callback(self.async_write_ha_state)
 
 
+def _get_statistic_timestamp(target_date: date) -> datetime:
+    """Return top-of-hour UTC timestamp corresponding to local midnight of target_date.
+
+    Home Assistant statistics require UTC timestamps with minute=0 and second=0.
+    For UTC+5:30 (India), local midnight 00:00 IST on date D is 18:30 UTC on D-1.
+    Rounding to top of UTC hour yields 18:00 UTC on D-1, which aligns precisely
+    with the local day bucket in Home Assistant Energy Dashboard.
+    """
+    local_dt = dt_util.start_of_local_day(datetime.combine(target_date, datetime.min.time()))
+    utc_dt = dt_util.as_utc(local_dt)
+    return utc_dt.replace(minute=0, second=0, microsecond=0)
+
+
 async def async_backfill_energy_statistics(
     hass: HomeAssistant,
     hub: MirAIeHub,
@@ -479,14 +510,10 @@ async def async_backfill_energy_statistics(
     if not statistic_id:
         statistic_id = f"sensor.{device.id}_energy_history"
 
-    # Clear any old/corrupted statistics for this entity before backfilling (disabled for production)
-    # get_instance(hass).async_clear_statistics([statistic_id])
-
     last_stats = await get_instance(hass).async_add_executor_job(
         get_last_statistics, hass, 1, statistic_id, False, {"sum"}
     )
 
-    # Stop backfilling at yesterday, because today is actively being recorded by HA
     end_date = dt_util.now().date() - timedelta(days=1)
     start_date = default_start_date
     last_sum = 0.0
@@ -495,9 +522,49 @@ async def async_backfill_energy_statistics(
         entries = last_stats[statistic_id]
         if entries:
             last = entries[-1]
-            last_start = datetime.fromtimestamp(last["start"], tz=timezone.utc)
-            start_date = last_start.date() + timedelta(days=1)
-            last_sum = float(last.get("sum") or 0.0)
+            last_start_utc = datetime.fromtimestamp(last["start"], tz=timezone.utc)
+            last_start_local = dt_util.as_local(last_start_utc)
+            raw_last_sum = float(last.get("sum") or 0.0)
+            if raw_last_sum > 0:
+                last_sum = raw_last_sum
+
+            if raw_last_sum < 0 or raw_last_sum > 400 or last_start_utc.minute != 0 or last_start_utc.second != 0:
+                LOGGER.warning(
+                    "Legacy/corrupted/inflated energy statistics detected for %s (start=%s, sum=%s); "
+                    "clearing via recorder API and rebuilding from scratch",
+                    device.friendly_name,
+                    last_start_utc.isoformat(),
+                    raw_last_sum,
+                )
+                try:
+                    done = asyncio.Event()
+
+                    def _on_clear_done() -> None:
+                        hass.loop.call_soon_threadsafe(done.set)
+
+                    get_instance(hass).async_clear_statistics([statistic_id], on_done=_on_clear_done)
+                    async with asyncio.timeout(90):
+                        await done.wait()
+                except TimeoutError:
+                    LOGGER.error(
+                        "Timed out clearing legacy energy statistics for %s; aborting this "
+                        "backfill run, will retry on next scheduled run",
+                        device.friendly_name,
+                    )
+                    return
+                except Exception:
+                    LOGGER.exception(
+                        "Failed to clear legacy energy statistics for %s; aborting this "
+                        "backfill run, will retry on next scheduled run",
+                        device.friendly_name,
+                    )
+                    return
+                last_stats = None
+                last_sum = 0.0
+                start_date = default_start_date
+            else:
+                start_date = last_start_local.date() + timedelta(days=1)
+                last_sum = raw_last_sum
 
     if start_date > end_date:
         LOGGER.info(
@@ -520,22 +587,28 @@ async def async_backfill_energy_statistics(
 
     statistics = []
     running_sum = last_sum
+
+    # If doing initial backfill (no existing statistics), insert baseline at start_date local midnight UTC hour
+    if not last_stats or not last_stats.get(statistic_id):
+        start_baseline_dt = _get_statistic_timestamp(start_date)
+        statistics.append(StatisticData(start=start_baseline_dt, sum=last_sum, state=last_sum))
+
     first_day = last_day = None
     for key in sorted(daily.keys(), key=lambda k: datetime.strptime(k, "%d%m%Y").date()):
         day = datetime.strptime(key, "%d%m%Y").date()
         if day < start_date or day > end_date:
             continue
         value = daily.get(key)
-        if value is None:
-            continue
-        running_sum += float(value)
-        start_dt = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
-        statistics.append(StatisticData(start=start_dt, sum=running_sum, state=running_sum))
+        val_float = max(0.0, float(value))
+        running_sum += val_float
+        # End of 'day' is local midnight of day + 1 day, converted to top-of-hour UTC
+        end_dt = _get_statistic_timestamp(day + timedelta(days=1))
+        statistics.append(StatisticData(start=end_dt, sum=running_sum, state=running_sum))
         if first_day is None:
             first_day = day
         last_day = day
 
-    if not statistics:
+    if not statistics or (len(statistics) == 1 and not last_stats):
         LOGGER.info("Backfill: no new points built for %s", device.friendly_name)
         setattr(device, "backfilled_energy_sum", running_sum)
         async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
@@ -558,7 +631,7 @@ async def async_backfill_energy_statistics(
         "Backfill: added %s daily points for %s (%s to %s)",
         len(statistics),
         device.friendly_name,
-        first_day.isoformat(),
-        last_day.isoformat(),
+        first_day.isoformat() if first_day else start_date.isoformat(),
+        last_day.isoformat() if last_day else end_date.isoformat(),
     )
     async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
