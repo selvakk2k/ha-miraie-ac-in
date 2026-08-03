@@ -1,3 +1,4 @@
+import calendar
 from datetime import date, timedelta
 from homeassistant.util import dt as dt_util
 
@@ -18,8 +19,6 @@ def months_ago(today: date, months: int) -> date:
     if month <= 0:
         month += 12
         year -= 1
-    # calendar is not imported, let's just do an inline import or we'll add it to the top
-    import calendar
     day = min(today.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
 

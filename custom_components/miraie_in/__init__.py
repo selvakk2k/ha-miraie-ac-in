@@ -15,6 +15,7 @@ from homeassistant.helpers.start import async_at_started
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from datetime import date
 import aiohttp
+import asyncio
 
 from .const import DOMAIN, CONF_INSTALL_DATE
 from .sensor import async_backfill_energy_statistics
@@ -108,9 +109,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
     session = async_get_clientsession(hass)
+    # If a previously-installed miraie-ac-in version is still loaded in this
+    # running process (e.g. right after an integration upgrade, before HA has
+    # restarted), MirAIeHub() may not yet accept a session argument. Fall back
+    # to a self-managed session in that case; this resolves itself on the next
+    # HA restart once the updated dependency is actually loaded.
+    # See https://github.com/selvakk2k/ha-miraie-ac-in/issues/2
     try:
         hub = MirAIeHub(session)
     except TypeError:
+        LOGGER.warning(
+            "miraie-ac-in installed in this process does not accept a shared "
+            "session yet (likely an integration upgrade pending a Home "
+            "Assistant restart); using a self-managed session for now. This "
+            "should resolve automatically after the next restart."
+        )
         hub = MirAIeHub()
     broker = MirAIeBroker()
     try:
