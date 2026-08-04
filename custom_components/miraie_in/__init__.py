@@ -161,7 +161,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             task.add_done_callback(_log_backfill_result)
 
-    entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
+    if hass.is_running:
+        hass.async_create_task(_run_startup_backfill(hass))
+    else:
+        entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
 
     async def nightly_backfill(now=None):
         current_install = entry.options.get(CONF_INSTALL_DATE)
