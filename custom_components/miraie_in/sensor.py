@@ -279,9 +279,7 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
         super().__init__(hub, device)
         self._attr_translation_key = "energy_history"
         self._attr_unique_id = f"{device.id}_energy_history"
-        # Omit state_class so HA recorder does not generate unwanted hourly statistics.
-        # Long-term daily statistics are imported directly via async_import_statistics.
-        self._attr_state_class = None
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     @property
     def sensor_label(self) -> str:
