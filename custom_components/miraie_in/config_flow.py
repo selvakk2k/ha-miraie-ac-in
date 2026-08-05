@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import CONF_INSTALL_DATE, DOMAIN
+from .const import CONF_INSTALL_DATE, CONF_HALF_DEGREE_PRECISION, DOMAIN
 from .utils import months_ago, six_months_ago, eight_months_ago
 
 _LOGGER = logging.getLogger(__name__)
@@ -144,11 +144,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is None:
             today = date.today()
             default_install = six_months_ago(today).isoformat()
-            current = self.config_entry.options.get(CONF_INSTALL_DATE, default_install)
+            current_install = self.config_entry.options.get(CONF_INSTALL_DATE, default_install)
+            current_precision = self.config_entry.options.get(CONF_HALF_DEGREE_PRECISION, False)
             return self.async_show_form(
                 step_id="init",
                 data_schema=vol.Schema(
-                    {vol.Optional(CONF_INSTALL_DATE, default=current): str}
+                    {
+                        vol.Optional(CONF_INSTALL_DATE, default=current_install): str,
+                        vol.Optional(CONF_HALF_DEGREE_PRECISION, default=current_precision): bool,
+                    }
                 ),
             )
 
@@ -168,13 +172,22 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         else:
             return self.async_create_entry(
                 title="",
-                data={CONF_INSTALL_DATE: install_date.isoformat()},
+                data={
+                    CONF_INSTALL_DATE: install_date.isoformat(),
+                    CONF_HALF_DEGREE_PRECISION: user_input.get(CONF_HALF_DEGREE_PRECISION, False),
+                },
             )
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
-                {vol.Optional(CONF_INSTALL_DATE, default=user_input.get(CONF_INSTALL_DATE, "")): str}
+                {
+                    vol.Optional(CONF_INSTALL_DATE, default=user_input.get(CONF_INSTALL_DATE, "")): str,
+                    vol.Optional(
+                        CONF_HALF_DEGREE_PRECISION,
+                        default=user_input.get(CONF_HALF_DEGREE_PRECISION, False),
+                    ): bool,
+                }
             ),
             errors=errors,
         )
