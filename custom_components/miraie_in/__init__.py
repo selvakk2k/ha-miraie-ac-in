@@ -140,6 +140,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _migrate_unique_ids(hass, entry, hub)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register listener for option updates to automatically reload entry when options change
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
+
     def _log_backfill_result(task: asyncio.Task) -> None:
         if task.cancelled():
             return
@@ -147,15 +151,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if exc is not None:
             LOGGER.error("Energy statistics backfill task failed", exc_info=exc)
 
-    default_start = entry.options.get(CONF_INSTALL_DATE)
-    if default_start:
-        start_date = date.fromisoformat(default_start)
-    else:
-        start_date = six_months_ago(date.today())
+    def _get_device_install_date(device_id: str) -> date:
+        devices_opt = entry.options.get("devices", {})
+        dev_opt = devices_opt.get(device_id, {})
+        install_str = dev_opt.get(CONF_INSTALL_DATE) or entry.options.get(CONF_INSTALL_DATE)
+        if install_str:
+            return date.fromisoformat(install_str)
+        return six_months_ago(date.today())
 
     async def _run_startup_backfill(hass: HomeAssistant) -> None:
         """Run the initial backfill only once HA has fully finished starting."""
         for device in hub.home.devices:
+            start_date = _get_device_install_date(device.id)
             task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, start_date)
             )
@@ -167,13 +174,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
 
     async def nightly_backfill(now=None):
-        current_install = entry.options.get(CONF_INSTALL_DATE)
-        if current_install:
-            backfill_start = date.fromisoformat(current_install)
-        else:
-            backfill_start = six_months_ago(date.today())
-            
         for device in hub.home.devices:
+            backfill_start = _get_device_install_date(device.id)
             task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, backfill_start)
             )
@@ -185,9 +187,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update by automatically reloading the integration entry."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        await entry.runtime_data.close()
+        hub: MirAIeHub = entry.runtime_data
+        if hasattr(hub, "close"):
+            await hub.close()
+        else:
+            for task in list(getattr(hub, "background_tasks", [])):
+                task.cancel()
+            if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
+                await hub.http.close()
 
     return unload_ok
+
+
+

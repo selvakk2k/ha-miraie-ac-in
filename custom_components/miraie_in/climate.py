@@ -76,9 +76,15 @@ class MirAIeClimate(ClimateEntity):
 
         half_degree = False
         if entry is not None:
-            half_degree = entry.options.get(CONF_HALF_DEGREE_PRECISION, False)
+            devices_opt = entry.options.get("devices", {})
+            dev_opt = devices_opt.get(device.id, {})
+            if CONF_HALF_DEGREE_PRECISION in dev_opt:
+                half_degree = dev_opt[CONF_HALF_DEGREE_PRECISION]
+            else:
+                half_degree = entry.options.get(CONF_HALF_DEGREE_PRECISION, False)
 
         self._half_degree_precision = half_degree
+
 
         model_number = getattr(getattr(device, "details", None), "model_number", None)
 

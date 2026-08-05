@@ -3,6 +3,12 @@
 import sys
 import types
 from enum import Enum, IntFlag
+from pathlib import Path
+
+# Prefer local workspace miraie-ac-in library if present
+LOCAL_MIRAIE_AC = Path("/home/skk/Documents/GitHub/miraie-ac")
+if LOCAL_MIRAIE_AC.exists() and str(LOCAL_MIRAIE_AC) not in sys.path:
+    sys.path.insert(0, str(LOCAL_MIRAIE_AC))
 
 
 class _HADynamicModule(types.ModuleType):
@@ -79,7 +85,10 @@ def setup_ha_stubs():
         def __init_subclass__(cls, **kwargs):
             super().__init_subclass__()
     class OptionsFlow:
-        pass
+        def async_show_form(self, step_id, data_schema=None, errors=None):
+            return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors}
+        def async_create_entry(self, title="", data=None):
+            return {"type": "create_entry", "title": title, "data": data}
     class ConfigFlowResult:
         pass
     homeassistant.config_entries.ConfigEntry = ConfigEntry
@@ -176,6 +185,14 @@ def setup_ha_stubs():
     class StatisticMeanType(Enum):
         NONE = 0
     homeassistant.components.recorder.statistics.StatisticMeanType = StatisticMeanType
+
+    # Event helper stubs
+    import homeassistant.helpers.event
+    homeassistant.helpers.event.async_track_time_change = lambda hass, action, hour=None, minute=None, second=None: (lambda: None)
+
+    # aiohttp_client helper symbol
+    import homeassistant.helpers.aiohttp_client
+    homeassistant.helpers.aiohttp_client.async_get_clientsession = lambda hass=None: None
 
     # Ensure climate module dict strictly lacks precision constants
     for const_name in ("PRECISION_HALVES", "PRECISION_WHOLE", "PRECISION_TENTHS"):
