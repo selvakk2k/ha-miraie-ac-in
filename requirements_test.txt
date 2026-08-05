@@ -1,0 +1,4 @@
+pytest
+miraie-ac-in>=1.1.4
+aiomqtt>=2.0.1
+voluptuous

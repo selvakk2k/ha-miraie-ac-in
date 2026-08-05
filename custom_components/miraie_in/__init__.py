@@ -17,7 +17,7 @@ from datetime import date
 import aiohttp
 import asyncio
 
-from .const import DOMAIN, CONF_INSTALL_DATE
+from .const import CONF_INSTALL_DATE
 from .sensor import async_backfill_energy_statistics
 from .utils import six_months_ago
 

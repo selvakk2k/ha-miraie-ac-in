@@ -31,6 +31,8 @@ class TestModuleImports(unittest.TestCase):
     def test_import_config_flow(self):
         mod = importlib.import_module("custom_components.miraie_in.config_flow")
         self.assertIsNotNone(mod)
+        handler = mod.ConfigFlow.async_get_options_flow(None)
+        self.assertIsInstance(handler, mod.OptionsFlowHandler)
 
     def test_import_climate(self):
         mod = importlib.import_module("custom_components.miraie_in.climate")

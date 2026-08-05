@@ -54,6 +54,7 @@ async def async_get_config_entry_diagnostics(
         }
         diagnostics_data["devices"].append(async_redact_data(device_data, TO_REDACT))
         
+    # Forward-looking: in case raw API response caching is exposed by underlying library
     if hasattr(hub, "_raw_api_payload"):
         diagnostics_data["api_payload"] = async_redact_data(hub._raw_api_payload, TO_REDACT)
         
@@ -92,6 +93,7 @@ async def async_get_device_diagnostics(
                 diagnostics_data["device"] = async_redact_data(device_data, TO_REDACT)
                 break
                 
+    # Forward-looking: in case raw API response caching is exposed by underlying library
     if hasattr(hub, "_raw_api_payload"):
         diagnostics_data["api_payload"] = async_redact_data(hub._raw_api_payload, TO_REDACT)
         
