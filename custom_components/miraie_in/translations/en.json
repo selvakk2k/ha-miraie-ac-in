@@ -23,11 +23,23 @@
   "options": {
     "step": {
       "init": {
+        "title": "Select AC Units",
+        "description": "Select which AC unit(s) to configure. The integration will automatically reload to apply changes instantly without restarting Home Assistant.",
+        "data": {
+          "devices": "Select AC Unit(s)"
+        }
+      },
+      "device_settings": {
+        "title": "Configure Settings",
+        "description": "Configure settings for the selected AC unit(s). The integration will automatically reload to apply changes instantly.",
         "data": {
           "install_date": "History start date (YYYY-MM-DD)",
           "half_degree_precision": "Enable 0.5°C temperature precision"
         }
       }
+    },
+    "error": {
+      "invalid_install_date": "Date cannot be in the future or more than 8 months back (MirAIe keeps ~8 months)"
     }
   },
   "entity": {

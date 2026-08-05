@@ -140,25 +140,75 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        if user_input is None:
-            today = date.today()
-            default_install = six_months_ago(today).isoformat()
-            current_install = self.config_entry.options.get(CONF_INSTALL_DATE, default_install)
-            current_precision = self.config_entry.options.get(CONF_HALF_DEGREE_PRECISION, False)
-            return self.async_show_form(
-                step_id="init",
-                data_schema=vol.Schema(
-                    {
-                        vol.Optional(CONF_INSTALL_DATE, default=current_install): str,
-                        vol.Optional(CONF_HALF_DEGREE_PRECISION, default=current_precision): bool,
-                    }
-                ),
+        """Step 1: Select which AC units to configure (one, multiple, or all)."""
+        if not hasattr(self, "_selected_devices"):
+            self._selected_devices = ["__all__"]
+
+        hub: MirAIeHub | None = getattr(self.config_entry, "runtime_data", None)
+        devices: list[Any] = hub.home.devices if (hub and getattr(hub, "home", None)) else []
+
+        if user_input is not None:
+            self._selected_devices = user_input.get("devices", ["__all__"])
+            return await self.async_step_device_settings()
+
+        device_options = [
+            selector.SelectOptionDict(value="__all__", label="All AC Units (Global Default)")
+        ]
+        for dev in devices:
+            device_options.append(
+                selector.SelectOptionDict(value=dev.id, label=dev.friendly_name)
             )
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "devices", default=self._selected_devices
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=device_options,
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }
+        )
+
+        return self.async_show_form(step_id="init", data_schema=schema)
+
+    async def async_step_device_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 2: Configure precision and history date for the selected unit(s)."""
+        today = date.today()
+        default_install = six_months_ago(today).isoformat()
+
+        # Determine pre-filled defaults
+        current_options = dict(self.config_entry.options)
+        devices_opt = current_options.get("devices", {})
+
+        if len(self._selected_devices) == 1 and self._selected_devices[0] != "__all__":
+            target_id = self._selected_devices[0]
+            target_opt = devices_opt.get(target_id, {})
+            current_install = target_opt.get(CONF_INSTALL_DATE, current_options.get(CONF_INSTALL_DATE, default_install))
+            current_precision = target_opt.get(
+                CONF_HALF_DEGREE_PRECISION, current_options.get(CONF_HALF_DEGREE_PRECISION, False)
+            )
+        else:
+            current_install = current_options.get(CONF_INSTALL_DATE, default_install)
+            current_precision = current_options.get(CONF_HALF_DEGREE_PRECISION, False)
+
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Optional(CONF_INSTALL_DATE, default=current_install): str,
+                    vol.Optional(CONF_HALF_DEGREE_PRECISION, default=current_precision): bool,
+                }
+            )
+            return self.async_show_form(step_id="device_settings", data_schema=schema)
 
         errors = {}
         try:
             install_date = parse_install_date(user_input.get(CONF_INSTALL_DATE, ""))
-            today = date.today()
             min_date = six_months_ago(today)
             oldest_date = eight_months_ago(today)
             if install_date is None:
@@ -168,25 +218,40 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 raise InvalidInstallDate
         except InvalidInstallDate:
             errors[CONF_INSTALL_DATE] = "invalid_install_date"
-        else:
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_INSTALL_DATE: install_date.isoformat(),
-                    CONF_HALF_DEGREE_PRECISION: user_input.get(CONF_HALF_DEGREE_PRECISION, False),
-                },
-            )
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
+            schema = vol.Schema(
                 {
-                    vol.Optional(CONF_INSTALL_DATE, default=user_input.get(CONF_INSTALL_DATE, "")): str,
+                    vol.Optional(
+                        CONF_INSTALL_DATE, default=user_input.get(CONF_INSTALL_DATE, "")
+                    ): str,
                     vol.Optional(
                         CONF_HALF_DEGREE_PRECISION,
                         default=user_input.get(CONF_HALF_DEGREE_PRECISION, False),
                     ): bool,
                 }
-            ),
-            errors=errors,
-        )
+            )
+            return self.async_show_form(
+                step_id="device_settings", data_schema=schema, errors=errors
+            )
+
+        new_options = dict(current_options)
+        new_devices = dict(new_options.get("devices", {}))
+        half_degree_val = user_input.get(CONF_HALF_DEGREE_PRECISION, False)
+        install_date_str = install_date.isoformat()
+
+        if "__all__" in self._selected_devices:
+            new_options[CONF_INSTALL_DATE] = install_date_str
+            new_options[CONF_HALF_DEGREE_PRECISION] = half_degree_val
+            # Clear specific overrides if applying globally to all
+            for dev_id in list(new_devices.keys()):
+                new_devices.pop(dev_id, None)
+        else:
+            for dev_id in self._selected_devices:
+                new_devices[dev_id] = {
+                    CONF_INSTALL_DATE: install_date_str,
+                    CONF_HALF_DEGREE_PRECISION: half_degree_val,
+                }
+
+        new_options["devices"] = new_devices
+
+        return self.async_create_entry(title="", data=new_options)
+

@@ -67,6 +67,14 @@ It is a premium, custom Lovelace thermostat card specifically designed to work s
    * **Password**: Your password.
 4. Submit the form to discover your air conditioning units.
 
+### Options & Per-Device Tuning
+
+Once added, click **Configure** on the **MirAIe India** integration card to customize settings:
+* **Per-Device & Multi-Device Target Selection**: Choose to configure a single AC, a custom group of ACs, or all ACs globally.
+* **0.5°C Temperature Precision**: Toggle half-degree setpoint steps (`16.5°C`, `17.0°C`, etc.) per device.
+* **History Start Date**: Set the energy backfill start date (up to ~8 months back).
+* **Instant Automatic Reload**: Saving changes automatically reloads the integration in the background to apply your updates immediately — **no Home Assistant restart required**.
+
 ---
 
 ## Troubleshooting & Logs
