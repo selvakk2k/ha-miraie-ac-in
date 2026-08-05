@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-import calendar
 from typing import Any, Optional
 import aiohttp
 
@@ -14,9 +13,10 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import selector
 
 from .const import CONF_INSTALL_DATE, CONF_HALF_DEGREE_PRECISION, DOMAIN
-from .utils import months_ago, six_months_ago, eight_months_ago
+from .utils import six_months_ago, eight_months_ago
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,9 @@ def build_user_schema(default_install_date: str) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required("username"): str,
-            vol.Required("password"): str,
+            vol.Required("password"): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
             vol.Optional(CONF_INSTALL_DATE, default=default_install_date): str,
         }
     )
@@ -117,7 +119,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(config_entry: config_entries.ConfigEntry):
-        return OptionsFlowHandler(config_entry)
+        return OptionsFlowHandler()
 
 
 class CannotConnect(HomeAssistantError):
@@ -134,9 +136,6 @@ class InvalidInstallDate(HomeAssistantError):
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for mirAIe."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None

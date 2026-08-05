@@ -1,9 +1,7 @@
 import asyncio
 from abc import ABC, abstractmethod
-import calendar
 from datetime import date, datetime, timezone, timedelta
 
-import aiohttp
 from miraie_ac import Device as MirAIeDevice, MirAIeHub, ConsumptionPeriodType
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -32,12 +30,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dis
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
-from .const import (
-    DOMAIN,
-    CONF_INSTALL_DATE,
-    get_converti_preset_modes,
-    supports_heat_mode,
-)
+from .const import DOMAIN
 from .utils import six_months_ago
 from .logger import LOGGER
 from .utils import get_last_sunday
@@ -78,7 +71,6 @@ class MirAIeEnergySensor(SensorEntity, ABC):
 
     async def async_update(self):
         """Update the sensor state with the latest energy consumption data."""
-        now = dt_util.now()
         if not self.hub.http or self.hub.http.closed:
             LOGGER.error("MirAIe HTTP session is closed or unavailable")
             return

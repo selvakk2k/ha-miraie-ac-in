@@ -24,7 +24,8 @@
     "step": {
       "init": {
         "data": {
-          "install_date": "History start date (YYYY-MM-DD)"
+          "install_date": "History start date (YYYY-MM-DD)",
+          "half_degree_precision": "Enable 0.5°C temperature precision"
         }
       }
     }
