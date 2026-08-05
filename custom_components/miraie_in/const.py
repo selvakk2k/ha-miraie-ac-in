@@ -4,6 +4,7 @@ import re
 DOMAIN = "miraie_in"
 PACKAGE_NAME = "custom_components.miraie_in"
 CONF_INSTALL_DATE = "install_date"
+CONF_HALF_DEGREE_PRECISION = "half_degree_precision"
 
 # Possible swing state
 H0 = "H0"

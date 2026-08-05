@@ -25,6 +25,7 @@ from homeassistant.components.climate import (
     FAN_HIGH,
     FAN_OFF,
     PRECISION_WHOLE,
+    PRECISION_HALVES,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
@@ -34,6 +35,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
+    CONF_HALF_DEGREE_PRECISION,
     V0,
     V1,
     V2,
@@ -61,7 +63,7 @@ async def async_setup_entry(
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = entry.runtime_data
 
-    entities = list(map(MirAIeClimate, hub.home.devices))
+    entities = [MirAIeClimate(device, entry) for device in hub.home.devices]
 
     async_add_entities(entities)
 
@@ -69,10 +71,16 @@ async def async_setup_entry(
 class MirAIeClimate(ClimateEntity):
     """Representation of a MirAIe Climate."""
 
-    def __init__(self, device: MirAIeDevice) -> None:
+    def __init__(self, device: MirAIeDevice, entry: ConfigEntry | None = None) -> None:
 
         self._attr_should_poll: bool = False
         self._attr_has_entity_name: bool = True
+
+        half_degree = False
+        if entry is not None:
+            half_degree = entry.options.get(CONF_HALF_DEGREE_PRECISION, False)
+
+        self._half_degree_precision = half_degree
 
         model_number = getattr(getattr(device, "details", None), "model_number", None)
 
@@ -111,7 +119,7 @@ class MirAIeClimate(ClimateEntity):
         self._attr_swing_horizontal_modes = [H0, H1, H2, H3, H4, H5]
         self._attr_max_temp = 30.0
         self._attr_min_temp = 16.0
-        self._attr_target_temperature_step = 1
+        self._attr_target_temperature_step = 0.5 if half_degree else 1.0
         self._enable_turn_on_off_backwards_compatibility = False
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE
@@ -123,7 +131,7 @@ class MirAIeClimate(ClimateEntity):
             | ClimateEntityFeature.SWING_HORIZONTAL_MODE
         )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        self._attr_precision = PRECISION_WHOLE
+        self._attr_precision = PRECISION_HALVES if half_degree else PRECISION_WHOLE
         self._attr_unique_id = device.id
         self.device = device
 
@@ -181,8 +189,13 @@ class MirAIeClimate(ClimateEntity):
         return self.device.status.room_temperature
 
     @property
-    def target_temperature(self) -> float | None:
-        return self.device.status.temperature
+    def target_temperature(self) -> float | int | None:
+        temp = self.device.status.temperature
+        if temp is None:
+            return None
+        if not getattr(self, "_half_degree_precision", False):
+            return int(round(temp))
+        return temp
 
     @property
     def preset_mode(self) -> str | None:
@@ -244,10 +257,18 @@ class MirAIeClimate(ClimateEntity):
         await self.async_set_hvac_mode(HVACMode.COOL)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
+        raw_temp = kwargs.get("temperature")
+        if raw_temp is None:
+            return
 
-        LOGGER.debug(f"Set temperature to {kwargs.get('temperature')}")
+        if not getattr(self, "_half_degree_precision", False):
+            target_temp = int(round(raw_temp))
+        else:
+            target_temp = round(raw_temp * 2) / 2
 
-        await self.device.set_temperature(kwargs["temperature"])
+        LOGGER.debug(f"Set temperature to {target_temp}")
+
+        await self.device.set_temperature(target_temp)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
 
