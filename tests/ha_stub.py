@@ -263,6 +263,14 @@ def setup_ha_stubs():
     import homeassistant.helpers.aiohttp_client
     homeassistant.helpers.aiohttp_client.async_get_clientsession = lambda hass=None: None
 
+    # issue_registry helper symbol
+    import homeassistant.helpers.issue_registry
+    class IssueSeverity(Enum):
+        WARNING = "warning"
+        CRITICAL = "critical"
+    homeassistant.helpers.issue_registry.IssueSeverity = IssueSeverity
+    homeassistant.helpers.issue_registry.async_create_issue = lambda *args, **kwargs: None
+
     # Ensure climate module dict strictly lacks precision constants
     for const_name in ("PRECISION_HALVES", "PRECISION_WHOLE", "PRECISION_TENTHS"):
         if const_name in homeassistant.components.climate.__dict__:
