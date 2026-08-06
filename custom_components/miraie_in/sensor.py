@@ -358,7 +358,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         ]
     async_add_entities(energy_sensors, update_before_add=True)
 
-    poll_sensors = [s for s in energy_sensors if not isinstance(s, MirAIeEnergyHistorySensor)]
+    poll_sensors = list(energy_sensors)
 
     async def update_sensors(now=None):
         # Gather updates concurrently to avoid sequential HTTP requests
