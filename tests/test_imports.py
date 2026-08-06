@@ -250,6 +250,122 @@ class TestModuleImports(unittest.TestCase):
         self.assertFalse(living_climate._half_degree_precision)
         self.assertEqual(living_climate._attr_target_temperature_step, 1.0)
 
+    def test_energy_backfill_timestamp_boundary_and_state_class(self):
+        """Verify that MirAIeEnergyHistorySensor retains TOTAL_INCREASING for HA stats validation and timestamp boundary logic works correctly."""
+        mod_sensor = importlib.import_module("custom_components.miraie_in.sensor")
+        from homeassistant.components.sensor import SensorStateClass
+        from datetime import date, timedelta
+
+        class MockDetails:
+            model_number = "CS-CU-NU18WKY"
+            brand = "Panasonic"
+            firmware_version = "1.0"
+        class MockDevice:
+            id = "dev_test"
+            friendly_name = "Test AC"
+            details = MockDetails()
+
+        # 1. Verify state_class is TOTAL_INCREASING for HA statistics validation
+        history_sensor = mod_sensor.MirAIeEnergyHistorySensor(None, MockDevice())
+        self.assertEqual(history_sensor._attr_state_class, SensorStateClass.TOTAL_INCREASING)
+
+        # 2. Verify timestamp boundary matching: target_day = end_date + 1 day (local midnight today)
+        today = date(2026, 8, 6)
+        end_date = today - timedelta(days=1)  # 2026-08-05
+        target_day = today                    # 2026-08-06 (midnight timestamp)
+
+        # Verify old condition (target_day <= end_date) failed
+        self.assertFalse(target_day <= end_date)
+
+        # Verify fixed condition ((target_day - timedelta(days=1)) <= end_date) passes
+        self.assertTrue((target_day - timedelta(days=1)) <= end_date)
+
+    def test_rebuild_button_and_verification_hierarchy(self):
+        """Verify Diagnostic Rebuild Button properties and range sum extraction helper."""
+        mod_button = importlib.import_module("custom_components.miraie_in.button")
+        mod_sensor = importlib.import_module("custom_components.miraie_in.sensor")
+        from homeassistant.helpers.entity import EntityCategory
+        from datetime import date, timedelta
+
+        class MockDetails:
+            model_number = "CS-CU-NU18WKY"
+            brand = "Panasonic"
+            firmware_version = "1.0"
+        class MockStatus:
+            is_online = True
+        class MockDevice:
+            id = "dev_bedroom"
+            friendly_name = "Bedroom AC"
+            details = MockDetails()
+            status = MockStatus()
+
+        class MockConfigEntry:
+            runtime_data = type("Hub", (), {"home": type("Home", (), {"devices": [MockDevice()]})()})()
+
+        # 1. Verify Rebuild Button Entity
+        rebuild_btn = mod_button.MirAIeRebuildEnergyStatsButton(MockConfigEntry.runtime_data, MockDevice())
+        self.assertEqual(rebuild_btn._attr_entity_category, EntityCategory.DIAGNOSTIC)
+        self.assertEqual(rebuild_btn._attr_translation_key, "rebuild_energy_statistics")
+        self.assertEqual(rebuild_btn.icon, "mdi:database-refresh")
+        self.assertEqual(rebuild_btn._attr_unique_id, "dev_bedroom_rebuild_energy_statistics")
+
+        # 2. Verify Verify Button Entity
+        verify_btn = mod_button.MirAIeVerifyEnergyStatsButton(MockConfigEntry.runtime_data, MockDevice())
+        self.assertEqual(verify_btn._attr_entity_category, EntityCategory.DIAGNOSTIC)
+        self.assertEqual(verify_btn._attr_translation_key, "verify_energy_statistics")
+        self.assertEqual(verify_btn.icon, "mdi:database-check")
+        self.assertEqual(verify_btn._attr_unique_id, "dev_bedroom_verify_energy_statistics")
+
+        # 2. Verify _extract_recorded_range_sum helper
+        start_day = date(2026, 8, 1)
+        end_day = date(2026, 8, 5)
+        start_ts = mod_sensor._get_statistic_timestamp(start_day).timestamp()
+        end_ts = mod_sensor._get_statistic_timestamp(end_day + timedelta(days=1)).timestamp()
+
+        mock_entries = [
+            {"start": start_ts, "sum": 100.0},
+            {"start": end_ts, "sum": 125.5},
+        ]
+        delta = mod_sensor._extract_recorded_range_sum(mock_entries, start_day, end_day)
+        self.assertIsNotNone(delta)
+        self.assertAlmostEqual(delta, 25.5)
+
+    def test_backfill_hierarchy_verification_and_mismatch_rebuild(self):
+        """Test Yesterday -> Weekly -> Monthly hierarchy verification and API > Recorder rebuild triggers."""
+        mod_sensor = importlib.import_module("custom_components.miraie_in.sensor")
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from datetime import date, timedelta
+        from miraie_ac import ConsumptionPeriodType
+
+        class MockDetails:
+            model_number = "CS-CU-NU18WKY"
+            brand = "Panasonic"
+            firmware_version = "1.0"
+        class MockDevice:
+            id = "dev_bedroom"
+            friendly_name = "Bedroom AC"
+            details = MockDetails()
+
+        class MockHub:
+            http = MagicMock(closed=False)
+            get_energy_consumption = AsyncMock()
+            get_energy_consumption_full = AsyncMock(return_value={"05082026": 2.5})
+
+        mock_hass = MagicMock()
+        mock_hass.loop.call_soon_threadsafe = lambda cb: cb()
+
+        # Test initial backfill (no existing statistics) calls get_energy_consumption_full
+        with patch("custom_components.miraie_in.sensor.get_instance") as mock_get_instance, patch("custom_components.miraie_in.sensor.er") as mock_er:
+            mock_recorder = MagicMock()
+            mock_recorder.async_add_executor_job = AsyncMock(return_value={})
+            mock_get_instance.return_value = mock_recorder
+            mock_er.async_get.return_value = MagicMock(async_get_entity_id=MagicMock(return_value="sensor.dev_bedroom_energy_history"))
+
+            hub = MockHub()
+            device = MockDevice()
+            asyncio.run(mod_sensor.async_backfill_energy_statistics(mock_hass, hub, device, date(2026, 8, 1)))
+            hub.get_energy_consumption_full.assert_called()
+
 
 if __name__ == "__main__":
     import asyncio

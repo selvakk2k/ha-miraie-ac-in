@@ -95,6 +95,11 @@ def setup_ha_stubs():
     homeassistant.config_entries.ConfigFlow = ConfigFlow
     homeassistant.config_entries.OptionsFlow = OptionsFlow
     homeassistant.config_entries.ConfigFlowResult = ConfigFlowResult
+    import homeassistant.exceptions
+    class HomeAssistantError(Exception):
+        pass
+    homeassistant.exceptions.HomeAssistantError = HomeAssistantError
+
     import homeassistant.components.sensor
 
     # homeassistant.const symbols
@@ -182,13 +187,77 @@ def setup_ha_stubs():
 
     # Recorder symbols
     import homeassistant.components.recorder.statistics
+    import homeassistant.components.recorder.models
     class StatisticMeanType(Enum):
         NONE = 0
+    class StatisticData(dict):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.__dict__.update(kwargs)
+    class StatisticMetaData(dict):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.__dict__.update(kwargs)
     homeassistant.components.recorder.statistics.StatisticMeanType = StatisticMeanType
+    homeassistant.components.recorder.models.StatisticData = StatisticData
+    homeassistant.components.recorder.models.StatisticMetaData = StatisticMetaData
+    homeassistant.components.recorder.statistics.StatisticData = StatisticData
+    homeassistant.components.recorder.statistics.StatisticMetaData = StatisticMetaData
+    homeassistant.components.recorder.statistics.async_import_statistics = lambda hass, metadata, statistics: None
+    homeassistant.components.recorder.statistics.clear_statistics = lambda instance, statistic_ids: None
+
+    class MockRecorderInstance:
+        def async_clear_statistics(self, statistic_ids):
+            pass
+        async def async_block_till_done(self):
+            pass
+        async def async_add_executor_job(self, target, *args):
+            return target(*args) if callable(target) else None
+
+    # Selector helper stubs
+    import homeassistant.helpers.selector as selector_mod
+    class SelectOptionDict(dict):
+        def __init__(self, value="", label=""):
+            super().__init__(value=value, label=label)
+            self.value = value
+            self.label = label
+    class SelectSelector(dict):
+        def __init__(self, *args, **kwargs):
+            super().__init__(**kwargs)
+    class SelectSelectorConfig(dict):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.__dict__.update(kwargs)
+    class SelectSelectorMode(Enum):
+        DROPDOWN = "dropdown"
+    selector_mod.SelectOptionDict = SelectOptionDict
+    selector_mod.SelectSelector = SelectSelector
+    selector_mod.SelectSelectorConfig = SelectSelectorConfig
+    selector_mod.SelectSelectorMode = SelectSelectorMode
 
     # Event helper stubs
     import homeassistant.helpers.event
     homeassistant.helpers.event.async_track_time_change = lambda hass, action, hour=None, minute=None, second=None: (lambda: None)
+
+    # Entity helper stubs
+    import homeassistant.helpers.entity
+    class EntityCategory(Enum):
+        CONFIG = "config"
+        DIAGNOSTIC = "diagnostic"
+    homeassistant.helpers.entity.EntityCategory = EntityCategory
+
+    # Dispatcher helper stubs
+    import homeassistant.helpers.dispatcher
+    homeassistant.helpers.dispatcher.async_dispatcher_send = lambda *args, **kwargs: None
+    homeassistant.helpers.dispatcher.async_dispatcher_connect = lambda *args, **kwargs: (lambda: None)
+
+    # dt_util helper stub
+    import homeassistant.util.dt as dt_util
+    from datetime import datetime, timezone
+    dt_util.now = lambda: datetime.now(timezone.utc)
+    dt_util.start_of_local_day = lambda dt: dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    dt_util.as_utc = lambda dt: dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    dt_util.as_local = lambda dt: dt
 
     # aiohttp_client helper symbol
     import homeassistant.helpers.aiohttp_client

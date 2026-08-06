@@ -181,7 +181,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             task.add_done_callback(_log_backfill_result)
 
-    unsub = async_track_time_change(hass, nightly_backfill, hour=0, minute=5, second=0)
+    # Run nightly backfill at 02:05 AM IST to ensure Panasonic cloud servers have finalized yesterday's daily batch
+    unsub = async_track_time_change(hass, nightly_backfill, hour=2, minute=5, second=0)
     entry.async_on_unload(unsub)
 
     return True

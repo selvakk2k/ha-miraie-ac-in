@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from miraie_ac import (
     Device as MirAIeDevice,
     MirAIeHub,
@@ -11,10 +13,12 @@ from miraie_ac import (
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .sensor import async_backfill_energy_statistics, async_rebuild_full_energy_statistics
 
 PARALLEL_UPDATES = 0
 from .logger import LOGGER
@@ -23,10 +27,14 @@ from .logger import LOGGER
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the MirAIe Button Entities."""
+    """Set up the MirAIe button platform."""
     hub: MirAIeHub = entry.runtime_data
 
-    entities = [MirAIeCoilCleanButton(device) for device in hub.home.devices]
+    entities = []
+    for device in hub.home.devices:
+        entities.append(MirAIeCoilCleanButton(device))
+        entities.append(MirAIeRebuildEnergyStatsButton(hub, device))
+        entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
 
     async_add_entities(entities)
 
@@ -40,8 +48,6 @@ class MirAIeCoilCleanButton(ButtonEntity):
         self._attr_translation_key = "start_coil_clean"
         self._attr_unique_id = f"{device.id}_start_coil_clean"
         self.device = device
-
-
 
     @property
     def icon(self) -> str | None:
@@ -70,3 +76,72 @@ class MirAIeCoilCleanButton(ButtonEntity):
         """Press the button."""
         LOGGER.debug("Triggering coil clean cycle")
         await self.device.set_preset_mode(PresetMode.CLEAN)
+
+
+class MirAIeRebuildEnergyStatsButton(ButtonEntity):
+    """Diagnostic button entity to force a full 6-8 month rebuild of energy statistics."""
+
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice) -> None:
+        self.hub = hub
+        self.device = device
+        self._attr_should_poll = False
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "rebuild_energy_statistics"
+        self._attr_unique_id = f"{device.id}_rebuild_energy_statistics"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def icon(self) -> str:
+        """Return the icon for the rebuild button."""
+        return "mdi:database-refresh"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+            sw_version=self.device.details.firmware_version,
+        )
+
+    async def async_press(self) -> None:
+        """Trigger a full 6-8 month energy statistics rebuild for this device."""
+        LOGGER.info("User requested full energy statistics rebuild for %s", self.device.friendly_name)
+        await async_rebuild_full_energy_statistics(self.hass, self.hub, self.device)
+
+
+class MirAIeVerifyEnergyStatsButton(ButtonEntity):
+    """Diagnostic button entity to run Yesterday -> Weekly -> Monthly gating verification."""
+
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice) -> None:
+        self.hub = hub
+        self.device = device
+        self._attr_should_poll = False
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "verify_energy_statistics"
+        self._attr_unique_id = f"{device.id}_verify_energy_statistics"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def icon(self) -> str:
+        """Return the icon for the verify button."""
+        return "mdi:database-check"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+            sw_version=self.device.details.firmware_version,
+        )
+
+    async def async_press(self) -> None:
+        """Trigger Yesterday -> Weekly -> Monthly gating verification."""
+        LOGGER.info("[%s] Manual Diagnostic Button pressed: Running Yesterday -> Weekly -> Monthly gating verification", self.device.friendly_name)
+        default_start_date = dt_util.now().date() - timedelta(days=240)
+        await async_backfill_energy_statistics(self.hass, self.hub, self.device, default_start_date, force_full_rebuild=False)

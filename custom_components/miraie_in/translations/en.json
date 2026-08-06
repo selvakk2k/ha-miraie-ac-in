@@ -75,6 +75,12 @@
     "button": {
       "start_coil_clean": {
         "name": "Start Coil Clean"
+      },
+      "rebuild_energy_statistics": {
+        "name": "Rebuild Energy Statistics"
+      },
+      "verify_energy_statistics": {
+        "name": "Verify Energy Statistics"
       }
     },
     "binary_sensor": {
