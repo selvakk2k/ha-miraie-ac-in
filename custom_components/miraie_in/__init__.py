@@ -13,11 +13,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.start import async_at_started
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
+from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from datetime import date
 import aiohttp
 import asyncio
 
-from .const import CONF_INSTALL_DATE
+from .const import CONF_INSTALL_DATE, DOMAIN
 from .sensor import async_backfill_energy_statistics
 from .utils import six_months_ago
 
@@ -107,6 +108,23 @@ def _migrate_unique_ids(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up mirAIe from a config entry."""
 
+    loaded_components = getattr(getattr(hass, "config", None), "components", set())
+    configured_domains = set(hass.config_entries.async_domains()) if hasattr(hass, "config_entries") and hasattr(hass.config_entries, "async_domains") else set()
+
+    if "miraie" in loaded_components or "miraie" in configured_domains:
+        LOGGER.warning(
+            "Conflicting integration 'miraie' detected! Running both 'miraie' and 'miraie_in' "
+            "simultaneously causes MQTT connection drops and database corruption. Please remove one of the integrations."
+        )
+        async_create_issue(
+            hass,
+            DOMAIN,
+            "conflicting_miraie_integration",
+            is_fixable=False,
+            issue_domain=DOMAIN,
+            severity=IssueSeverity.WARNING,
+            translation_key="conflicting_miraie_integration",
+        )
 
     session = async_get_clientsession(hass)
     # If a previously-installed miraie-ac-in version is still loaded in this
