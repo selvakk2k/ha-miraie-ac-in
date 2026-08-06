@@ -21,6 +21,10 @@ from .utils import six_months_ago, eight_months_ago
 _LOGGER = logging.getLogger(__name__)
 
 
+class InvalidInstallDate(HomeAssistantError):
+    """Error to indicate invalid install date."""
+
+
 def parse_install_date(value: str) -> Optional[date]:
     if not value:
         return None

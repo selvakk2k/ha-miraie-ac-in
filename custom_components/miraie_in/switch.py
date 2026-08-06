@@ -1,7 +1,7 @@
 """The MirAIe climate platform."""
 
 from __future__ import annotations
-from typing import Any
+
 from miraie_ac import (
     Device as MirAIeDevice,
     MirAIeHub,
