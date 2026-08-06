@@ -26,11 +26,23 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 * **Standalone Room Temperature**: Exposes a dedicated temperature sensor entity for easier historical tracking and graphing.
 * **Wi-Fi Strength & Last Control Source**: Sensors tracking Wi-Fi RSSI (in dBm) and whether the unit was last adjusted via the remote or the app.
 * **Total Energy & Historical Backfill**: Exposes a `Total Energy` sensor (`TOTAL_INCREASING`) that automatically backfills historical daily energy data from MirAIe (up to ~8 months) directly into Home Assistant's long-term recorder statistics database for seamless use in the Energy Dashboard.
+* **Energy Verification & Diagnostic Buttons**: Implements automatic 3-stage (`Yesterday -> Weekly -> Monthly`) API reconciliation to protect statistics integrity, and adds **Rebuild Energy Statistics** (`mdi:database-refresh`) and **Verify Energy Statistics** (`mdi:database-check`) diagnostic buttons on the device page.
 * **Core Diagnostics**: Supports Home Assistant Core Diagnostics. You can download a diagnostic file for the integration directly from the Device page, making it easier to troubleshoot issues without exposing sensitive credentials.
 
 ### 3. Stability & Code Cleanup
 * **Resource Optimization**: Decoupled HTTP ClientSession scopes to prevent resource leaks when reloading.
 * **Duplicate Prevention**: Enforces a unique identifier constraint based on the username during the configuration flow.
+
+---
+
+## Tested Models
+
+This integration has been explicitly tested on the following hardware models:
+
+| Model | Source | Features Verified |
+| :--- | :--- | :--- |
+| **CS-CU-EU18CKY5XFM** | Tested in this fork | Inverter, Firmware 3.02+, Converti 7-in-1, Energy Verification & Diagnostic Entities |
+| **CS-CU-SU18ZKYWT** | Tested upstream | Inverter, Converti Series |
 
 ---
 
@@ -117,7 +129,7 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 
 * **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
 * **Update Frequency**: Primary thermostat commands are sent instantly via `cloud_push` (MQTT), while aggregate energy consumption statistics are updated via background polling.
-* **Total Energy & Daily Backfill Scope**: The `Total Energy` sensor (`sensor.<device>_energy_history`) updates strictly once daily at `00:05 AM` with completed daily totals up to yesterday. Because the MirAIe API reports energy in daily aggregates, live intraday consumption for the current day is omitted from the long-term history sensor to prevent recorder race conditions and database corruption. Real-time consumption for the current day is reported separately by the `Today's Energy` sensor (`sensor.<device>_today_energy`).
+* **Total Energy & Daily Backfill Scope**: Nightly backfill reconciliations run automatically at `02:05 AM IST` to align with Panasonic India's post-midnight cloud database processing window. The `Total Energy` sensor (`sensor.<device>_energy_history`) combines historical daily baselines with live intraday consumption (`today_val`) so your Energy Dashboard updates smoothly in real time without dips or race conditions.
 
 ---
 
