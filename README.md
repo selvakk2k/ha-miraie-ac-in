@@ -46,6 +46,14 @@ This integration has been explicitly tested on the following hardware models:
 
 ---
 
+## Caveats & Integration Limitations
+
+* **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
+* **Update Frequency**: Primary thermostat commands are sent instantly via `cloud_push` to Panasonic's cloud MQTT broker, while aggregate energy consumption statistics are updated via background polling.
+* **Total Energy & Daily Backfill Scope**: Nightly backfill reconciliations run automatically at `02:05 AM IST` to align with Panasonic India's post-midnight cloud database processing window. The `Total Energy` sensor (`sensor.<device>_energy_history`) combines historical daily baselines with live intraday consumption (`today_val`) so your Energy Dashboard updates smoothly in real time without dips or race conditions.
+
+---
+
 ## Companion Lovelace Card
 
 To get the most out of this integration, check out the [**MirAIe AC Lovelace Card**](https://github.com/selvakk2k/miraie-ac-card-in)!
@@ -125,14 +133,6 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 
 ---
 
-## Caveats & Firmware Limitations
-
-* **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
-* **Update Frequency**: Primary thermostat commands are sent instantly via `cloud_push` (MQTT), while aggregate energy consumption statistics are updated via background polling.
-* **Total Energy & Daily Backfill Scope**: Nightly backfill reconciliations run automatically at `02:05 AM IST` to align with Panasonic India's post-midnight cloud database processing window. The `Total Energy` sensor (`sensor.<device>_energy_history`) combines historical daily baselines with live intraday consumption (`today_val`) so your Energy Dashboard updates smoothly in real time without dips or race conditions.
-
----
-
 ## Credits & License
 
 ### Upstream Authors & Contributors
@@ -141,6 +141,6 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 
 ### Fork Authors & Contributors
 * Historical energy statistics backfill feature contributed by [@shashi278](https://github.com/shashi278).
-* Fork enhancements (firmware 3.02+ temperature fix, Converti 8-in-1, and MQTT resource leak resolutions) developed by [@selvakk2k](https://github.com/selvakk2k) with assistance from **Claude** (Anthropic) and **Gemini/Antigravity** (Google DeepMind).
+* Fork enhancements (firmware 3.02+ temperature fix, Converti 8-in-1, and Panasonic cloud MQTT connection resolutions) developed by [@selvakk2k](https://github.com/selvakk2k) with assistance from **Claude** (Anthropic) and **Gemini/Antigravity** (Google DeepMind).
 
 Licensed under the **Apache License 2.0**. See the `LICENSE` file for the original license text.
