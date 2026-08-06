@@ -24,6 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
@@ -264,7 +265,7 @@ class MirAIeMonthlyEnergySensor(MirAIeEnergySensor):
             self._attr_last_reset = now
 
 
-class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
+class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor, RestoreEntity):
     """Cumulative energy history sensor for long-term statistics & Energy Dashboard."""
 
     def __init__(self, hub: MirAIeHub, device: MirAIeDevice):
@@ -272,6 +273,8 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
         self._attr_translation_key = "energy_history"
         self._attr_unique_id = f"{device.id}_energy_history"
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._restored_last_state: float | None = None
 
     @property
     def sensor_label(self) -> str:
@@ -280,6 +283,14 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
     async def async_added_to_hass(self):
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (None, "unavailable", "unknown"):
+            try:
+                self._restored_last_state = float(last_state.state)
+                LOGGER.debug("%s: Restored last state=%s kWh from HA state machine", self.sensor_label, self._restored_last_state)
+            except (ValueError, TypeError):
+                pass
+
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
@@ -298,21 +309,23 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor):
         self.async_schedule_update_ha_state(True)
 
     async def get_energy_consumption(self) -> float | None:
-        """Fetch total cumulative energy consumption up to right now (yesterday's baseline + today's running energy)."""
-        if not hasattr(self.device, "backfilled_energy_sum"):
-            LOGGER.debug("%s: Waiting for backfill to complete before reporting state", self.sensor_label)
-            return None
-
-        base_sum = max(0.0, float(getattr(self.device, "backfilled_energy_sum", 0.0)))
+        """Fetch total cumulative energy consumption (yesterday's baseline + today's running energy)."""
         today_val = 0.0
         try:
             today_consumption = await super().get_energy_consumption()
             if today_consumption is not None:
                 today_val = max(0.0, float(today_consumption))
         except Exception as e:
-            LOGGER.debug("%s: Could not fetch today's consumption for total state: %s", self.sensor_label, e)
+            LOGGER.debug("%s: Could not fetch today's consumption: %s", self.sensor_label, e)
 
-        return round(base_sum + today_val, 2)
+        base_sum = float(getattr(self.device, "backfilled_energy_sum", 0.0))
+        if base_sum > 0.0:
+            return round(base_sum + today_val, 2)
+
+        if self._restored_last_state is not None and self._restored_last_state > today_val:
+            return round(max(self._restored_last_state, self._restored_last_state + today_val), 2)
+
+        return None
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -331,20 +344,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 get_last_statistics, hass, 100, statistic_id, False, {"sum"}
             )
             if last_stats and last_stats.get(statistic_id):
-                entries = last_stats[statistic_id]
-                end_date = dt_util.now().date() - timedelta(days=1)
+                entries = sorted(last_stats[statistic_id], key=lambda e: float(e.get("start") or 0.0))
                 for entry in reversed(entries):
                     raw_sum = float(entry.get("sum") or 0.0)
-                    if not (0 <= raw_sum <= 400):
-                        continue
-                    entry_utc = datetime.fromtimestamp(entry["start"], tz=timezone.utc)
-                    entry_local = dt_util.as_local(entry_utc)
-                    for d in (entry_local.date(), entry_local.date() - timedelta(days=1)):
-                        target_day = d + timedelta(days=1)
-                        if entry_utc == _get_statistic_timestamp(target_day) and (target_day - timedelta(days=1)) <= end_date:
-                            setattr(device, "backfilled_energy_sum", raw_sum)
-                            break
-                    if hasattr(device, "backfilled_energy_sum"):
+                    if 0 < raw_sum <= 400:
+                        setattr(device, "backfilled_energy_sum", raw_sum)
+                        LOGGER.debug("[%s] Restored backfilled_energy_sum=%s kWh from recorder statistics", device.friendly_name, raw_sum)
                         break
         except Exception as e:
             LOGGER.debug("Could not pre-initialize backfilled_energy_sum for %s: %s", device.friendly_name, e)
@@ -787,6 +792,7 @@ async def _async_rebuild_from_api(
     statistics.append(StatisticData(start=start_baseline_dt, sum=last_sum, state=last_sum))
 
     first_day = last_day = None
+
     for key in sorted(daily.keys(), key=lambda k: datetime.strptime(k, "%d%m%Y").date()):
         day = datetime.strptime(key, "%d%m%Y").date()
         if day < start_date or day > end_date:
@@ -795,7 +801,7 @@ async def _async_rebuild_from_api(
         val_float = max(0.0, float(value))
         running_sum += val_float
         end_dt = _get_statistic_timestamp(day + timedelta(days=1))
-        statistics.append(StatisticData(start=end_dt, sum=running_sum, state=running_sum))
+        statistics.append(StatisticData(start=end_dt, sum=round(running_sum, 2), state=round(running_sum, 2)))
         if first_day is None:
             first_day = day
         last_day = day
