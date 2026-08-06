@@ -7,7 +7,9 @@ from pathlib import Path
 
 # Prefer local workspace miraie-ac-in library if present
 LOCAL_MIRAIE_AC = Path("/home/skk/Documents/GitHub/miraie-ac")
-if LOCAL_MIRAIE_AC.exists() and str(LOCAL_MIRAIE_AC) not in sys.path:
+if LOCAL_MIRAIE_AC.exists():
+    if str(LOCAL_MIRAIE_AC) in sys.path:
+        sys.path.remove(str(LOCAL_MIRAIE_AC))
     sys.path.insert(0, str(LOCAL_MIRAIE_AC))
 
 
@@ -30,6 +32,30 @@ class _HADynamicModule(types.ModuleType):
 
 
 def setup_ha_stubs():
+    if LOCAL_MIRAIE_AC.exists():
+        if str(LOCAL_MIRAIE_AC) in sys.path:
+            sys.path.remove(str(LOCAL_MIRAIE_AC))
+        sys.path.insert(0, str(LOCAL_MIRAIE_AC))
+
+    pan_mod = types.ModuleType("panasonic_ac_models")
+    class ACModelLookup:
+        @classmethod
+        def is_cooling_only(cls, model):
+            m = str(model)
+            return False if ("EZ" in m or "KZ" in m) else True
+        @classmethod
+        def get_capabilities(cls, model):
+            m = str(model)
+            has_heat = 1 if ("EZ" in m or "KZ" in m) else 0
+            has_nanoe = 1 if ("XU" in m or "HU" in m) else 0
+            converti_type = "8-in-1" if "BKY" in m else ("7-in-1" if "AKY" in m or "NU" in m else "none")
+            return {
+                "has_heat_mode": has_heat,
+                "has_nanoe": has_nanoe,
+                "converti_type": converti_type,
+            }
+    pan_mod.ACModelLookup = ACModelLookup
+    sys.modules["panasonic_ac_models"] = pan_mod
     try:
         import voluptuous
     except ImportError:
@@ -270,6 +296,15 @@ def setup_ha_stubs():
         CRITICAL = "critical"
     homeassistant.helpers.issue_registry.IssueSeverity = IssueSeverity
     homeassistant.helpers.issue_registry.async_create_issue = lambda *args, **kwargs: None
+
+    # restore_state helper stub
+    import homeassistant.helpers.restore_state
+    class RestoreEntity:
+        async def async_added_to_hass(self):
+            pass
+        async def async_get_last_state(self):
+            return None
+    homeassistant.helpers.restore_state.RestoreEntity = RestoreEntity
 
     # Ensure climate module dict strictly lacks precision constants
     for const_name in ("PRECISION_HALVES", "PRECISION_WHOLE", "PRECISION_TENTHS"):
