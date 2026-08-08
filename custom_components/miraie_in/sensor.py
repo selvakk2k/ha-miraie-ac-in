@@ -1,4 +1,5 @@
 import asyncio
+import re
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timezone, timedelta
 
@@ -188,6 +189,63 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
             )
             raise
 
+    async def async_update(self):
+        """Update today's energy consumption sensor state and sync recorder statistic."""
+        await super().async_update()
+        if self._attr_native_value is not None:
+            await self._async_sync_today_statistic(float(self._attr_native_value))
+
+    async def _async_sync_today_statistic(self, today_val: float) -> None:
+        """Sync today's live energy consumption to recorder statistics DB."""
+        try:
+            clean_dev_id = re.sub(r"[^a-z0-9_]", "_", self.device.id.lower())
+            statistic_id = f"sensor.{clean_dev_id}_energy_history"
+            baseline_sum = float(getattr(self.device, "backfilled_energy_sum", 0.0))
+
+            if baseline_sum <= 0.0:
+                last_stats = await get_instance(self.hass).async_add_executor_job(
+                    get_last_statistics, self.hass, 50, statistic_id, False, {"sum"}
+                )
+                if last_stats and last_stats.get(statistic_id):
+                    today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
+                    past_entries = [e for e in last_stats[statistic_id] if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
+                    if past_entries:
+                        baseline_sum = float(past_entries[-1].get("sum") or 0.0)
+                        setattr(self.device, "backfilled_energy_sum", baseline_sum)
+
+            if baseline_sum <= 0.0:
+                return
+
+            expected_sum = round(baseline_sum + max(0.0, float(today_val)), 2)
+            now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
+
+            # Check existing today statistic in DB to avoid unneeded imports
+            last_stats = await get_instance(self.hass).async_add_executor_job(
+                get_last_statistics, self.hass, 5, statistic_id, False, {"sum"}
+            )
+            today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
+            if last_stats and last_stats.get(statistic_id):
+                today_entries = [e for e in last_stats[statistic_id] if float(e.get("start") or 0.0) >= today_start_ts]
+                if today_entries:
+                    latest_today_sum = float(today_entries[-1].get("sum") or 0.0)
+                    if abs(latest_today_sum - expected_sum) < 0.02:
+                        return
+
+            metadata = StatisticMetaData(
+                has_sum=True,
+                has_mean=False,
+                mean_type=MEAN_TYPE_NONE,
+                unit_class="energy",
+                name=f"{self.device.friendly_name} Energy History",
+                source="recorder",
+                statistic_id=statistic_id,
+                unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            )
+            async_import_statistics(self.hass, metadata, [StatisticData(start=now_dt, sum=expected_sum, state=expected_sum)])
+            LOGGER.info("[%s] Synced today's live energy statistic to DB: %s kWh", self.device.friendly_name, expected_sum)
+        except Exception as e:
+            LOGGER.debug("[%s] Failed to sync today's energy statistic: %s", self.device.friendly_name, e)
+
     async def _set_last_reset_time(self):
         """Set the last reset time for the today energy sensor entity."""
         now = dt_util.now()
@@ -319,12 +377,16 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor, RestoreEntity):
             LOGGER.debug("%s: Could not fetch today's consumption: %s", self.sensor_label, e)
 
         base_sum = float(getattr(self.device, "backfilled_energy_sum", 0.0))
+        if base_sum <= 0.0 and self._restored_last_state is not None and self._restored_last_state > 50.0:
+            base_sum = max(0.0, self._restored_last_state - today_val)
+
         if base_sum > 0.0:
             return round(base_sum + today_val, 2)
 
-        if self._restored_last_state is not None and self._restored_last_state > today_val:
-            return round(max(self._restored_last_state, self._restored_last_state + today_val), 2)
+        if self._restored_last_state is not None and self._restored_last_state > 50.0:
+            return round(self._restored_last_state + today_val, 2)
 
+        # Do NOT report uninitialized partial state (e.g. today_val alone) to prevent negative statistic drops
         return None
 
 
@@ -334,11 +396,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     
     # 1. Setup Energy Sensors (which need active polling)
     energy_sensors = []
-    entity_reg = er.async_get(hass)
     for device in hub.home.devices:
-        statistic_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_energy_history")
-        if not statistic_id:
-            statistic_id = f"sensor.{device.id}_energy_history"
+        clean_dev_id = re.sub(r"[^a-z0-9_]", "_", device.id.lower())
+        statistic_id = f"sensor.{clean_dev_id}_energy_history"
         try:
             last_stats = await get_instance(hass).async_add_executor_job(
                 get_last_statistics, hass, 100, statistic_id, False, {"sum"}
@@ -359,7 +419,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             MirAIeTodayEnergySensor(hub, device),
             MirAIeWeeklyEnergySensor(hub, device),
             MirAIeMonthlyEnergySensor(hub, device),
-            MirAIeEnergyHistorySensor(hub, device),
         ]
     async_add_entities(energy_sensors, update_before_add=True)
 
@@ -576,10 +635,8 @@ async def async_backfill_energy_statistics(
     if not hub.http or hub.http.closed:
         hub.http = async_get_clientsession(hass)
 
-    entity_reg = er.async_get(hass)
-    statistic_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_energy_history")
-    if not statistic_id:
-        statistic_id = f"sensor.{device.id}_energy_history"
+    clean_dev_id = re.sub(r"[^a-z0-9_]", "_", device.id.lower())
+    statistic_id = f"sensor.{clean_dev_id}_energy_history"
 
     end_date = dt_util.now().date() - timedelta(days=1)
     LOGGER.info("[%s] Starting energy statistics verification & backfill check (force_full_rebuild=%s, end_date=%s)", device.friendly_name, force_full_rebuild, end_date.isoformat())
@@ -609,11 +666,15 @@ async def async_backfill_energy_statistics(
 
     LOGGER.debug("[%s] Found %s existing statistic entries in Home Assistant recorder DB", device.friendly_name, len(entries))
 
-    # Basic sanity checks on existing entries
+    # Basic sanity checks on existing historical entries (excluding today's intraday entries)
     latest_valid_timestamp = dt_util.now()
+    today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
     corrupt = False
     prev_sum = None
     for entry in entries:
+        ts = float(entry.get("start") or 0.0)
+        if ts >= today_start_ts:
+            continue
         entry_utc = datetime.fromtimestamp(entry["start"], tz=timezone.utc)
         raw_sum = float(entry.get("sum") or 0.0)
         reason = None
@@ -630,7 +691,7 @@ async def async_backfill_energy_statistics(
 
         if reason is not None:
             LOGGER.warning(
-                "[%s] Corrupted/inflated energy statistics detected (reason=%s, start=%s, sum=%s); clearing and rebuilding from API",
+                "[%s] Corrupted/inflated energy statistics detected (reason=%s, start=%s, sum=%s); rebuilding from API",
                 device.friendly_name,
                 reason,
                 entry_utc.isoformat(),
@@ -641,7 +702,6 @@ async def async_backfill_energy_statistics(
         prev_sum = raw_sum
 
     if corrupt:
-        await _async_clear_statistics_helper(hass, statistic_id)
         await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
         return
 
@@ -674,7 +734,6 @@ async def async_backfill_energy_statistics(
                 yesterday_api_val,
                 round(recorded_yesterday_delta, 3),
             )
-            await _async_clear_statistics_helper(hass, statistic_id)
             await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
             return
         LOGGER.info("[%s] [Gating 1/3 Yesterday Check] PASSED (API and Recorder match)", device.friendly_name)
@@ -719,7 +778,6 @@ async def async_backfill_energy_statistics(
                 weekly_api_val,
                 round(recorded_total_weekly, 3),
             )
-            await _async_clear_statistics_helper(hass, statistic_id)
             await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
             return
         LOGGER.info("[%s] [Gating 2/3 Weekly Check] PASSED (API and Recorder match)", device.friendly_name)
@@ -754,14 +812,67 @@ async def async_backfill_energy_statistics(
                 monthly_api_val,
                 round(recorded_total_monthly, 3),
             )
-            await _async_clear_statistics_helper(hass, statistic_id)
             await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
             return
         LOGGER.info("[%s] [Gating 3/3 Monthly Check] PASSED (API and Recorder match)", device.friendly_name)
 
-    # All checks passed! Determine last_sum and dispatch complete signal
-    latest_entry_sum = float(entries[-1].get("sum") or 0.0)
-    LOGGER.info("[%s] All gating checks PASSED (Yesterday -> Weekly -> Monthly verified against MirAIe API). No new backfill required (last_sum=%s kWh)", device.friendly_name, latest_entry_sum)
+    # All checks passed! Determine yesterday's baseline sum (ignoring any trailing 0.0 entries) and dispatch complete signal
+    today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
+    past_entries = [e for e in entries if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
+    valid_past_sums = [float(e.get("sum") or 0.0) for e in entries if float(e.get("sum") or 0.0) > 0.0]
+    latest_entry_sum = float(past_entries[-1].get("sum")) if past_entries else (valid_past_sums[-1] if valid_past_sums else float(entries[-1].get("sum") or 0.0))
+
+    # Verify & update today's recorder statistics entry against today's API value
+    expected_today_sum = round(latest_entry_sum + today_api_val, 2)
+    now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
+    today_entries = [e for e in entries if float(e.get("start") or 0.0) >= today_start_ts]
+
+    if not today_entries:
+        LOGGER.info("[%s] [Gating 4/4 Today Check] Today entry missing in DB; writing today's entry (%s kWh)", device.friendly_name, expected_today_sum)
+        metadata = StatisticMetaData(
+            has_sum=True,
+            has_mean=False,
+            mean_type=MEAN_TYPE_NONE,
+            unit_class="energy",
+            name=f"{device.friendly_name} Energy History",
+            source="recorder",
+            statistic_id=statistic_id,
+            unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        )
+        async_import_statistics(hass, metadata, [StatisticData(start=now_dt, sum=expected_today_sum, state=expected_today_sum)])
+    else:
+        latest_today_sum = float(today_entries[-1].get("sum") or 0.0)
+        if latest_today_sum < (latest_entry_sum - 0.5):
+            LOGGER.warning(
+                "[%s] Today's recorder statistics entry is corrupted in DB (sum %s < baseline %s); repairing statistics",
+                device.friendly_name,
+                latest_today_sum,
+                latest_entry_sum,
+            )
+            await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
+            return
+        elif abs(latest_today_sum - expected_today_sum) >= 0.02:
+            LOGGER.info(
+                "[%s] [Gating 4/4 Today Check] Today's statistic entry differs from API (%s kWh vs expected %s kWh); updating today's entry",
+                device.friendly_name,
+                latest_today_sum,
+                expected_today_sum,
+            )
+            metadata = StatisticMetaData(
+                has_sum=True,
+                has_mean=False,
+                mean_type=MEAN_TYPE_NONE,
+                unit_class="energy",
+                name=f"{device.friendly_name} Energy History",
+                source="recorder",
+                statistic_id=statistic_id,
+                unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            )
+            async_import_statistics(hass, metadata, [StatisticData(start=now_dt, sum=expected_today_sum, state=expected_today_sum)])
+        else:
+            LOGGER.info("[%s] [Gating 4/4 Today Check] PASSED (Today statistic matches API: %s kWh)", device.friendly_name, latest_today_sum)
+
+    LOGGER.info("[%s] All gating checks PASSED (Yesterday -> Weekly -> Monthly -> Today verified). No new backfill required (last_sum=%s kWh)", device.friendly_name, latest_entry_sum)
     setattr(device, "backfilled_energy_sum", latest_entry_sum)
     async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
 
@@ -806,10 +917,19 @@ async def _async_rebuild_from_api(
             first_day = day
         last_day = day
 
-    if not statistics:
-        setattr(device, "backfilled_energy_sum", running_sum)
-        async_dispatcher_send(hass, f"miraie_backfill_complete_{device.id}")
-        return
+    # Append current running statistic point for today so recorder DB has correct cumulative sum
+    today_val = 0.0
+    try:
+        today_key = dt_util.now().date().strftime("%d%m%Y")
+        today_data = await hub.get_energy_consumption(device, ConsumptionPeriodType.DAILY, from_date=today_key)
+        if today_data and today_key in today_data:
+            today_val = max(0.0, float(today_data[today_key]))
+    except Exception as e:
+        LOGGER.debug("Could not fetch today's energy for statistics import: %s", e)
+
+    now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
+    current_total_sum = round(running_sum + today_val, 2)
+    statistics.append(StatisticData(start=now_dt, sum=current_total_sum, state=current_total_sum))
 
     setattr(device, "backfilled_energy_sum", running_sum)
 
