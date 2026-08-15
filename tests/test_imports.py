@@ -69,6 +69,30 @@ class TestModuleImports(unittest.TestCase):
         with self.assertRaises((ImportError, AttributeError)):
             from homeassistant.components.climate import PRECISION_HALVES  # type: ignore
 
+    def test_converti_to_none_transition(self):
+        """Verify async_set_preset_mode(PRESET_NONE) resets converti mode to OFF."""
+        from unittest.mock import AsyncMock, MagicMock
+        from homeassistant.components.climate import PRESET_NONE
+        mod_climate = importlib.import_module("custom_components.miraie_in.climate")
+
+        mock_device = MagicMock()
+        mock_device.set_converti_mode = AsyncMock()
+        mock_device.set_preset_mode = AsyncMock()
+
+        climate_entity = MagicMock(spec=mod_climate.MirAIeClimate)
+        climate_entity.device = mock_device
+        climate_entity.hvac_mode = MagicMock()
+        climate_entity.hvac_mode.value = "cool"
+        climate_entity._send_command_via_hybrid = AsyncMock()
+
+        asyncio.run(mod_climate.MirAIeClimate.async_set_preset_mode(climate_entity, PRESET_NONE))
+
+        climate_entity._send_command_via_hybrid.assert_called_once()
+        call_kwargs = climate_entity._send_command_via_hybrid.call_args.kwargs
+        self.assertFalse(call_kwargs["eco"])
+        self.assertEqual(call_kwargs["mode"], "cool")
+        self.assertIsNotNone(call_kwargs["cloud_coro"])
+
 
     def test_options_flow_multi_device_steps(self):
         mod = importlib.import_module("custom_components.miraie_in.config_flow")
@@ -76,29 +100,29 @@ class TestModuleImports(unittest.TestCase):
         # Mock config entry
         class MockConfigEntry:
             options = {}
-            runtime_data = None
+            runtime_data = type("Hub", (), {"home": type("Home", (), {"devices": [type("Dev", (), {"id": "dev1", "friendly_name": "Dev 1"})(), type("Dev", (), {"id": "dev2", "friendly_name": "Dev 2"})()]})()})()
         handler.config_entry = MockConfigEntry()
 
-        # Step 1 init
-        result_step1 = asyncio.run(handler.async_step_init({"devices": ["dev1", "dev2"]}))
+        # Step 1 manage_devices
+        result_step1 = asyncio.run(handler.async_step_manage_devices({"devices": ["dev1", "dev2"]}))
+
         self.assertEqual(result_step1["type"], "form")
         self.assertEqual(result_step1["step_id"], "device_settings")
         self.assertEqual(handler._selected_devices, ["dev1", "dev2"])
 
+
         # Step 2 device_settings submission
         result_step2 = asyncio.run(
             handler.async_step_device_settings(
-                {"install_date": "2026-01-01", "half_degree_precision": True}
+                {"install_date": "2026-01-01"}
             )
         )
         self.assertEqual(result_step2["type"], "create_entry")
         options = result_step2["data"]
         self.assertIn("devices", options)
-        self.assertTrue(options["devices"]["dev1"]["half_degree_precision"])
-        self.assertTrue(options["devices"]["dev2"]["half_degree_precision"])
         self.assertEqual(options["devices"]["dev1"]["install_date"], "2026-01-01")
 
-    def test_climate_per_device_precision(self):
+    def test_climate_precision(self):
         mod_climate = importlib.import_module("custom_components.miraie_in.climate")
         class MockDetails:
             model_number = "CS-CU-NU18WKY"
@@ -111,15 +135,15 @@ class TestModuleImports(unittest.TestCase):
 
         class MockConfigEntry:
             options = {
-                "half_degree_precision": False,
                 "devices": {
-                    "dev_bedroom": {"half_degree_precision": True}
+                    "dev_bedroom": {"install_date": "2026-01-01"}
                 }
             }
 
         climate_entity = mod_climate.MirAIeClimate(MockDevice(), MockConfigEntry())
-        self.assertTrue(climate_entity._half_degree_precision)
-        self.assertEqual(climate_entity._attr_target_temperature_step, 0.5)
+        self.assertEqual(climate_entity._attr_target_temperature_step, 1.0)
+        self.assertEqual(climate_entity._attr_precision, 1.0)
+
 
 
     def test_async_unload_entry(self):
@@ -166,7 +190,7 @@ class TestModuleImports(unittest.TestCase):
                     pass
 
             class MockConfigEntry:
-                data = {"username": "test@user.com", "password": "password"}
+                data = {"username": "test@user.com", "password": "password", "device_id": "test_dev"}
                 options = {}
                 entry_id = "test_entry"
 
@@ -212,8 +236,8 @@ class TestModuleImports(unittest.TestCase):
         # NU series Gen A (7-in-1) vs Gen B (8-in-1)
         nu_gen_a = mod_const.get_converti_preset_modes("CS-CU-NU18AKY")
         nu_gen_b = mod_const.get_converti_preset_modes("CS-CU-NU18BKY")
-        self.assertEqual(len(nu_gen_a), 8)  # 7-in-1 has 8 items (none + 7 capacity steps)
-        self.assertEqual(len(nu_gen_b), 9)  # 8-in-1 has 9 items (none + 8 capacity steps)
+        self.assertEqual(len(nu_gen_a), 7)  # 7-in-1 has 7 capacity steps (110%, 100%, 90%, 80%, 70%, 55%, 40%)
+        self.assertEqual(len(nu_gen_b), 8)  # 8-in-1 has 8 capacity steps (110%, 100%, 90%, 80%, 70%, 60%, 50%, 40%)
 
     def test_per_device_option_fallback(self):
         mod_climate = importlib.import_module("custom_components.miraie_in.climate")
@@ -232,9 +256,9 @@ class TestModuleImports(unittest.TestCase):
 
         class MockConfigEntry:
             options = {
-                "half_degree_precision": False,
+                "install_date": "2026-01-01",
                 "devices": {
-                    "dev_bedroom": {"half_degree_precision": True}
+                    "dev_bedroom": {"install_date": "2026-02-01"}
                 }
             }
 
@@ -242,13 +266,9 @@ class TestModuleImports(unittest.TestCase):
         bedroom_climate = mod_climate.MirAIeClimate(MockDevice1(), entry)
         living_climate = mod_climate.MirAIeClimate(MockDevice2(), entry)
 
-        # Bedroom has explicit override (True -> 0.5 step)
-        self.assertTrue(bedroom_climate._half_degree_precision)
-        self.assertEqual(bedroom_climate._attr_target_temperature_step, 0.5)
-
-        # Living Room has no override -> falls back to global default (False -> 1.0 step)
-        self.assertFalse(living_climate._half_degree_precision)
+        self.assertEqual(bedroom_climate._attr_target_temperature_step, 1.0)
         self.assertEqual(living_climate._attr_target_temperature_step, 1.0)
+
 
     def test_energy_backfill_timestamp_boundary_and_state_class(self):
         """Verify that MirAIeEnergyHistorySensor retains TOTAL_INCREASING for HA stats validation and timestamp boundary logic works correctly."""
@@ -365,6 +385,35 @@ class TestModuleImports(unittest.TestCase):
             device = MockDevice()
             asyncio.run(mod_sensor.async_backfill_energy_statistics(mock_hass, hub, device, date(2026, 8, 1)))
             hub.get_energy_consumption_full.assert_called()
+
+    def test_legacy_parent_entry_auto_migration(self):
+        """Verify legacy single-account v1.x parent entries are auto-migrated to per-device entries."""
+        from unittest.mock import MagicMock, AsyncMock, patch
+        mod_init = importlib.import_module("custom_components.miraie_in")
+
+        mock_entry = MagicMock()
+        mock_entry.data = {"username": "test@example.com", "password": "password123"}
+        mock_entry.options = {}
+        mock_entry.entry_id = "legacy_parent_entry"
+
+        mock_hass = MagicMock()
+        mock_hass.config_entries.async_entries.return_value = [mock_entry]
+        mock_hass.config_entries.flow.async_init = AsyncMock(return_value={"type": "create_entry"})
+
+        mock_device = MagicMock()
+        mock_device.id = "device_123"
+        mock_device.friendly_name = "Living Room AC"
+        mock_device.details.model_number = "CS-CU-RU18CKY-1"
+
+        class MockHub:
+            home = type("Home", (), {"devices": [mock_device]})()
+            init = AsyncMock()
+
+        with patch("custom_components.miraie_in.MirAIeHub", return_value=MockHub()), patch("custom_components.miraie_in.MirAIeBroker"):
+            res = asyncio.run(mod_init.async_setup_entry(mock_hass, mock_entry))
+            self.assertTrue(res)
+            mock_hass.config_entries.flow.async_init.assert_called()
+            mock_hass.config_entries.async_remove.assert_called_with("legacy_parent_entry")
 
 
 if __name__ == "__main__":

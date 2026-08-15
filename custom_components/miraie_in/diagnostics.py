@@ -6,7 +6,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from miraie_ac import MirAIeHub
-from .const import get_converti_preset_modes, supports_heat_mode, supports_nanoe
+from .const import DOMAIN, get_converti_preset_modes, supports_heat_mode, supports_nanoe
+
 
 TO_REDACT = {
     "login_id",
@@ -68,9 +69,10 @@ async def async_get_device_diagnostics(
     hub: MirAIeHub = entry.runtime_data
     
     miraie_device_id = next(
-        (identifier[1] for identifier in device.identifiers if identifier[0] == "miraie_in"), 
+        (identifier[1] for identifier in device.identifiers if identifier[0] == DOMAIN), 
         None
     )
+
 
     diagnostics_data = {
         "info": async_redact_data(entry.data, TO_REDACT),

@@ -1,6 +1,7 @@
 """The MirAIe climate platform."""
 
 from __future__ import annotations
+import asyncio
 from typing import Any
 from miraie_ac import (
     Device as MirAIeDevice,
@@ -33,7 +34,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
-    CONF_HALF_DEGREE_PRECISION,
     V0,
     V1,
     V2,
@@ -46,9 +46,12 @@ from .const import (
     H3,
     H4,
     H5,
+    CONVERTI_8IN1_PRESET_MODES,
+    CONVERTI_7IN1_PRESET_MODES,
     get_converti_preset_modes,
     supports_heat_mode,
 )
+
 
 from .logger import LOGGER
 
@@ -60,8 +63,9 @@ async def async_setup_entry(
 
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = entry.runtime_data
+    coordinators = getattr(hub, "coordinators", {})
 
-    entities = [MirAIeClimate(device, entry) for device in hub.home.devices]
+    entities = [MirAIeClimate(device, entry, coordinators.get(device.id)) for device in hub.home.devices]
 
     async_add_entities(entities)
 
@@ -69,75 +73,159 @@ async def async_setup_entry(
 class MirAIeClimate(ClimateEntity):
     """Representation of a MirAIe Climate."""
 
-    def __init__(self, device: MirAIeDevice, entry: ConfigEntry | None = None) -> None:
-
+    def __init__(self, device: MirAIeDevice, entry: ConfigEntry | None = None, coordinator=None) -> None:
+        self.device = device
+        self.entry = entry
+        self.coordinator = coordinator
         self._attr_should_poll: bool = False
         self._attr_has_entity_name: bool = True
 
-        half_degree = False
-        if entry is not None:
-            devices_opt = entry.options.get("devices", {})
-            dev_opt = devices_opt.get(device.id, {})
-            if CONF_HALF_DEGREE_PRECISION in dev_opt:
-                half_degree = dev_opt[CONF_HALF_DEGREE_PRECISION]
-            else:
-                half_degree = entry.options.get(CONF_HALF_DEGREE_PRECISION, False)
-
-        self._half_degree_precision = half_degree
-
-
         model_number = getattr(getattr(device, "details", None), "model_number", None)
+
+        has_heat = supports_heat_mode(model_number)
+        has_h_vane = True
+        converti_presets = get_converti_preset_modes(model_number)
+
+        if coordinator and hasattr(coordinator, "capabilities") and coordinator.capabilities:
+            caps = coordinator.capabilities
+            if "has_heat_mode" in caps:
+                has_heat = bool(caps["has_heat_mode"])
+            if "h_vane_enabled" in caps:
+                has_h_vane = bool(caps["h_vane_enabled"])
+            if "converti_type" in caps:
+                c_tier = str(caps["converti_type"])
+                if c_tier == "none":
+                    converti_presets = []
+                elif c_tier == "8-in-1":
+                    converti_presets = list(CONVERTI_8IN1_PRESET_MODES)
+                elif c_tier == "7-in-1":
+                    converti_presets = list(CONVERTI_7IN1_PRESET_MODES)
 
         self._attr_hvac_modes = [
             HVACMode.AUTO,
             HVACMode.COOL,
         ]
-        if supports_heat_mode(model_number):
+        if has_heat:
             self._attr_hvac_modes.append(HVACMode.HEAT)
         self._attr_hvac_modes += [
             HVACMode.OFF,
             HVACMode.DRY,
             HVACMode.FAN_ONLY,
         ]
-        LOGGER.debug(
-            f"Model {model_number!r}: heat mode "
-            f"{'enabled (EZ/KZ series)' if supports_heat_mode(model_number) else 'disabled (cooling-only series)'}"
-        )
 
-        converti_presets = get_converti_preset_modes(model_number)
         self._attr_preset_modes = [
             PRESET_NONE,
             PRESET_ECO,
             PRESET_BOOST,
         ] + converti_presets
 
-        self._attr_fan_mode = FAN_OFF
+        self._attr_fan_mode = "auto"
         self._attr_fan_modes = [
             FAN_AUTO,
             FAN_LOW,
             FAN_MEDIUM,
             FAN_HIGH,
-            FAN_OFF,
+            "quiet",
         ]
         self._attr_swing_modes = [V0, V1, V2, V3, V4, V5]
-        self._attr_swing_horizontal_modes = [H0, H1, H2, H3, H4, H5]
-        self._attr_max_temp = 30.0
-        self._attr_min_temp = 16.0
-        self._attr_target_temperature_step = 0.5 if half_degree else 1.0
-        self._enable_turn_on_off_backwards_compatibility = False
-        self._attr_supported_features = (
+
+        features = (
             ClimateEntityFeature.TARGET_TEMPERATURE
             | ClimateEntityFeature.FAN_MODE
             | ClimateEntityFeature.PRESET_MODE
             | ClimateEntityFeature.SWING_MODE
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
-            | ClimateEntityFeature.SWING_HORIZONTAL_MODE
         )
+
+        if has_h_vane:
+            self._attr_swing_horizontal_modes = [H0, H1, H2, H3, H4, H5]
+            features |= ClimateEntityFeature.SWING_HORIZONTAL_MODE
+        else:
+            self._attr_swing_horizontal_modes = []
+
+        self._attr_supported_features = features
+        self._attr_max_temp = 30.0
+        self._attr_min_temp = 16.0
+        self._attr_target_temperature_step = 1.0
+        self._enable_turn_on_off_backwards_compatibility = False
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        self._attr_precision = PRECISION_HALVES if half_degree else PRECISION_WHOLE
+        self._attr_precision = PRECISION_WHOLE
         self._attr_unique_id = device.id
-        self.device = device
+
+    async def _send_command_via_hybrid(
+        self,
+        mode: str | None = None,
+        temp: int | None = None,
+        fan: str | None = None,
+        v_vane: str | None = None,
+        h_vane: str | None = None,
+        eco: bool | None = None,
+        nanoe: bool | None = None,
+        cloud_coro=None,
+    ) -> None:
+        """Route command through Hybrid Coordinator based on active primary_backend and failover rules."""
+        coord = getattr(self, "coordinator", None)
+        if coord:
+            coord.async_optimistic_update(
+                mode=mode,
+                target_temp=temp,
+                fan=fan,
+                v_vane=v_vane,
+                h_vane=h_vane,
+                eco=eco,
+                nanoe=nanoe,
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+            )
+            if hasattr(self, "async_write_ha_state"):
+                try:
+                    self.async_write_ha_state()
+                except Exception:
+                    pass
+
+        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
+            success = await coord.async_dispatch_ir_command(
+                mode=mode,
+                target_temp=temp,
+                fan=fan,
+                v_vane=v_vane,
+                h_vane=h_vane,
+                eco=eco,
+                nanoe=nanoe,
+                origin="IR",
+            )
+            if success:
+                if cloud_coro and hasattr(cloud_coro, "close"):
+                    try:
+                        cloud_coro.close()
+                    except Exception:
+                        pass
+                return
+            LOGGER.warning("IR command failed for %s, falling back to Cloud", self.device.id)
+
+        if cloud_coro:
+            async def _run_cloud_coro():
+                try:
+                    await cloud_coro
+                except Exception as err:
+                    LOGGER.warning("Cloud command failed for %s: %s", self.device.id, err)
+                    if coord and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None):
+                        LOGGER.info("Auto Failover triggered: Transmitting IR command for %s", self.device.id)
+                        await coord.async_dispatch_ir_command(
+                            mode=mode,
+                            target_temp=temp,
+                            fan=fan,
+                            v_vane=v_vane,
+                            h_vane=h_vane,
+                            eco=eco,
+                            nanoe=nanoe,
+                            origin="IR Failover",
+                        )
+
+            if hasattr(self, "hass") and self.hass:
+                self.hass.async_create_task(_run_cloud_coro())
+            else:
+                await _run_cloud_coro()
 
     @property
     def name(self) -> str:
@@ -169,15 +257,37 @@ class MirAIeClimate(ClimateEntity):
         )
 
     @property
+    def assumed_state(self) -> bool:
+        """Return True if entity state is assumed (IR control mode)."""
+        coord = getattr(self, "coordinator", None)
+        if coord:
+            if not coord.has_wifi or getattr(coord, "primary_backend", "cloud") == "ir":
+                return True
+        entry_data = getattr(self.entry, "data", {}) if hasattr(self, "entry") and self.entry else {}
+        if isinstance(entry_data, dict) and entry_data.get("is_ir_only", False):
+            return True
+        return False
+
+    @property
     def available(self) -> bool:
         """Return True if entity is available."""
         return self.device.status.is_online
 
     @property
     def hvac_mode(self) -> HVACMode | str | None:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state:
+            power_mode = coord.state.get("power", "off")
+            if power_mode == "off":
+                return HVACMode.OFF
+            mode = coord.state.get("mode", "cool")
+            if mode in ("powerful", "boost", "clean", "display") or mode.startswith("converti_"):
+                mode = "cool"
+            if mode == "fan":
+                return HVACMode.FAN_ONLY
+            return mode
 
         power_mode = self.device.status.power_mode
-
         if power_mode.value == "off":
             return HVACMode.OFF
 
@@ -190,38 +300,84 @@ class MirAIeClimate(ClimateEntity):
 
     @property
     def current_temperature(self) -> float | None:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state and "room_temperature" in coord.state:
+            return float(coord.state["room_temperature"])
         return self.device.status.room_temperature
 
     @property
     def target_temperature(self) -> float | int | None:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state and "temperature" in coord.state:
+            return int(round(coord.state["temperature"]))
         temp = self.device.status.temperature
         if temp is None:
             return None
-        if not getattr(self, "_half_degree_precision", False):
-            return int(round(temp))
-        return temp
+        return int(round(temp))
 
     @property
     def preset_mode(self) -> str | None:
-        if self.device.status.converti_mode in [ConvertiMode.OFF, ConvertiMode.NS]:
-            preset = self.device.status.preset_mode
-            if preset == PresetMode.CLEAN:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state:
+            if coord.state.get("eco"):
+                return PRESET_ECO
+            active_p = coord.state.get("active_preset", "none")
+            if active_p in ("powerful", "boost"):
+                return PRESET_BOOST
+            if active_p == "clean":
+                return PRESET_CLEAN
+            if isinstance(active_p, str):
+                if active_p.startswith("converti_") or active_p.startswith("cv_"):
+                    step = active_p.split("_")[1]
+                    if step in ("0", "off"):
+                        return PRESET_NONE
+                    return f"cv_{step}"
+                if "%" in active_p:
+                    import re
+                    m = re.search(r"\d+", active_p)
+                    step = m.group(0) if m else "0"
+                    if step == "0":
+                        return PRESET_NONE
+                    return f"cv_{step}"
+                if active_p in ("off", "none", "NONE"):
+                    return PRESET_NONE
+                return active_p
+
+        if hasattr(self, "device") and hasattr(self.device, "status") and self.device.status:
+            c_mode = getattr(self.device.status, "converti_mode", None)
+            c_val = getattr(c_mode, "value", 0) if c_mode else 0
+            if c_val not in (0, "off", "ns", "OFF", "NS"):
+                return f"cv_{c_val}"
+
+            preset = getattr(self.device.status, "preset_mode", None)
+            p_val = getattr(preset, "value", "none") if preset else "none"
+            if p_val in ("off", "none", "CLEAN"):
                 return PRESET_NONE
-            return preset.value
-        return f"cv_{self.device.status.converti_mode.value}"
+            return p_val
+
+        return PRESET_NONE
 
     @property
     def fan_mode(self) -> str | None:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state and "fan_speed" in coord.state:
+            return coord.state["fan_speed"]
 
-        mode = self.device.status.fan_mode.value
-
-        if mode == "quiet":
-            return FAN_OFF
-
-        return mode
+        return self.device.status.fan_mode.value
 
     @property
     def swing_mode(self) -> str | None:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state and "v_vane" in coord.state:
+            v_val = coord.state["v_vane"]
+            if v_val == "V1": return V1
+            elif v_val == "V2": return V2
+            elif v_val == "V3": return V3
+            elif v_val == "V4": return V4
+            elif v_val == "V5": return V5
+            elif v_val in ("AUTO", "V0"): return V0
+            return str(v_val)
+
         mode = self.device.status.v_swing_mode.value
 
         if mode == 1:
@@ -239,6 +395,17 @@ class MirAIeClimate(ClimateEntity):
 
     @property
     def swing_horizontal_mode(self) -> str | None:
+        coord = getattr(self, "coordinator", None)
+        if coord and coord.state and "h_vane" in coord.state:
+            h_val = coord.state["h_vane"]
+            if h_val == "H1": return H1
+            elif h_val == "H2": return H2
+            elif h_val == "H3": return H3
+            elif h_val == "H4": return H4
+            elif h_val == "H5": return H5
+            elif h_val in ("AUTO", "H0"): return H0
+            return str(h_val)
+
         mode = self.device.status.h_swing_mode.value
 
         if mode == 1:
@@ -254,6 +421,7 @@ class MirAIeClimate(ClimateEntity):
         else:
             return H0
 
+
     async def async_turn_off(self) -> None:
         await self.async_set_hvac_mode(HVACMode.OFF)
 
@@ -265,92 +433,163 @@ class MirAIeClimate(ClimateEntity):
         if raw_temp is None:
             return
 
-        if not getattr(self, "_half_degree_precision", False):
-            target_temp = int(round(raw_temp))
-        else:
-            target_temp = round(raw_temp * 2) / 2
-
+        target_temp = int(round(raw_temp))
         LOGGER.debug(f"Set temperature to {target_temp}")
 
-        await self.device.set_temperature(target_temp)
+        # Update optimistic UI state immediately for instant response
+        coord = getattr(self, "coordinator", None)
+        if coord:
+            coord.async_optimistic_update(
+                target_temp=target_temp,
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+            )
+            if hasattr(self, "async_write_ha_state"):
+                try:
+                    self.async_write_ha_state()
+                except Exception:
+                    pass
+
+        # Dispatch command immediately to physical AC / Cloud with zero artificial delay
+        await self._send_command_via_hybrid(
+            temp=target_temp, cloud_coro=self.device.set_temperature(target_temp)
+        )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
 
         LOGGER.debug(f"Set hvac mode to {hvac_mode}")
 
         if hvac_mode == HVACMode.OFF:
-            await self.device.turn_off()
+            await self._send_command_via_hybrid(mode="off", cloud_coro=self.device.turn_off())
         else:
+            async def _cloud_turn_on_and_mode():
+                if self.device.status.power_mode.value == "off":
+                    await self.device.turn_on()
 
-            if self.device.status.power_mode.value == "off":
-                await self.device.turn_on()
+                if hvac_mode == HVACMode.FAN_ONLY:
+                    await self.device.set_hvac_mode(MHVACMode("fan"))
+                else:
+                    await self.device.set_hvac_mode(MHVACMode(hvac_mode.value))
 
-            if hvac_mode == HVACMode.FAN_ONLY:
-                await self.device.set_hvac_mode(MHVACMode("fan"))
-            else:
-                await self.device.set_hvac_mode(MHVACMode(hvac_mode.value))
+            mode_str = hvac_mode.value if hvac_mode != HVACMode.FAN_ONLY else "fan"
+            await self._send_command_via_hybrid(mode=mode_str, cloud_coro=_cloud_turn_on_and_mode())
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
 
         LOGGER.debug(f"Set fan mode to {fan_mode}")
+        target_mode = "quiet" if fan_mode in ("off", "FAN_OFF", FAN_OFF) else fan_mode
 
-        if fan_mode == FAN_OFF:
-            await self.device.set_fan_mode(FanMode("quiet"))
-        else:
-            await self.device.set_fan_mode(FanMode(fan_mode))
+        cloud_coro = self.device.set_fan_mode(FanMode(target_mode))
+        await self._send_command_via_hybrid(fan=target_mode, cloud_coro=cloud_coro)
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         LOGGER.debug(f"Set swing vertical mode to {swing_mode}")
-        if swing_mode == V1:
-            await self.device.set_v_swing_mode(SwingMode(1))
-        elif swing_mode == V2:
-            await self.device.set_v_swing_mode(SwingMode(2))
-        elif swing_mode == V3:
-            await self.device.set_v_swing_mode(SwingMode(3))
-        elif swing_mode == V4:
-            await self.device.set_v_swing_mode(SwingMode(4))
-        elif swing_mode == V5:
-            await self.device.set_v_swing_mode(SwingMode(5))
-        else:
-            await self.device.set_v_swing_mode(SwingMode(0))
+        swing_num = 0
+        if swing_mode == V1: swing_num = 1
+        elif swing_mode == V2: swing_num = 2
+        elif swing_mode == V3: swing_num = 3
+        elif swing_mode == V4: swing_num = 4
+        elif swing_mode == V5: swing_num = 5
+
+        await self._send_command_via_hybrid(v_vane=swing_mode, cloud_coro=self.device.set_v_swing_mode(SwingMode(swing_num)))
 
     async def async_set_swing_horizontal_mode(self, swing_mode: str) -> None:
         LOGGER.debug(f"Set swing horizontal mode to {swing_mode}")
-        if swing_mode == H1:
-            await self.device.set_h_swing_mode(SwingMode(1))
-        elif swing_mode == H2:
-            await self.device.set_h_swing_mode(SwingMode(2))
-        elif swing_mode == H3:
-            await self.device.set_h_swing_mode(SwingMode(3))
-        elif swing_mode == H4:
-            await self.device.set_h_swing_mode(SwingMode(4))
-        elif swing_mode == H5:
-            await self.device.set_h_swing_mode(SwingMode(5))
-        else:
-            await self.device.set_h_swing_mode(SwingMode(0))
+        swing_num = 0
+        if swing_mode == H1: swing_num = 1
+        elif swing_mode == H2: swing_num = 2
+        elif swing_mode == H3: swing_num = 3
+        elif swing_mode == H4: swing_num = 4
+        elif swing_mode == H5: swing_num = 5
+
+        await self._send_command_via_hybrid(h_vane=swing_mode, cloud_coro=self.device.set_h_swing_mode(SwingMode(swing_num)))
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
 
         LOGGER.debug(f"Set preset mode to {preset_mode}")
 
-        if preset_mode.startswith("cv_"):
-            mode = int(preset_mode.split("_")[1])
-            await self.device.set_converti_mode(ConvertiMode(mode))
+        eco_val = None
+        mode_val = None
+        cloud_coro = None
+
+        if preset_mode in (PRESET_NONE, "none", "None", None):
+            eco_val = False
+            mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if self.hvac_mode else "cool")
+
+            def _clear_converti_and_preset():
+                return asyncio.gather(
+                    self.device.set_converti_mode(ConvertiMode.OFF),
+                    self.device.set_preset_mode(PresetMode.NONE),
+                    return_exceptions=True,
+                )
+
+            cloud_coro = _clear_converti_and_preset()
+
+        elif preset_mode == PRESET_ECO:
+            eco_val = True
+            cloud_coro = self.device.set_preset_mode(PresetMode.ECO)
+        elif preset_mode == PRESET_BOOST:
+            eco_val = False
+            mode_val = "powerful"
+            cloud_coro = self.device.set_preset_mode(PresetMode.BOOST)
         else:
-            await self.device.set_preset_mode(PresetMode(preset_mode))
+            import re
+            match = re.search(r"\d+", preset_mode)
+            if match and ("%" in preset_mode or "Converti" in preset_mode or preset_mode.startswith("cv_") or preset_mode.startswith("converti_")):
+                perc_str = match.group(0)
+                if perc_str == "0":
+                    eco_val = False
+                    mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if self.hvac_mode else "cool")
+
+                    def _clear_converti_and_preset():
+                        return asyncio.gather(
+                            self.device.set_converti_mode(ConvertiMode.OFF),
+                            self.device.set_preset_mode(PresetMode.NONE),
+                            return_exceptions=True,
+                        )
+
+                    cloud_coro = _clear_converti_and_preset()
+                else:
+                    try:
+                        c_enum = ConvertiMode(int(perc_str))
+                        cloud_coro = self.device.set_converti_mode(c_enum)
+                    except (ValueError, KeyError):
+                        cloud_coro = None
+                    mode_val = f"converti_{perc_str}"
+            else:
+                p_mode_map = {
+                    PRESET_BOOST: PresetMode.BOOST,
+                    PRESET_ECO: PresetMode.ECO,
+                    PRESET_NONE: PresetMode.NONE,
+                }
+                target_preset = p_mode_map.get(preset_mode, PresetMode.NONE)
+                cloud_coro = self.device.set_preset_mode(target_preset)
+
+        await self._send_command_via_hybrid(
+            eco=eco_val,
+            mode=mode_val,
+            cloud_coro=cloud_coro,
+        )
+
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
 
         LOGGER.debug("Successfully added to HA")
 
-        # Sensors should also register callbacks to HA when their state changes
-        self.device.register_callback(self.async_write_ha_state)
+        if hasattr(self, "coordinator") and self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
 
         LOGGER.debug("Successfully removed from HA")
 
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+

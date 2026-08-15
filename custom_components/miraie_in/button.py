@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import time
 from datetime import timedelta
 
 from miraie_ac import (
     Device as MirAIeDevice,
     MirAIeHub,
+    FanMode,
     PresetMode,
 )
 
@@ -37,6 +41,7 @@ async def async_setup_entry(
         entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
 
     async_add_entities(entities)
+
 
 
 class MirAIeCoilCleanButton(ButtonEntity):
@@ -81,9 +86,11 @@ class MirAIeCoilCleanButton(ButtonEntity):
 class MirAIeRebuildEnergyStatsButton(ButtonEntity):
     """Diagnostic button entity to force a full 6-8 month rebuild of energy statistics."""
 
-    def __init__(self, hub: MirAIeHub, device: MirAIeDevice) -> None:
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice, hass: HomeAssistant | None = None) -> None:
         self.hub = hub
         self.device = device
+        if hass:
+            self.hass = hass
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "rebuild_energy_statistics"
@@ -109,15 +116,21 @@ class MirAIeRebuildEnergyStatsButton(ButtonEntity):
     async def async_press(self) -> None:
         """Trigger a full 6-8 month energy statistics rebuild for this device."""
         LOGGER.info("User requested full energy statistics rebuild for %s", self.device.friendly_name)
-        await async_rebuild_full_energy_statistics(self.hass, self.hub, self.device)
+        hass = getattr(self, "hass", None)
+        if not hass:
+            LOGGER.error("Cannot rebuild energy statistics: hass instance not bound to entity %s", self.entity_id)
+            return
+        await async_rebuild_full_energy_statistics(hass, self.hub, self.device)
 
 
 class MirAIeVerifyEnergyStatsButton(ButtonEntity):
     """Diagnostic button entity to run Yesterday -> Weekly -> Monthly gating verification."""
 
-    def __init__(self, hub: MirAIeHub, device: MirAIeDevice) -> None:
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice, hass: HomeAssistant | None = None) -> None:
         self.hub = hub
         self.device = device
+        if hass:
+            self.hass = hass
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "verify_energy_statistics"
@@ -143,5 +156,10 @@ class MirAIeVerifyEnergyStatsButton(ButtonEntity):
     async def async_press(self) -> None:
         """Trigger Yesterday -> Weekly -> Monthly gating verification."""
         LOGGER.info("[%s] Manual Diagnostic Button pressed: Running Yesterday -> Weekly -> Monthly gating verification", self.device.friendly_name)
+        hass = getattr(self, "hass", None)
+        if not hass:
+            LOGGER.error("Cannot verify energy statistics: hass instance not bound to entity %s", self.entity_id)
+            return
         default_start_date = dt_util.now().date() - timedelta(days=240)
-        await async_backfill_energy_statistics(self.hass, self.hub, self.device, default_start_date, force_full_rebuild=False)
+        await async_backfill_energy_statistics(hass, self.hub, self.device, default_start_date, force_full_rebuild=False)
+

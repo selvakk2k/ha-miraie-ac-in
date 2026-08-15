@@ -1,11 +1,64 @@
-.vscode/*
-.DS_Store
-.venv
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# Agent working artifacts
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Home Assistant / Integration runtime artifacts & logs
+*.log
+*.db
+*.sqlite
+*.sqlite3
+custom_components/miraie_in/miraie.log
+appdaemon/
+ac_july_2026_analysis.db
+july_2026_ac_analysis_report.md
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.nox/
+.tox/
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Internal development plans & agent scratchpads
+2.0 Plan/
 implementation_plan.md
 task.md
 walkthrough.md
 info.md
+scratch/
