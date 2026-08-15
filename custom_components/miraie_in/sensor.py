@@ -1,6 +1,7 @@
 import asyncio
 import re
 from abc import ABC, abstractmethod
+from typing import Any
 from datetime import date, datetime, timezone, timedelta
 
 from miraie_ac import Device as MirAIeDevice, MirAIeHub, ConsumptionPeriodType
@@ -393,11 +394,20 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor, RestoreEntity):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up MirAIe energy and status sensors from a config entry."""
     hub: MirAIeHub = entry.runtime_data
+    coordinators = getattr(hub, "coordinators", {})
+    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    is_ir_entry = entry_data.get("is_ir_only", False)
     
-    # 1. Setup Energy Sensors (which need active polling)
+    # 1. Setup Energy Sensors (which need active polling — Wi-Fi models only)
     energy_sensors = []
-    for device in hub.home.devices:
-        clean_dev_id = re.sub(r"[^a-z0-9_]", "_", device.id.lower())
+    if not is_ir_entry:
+        for device in hub.home.devices:
+            coord = coordinators.get(device.id)
+            has_wifi = getattr(coord, "has_wifi", True) if coord else getattr(getattr(device, "details", None), "has_wifi", True)
+            if not has_wifi:
+                continue
+
+            clean_dev_id = re.sub(r"[^a-z0-9_]", "_", device.id.lower())
         statistic_id = f"sensor.{clean_dev_id}_energy_history"
         try:
             last_stats = await get_instance(hass).async_add_executor_job(
@@ -439,13 +449,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # 2. Setup Non-Polling Sensors (updated via device callback pushed via MQTT)
     pushed_sensors = []
+    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    is_ir_entry = entry_data.get("is_ir_only", False)
     for device in hub.home.devices:
-        pushed_sensors += [
-            MirAIeRoomTemperatureSensor(device),
-            MirAIeWifiSignalSensor(device),
-            MirAIeControlSourceSensor(device),
-        ]
+        coordinator = coordinators.get(device.id)
+        pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
+        pushed_sensors.append(MirAIeModelCapabilitiesSensor(device, coordinator))
+
+        if not is_ir_entry and (not coordinator or coordinator.has_wifi):
+            pushed_sensors.append(MirAIeWifiSignalSensor(device))
+
+        if coordinator:
+            pushed_sensors.append(MirAIeControlSourceSensor(device, coordinator))
+
     async_add_entities(pushed_sensors)
+
 
 
 class MirAIeRoomTemperatureSensor(SensorEntity):
@@ -477,10 +495,12 @@ class MirAIeRoomTemperatureSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
-        self.device.register_callback(self.async_write_ha_state)
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self):
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
 
 
 class MirAIeWifiSignalSensor(SensorEntity):
@@ -513,34 +533,40 @@ class MirAIeWifiSignalSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
-        self.device.register_callback(self.async_write_ha_state)
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self):
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
 
 
 class MirAIeControlSourceSensor(SensorEntity):
-    """Exposes whether the AC was last controlled via app or remote (disabled by default)."""
+    """Exposes last control origin (Cloud, IR, or External)."""
 
-    def __init__(self, device: MirAIeDevice):
+    def __init__(self, device: MirAIeDevice, coordinator=None):
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{device.id}_control_source"
         self._attr_translation_key = "last_controlled_via"
         self.device = device
+        self.coordinator = coordinator
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_entity_registry_enabled_default = False
+        self._attr_entity_registry_enabled_default = True
 
     @property
     def native_value(self) -> str:
-        source = getattr(self.device.status, "control_source", "an")
-        mapping = {
-            "an": "App",
-            "ai": "AI Mode",
-            "rem": "Remote",
-            "auto": "Auto",
-        }
-        return mapping.get(source, source)
+        if self.coordinator and self.coordinator.state:
+            last_by = self.coordinator.state.get("last_controlled_by", "Cloud")
+            if last_by in ["Cloud", "IR"]:
+                return last_by
+            return "External"
+        return "External"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        raw_source = getattr(self.device.status, "control_source", "unknown")
+        return {"raw_control_source": raw_source}
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -553,10 +579,61 @@ class MirAIeControlSourceSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
-        self.device.register_callback(self.async_write_ha_state)
+        if self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self):
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+class MirAIeModelCapabilitiesSensor(SensorEntity):
+    """Exposes hardware model details and auto-detected capabilities from panasonic-ac-models."""
+
+    def __init__(self, device: MirAIeDevice, coordinator=None):
+        self._attr_should_poll = False
+        self._attr_has_entity_name = True
+        self._attr_unique_id = f"{device.id}_model_capabilities"
+        self._attr_translation_key = "model_capabilities"
+        self.device = device
+        self.coordinator = coordinator
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:chip"
+
+    @property
+    def native_value(self) -> str:
+        model_number = getattr(getattr(self.device, "details", None), "model_number", None)
+        return model_number or "CS-CU-RU18CKY-1"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        if self.coordinator and hasattr(self.coordinator, "capabilities") and self.coordinator.capabilities:
+            return dict(self.coordinator.capabilities)
+        return {
+            "series": "EU",
+            "has_wifi": True,
+            "has_heat_mode": False,
+            "has_nanoe": False,
+            "converti_type": "7-in-1",
+            "resolved_via": "default",
+        }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+            sw_version=self.device.details.firmware_version,
+        )
+
+
+
 
 
 def _get_statistic_timestamp(target_date: date) -> datetime:

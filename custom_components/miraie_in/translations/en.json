@@ -2,11 +2,66 @@
   "config": {
     "step": {
       "user": {
-        "description": "We backfill energy statistics from this date. MirAIe keeps up to ~8 months of data, so earlier dates are not supported. Leave blank to default to the last 6 months.",
+        "title": "Select Integration Setup Mode",
+        "description": "Choose how you want to configure your Panasonic AC units.",
+        "menu_options": {
+          "cloud_account": "Auto Detect",
+          "ir_device": "Manual Setup"
+        },
+        "menu_option_descriptions": {
+          "cloud_account": "For Wi-Fi models — requires MirAIe Cloud login",
+          "ir_device": "For standalone IR-only or non-Wi-Fi models — no account needed"
+        }
+      },
+      "cloud_account": {
+        "title": "MirAIe Cloud Login",
+        "description": "Enter your MirAIe account credentials to connect to your Wi-Fi AC units.",
         "data": {
           "username": "Username",
-          "password": "Password",
-          "install_date": "History start date (YYYY-MM-DD)"
+          "password": "Password"
+        }
+      },
+      "cloud_devices": {
+        "title": "Configure {device_name}",
+        "description": "Configuring control transport and options for **{device_name}** (Model: **{model_code}**). Leaving IR Blaster empty selects Cloud-Only mode.",
+        "data": {
+          "primary_backend": "Primary Transport Backend",
+          "hybrid_submode": "Hybrid Failover Strategy",
+          "blaster_entity_id": "IR Blaster / Transmitter Entity",
+          "install_date": "Energy History Start Date"
+        }
+      },
+      "ir_device": {
+        "title": "Step 1: Model Details",
+        "description": "Enter a name and Panasonic model code for your AC unit.",
+        "data": {
+          "name": "AC Unit Name (e.g. Living Room AC)",
+          "model_code": "Panasonic AC Model Code (e.g. CS-CU-RU18CKY-1)"
+        }
+      },
+      "feature_confirmation": {
+        "title": "Step 2: Capabilities",
+        "description": "Auto-detected hardware capabilities for model **{model_code}** ({resolved_via}). Adjust feature overrides if needed:",
+        "data": {
+          "control_mode": "Control Mode Selection",
+          "has_heat_mode": "Heat Mode Support (Hot & Cold)",
+          "has_nanoe": "Nanoe Air Purifier Feature",
+          "converti_type": "Converti Mode Tier",
+          "h_vane_enabled": "Horizontal Louver / Swing Support"
+        },
+        "data_description": {
+          "has_heat_mode": "Enable if your Panasonic AC is a Hot & Cold model capable of heating.",
+          "has_nanoe": "Enable if your AC unit features nanoe-G or nanoe-X air purification.",
+          "converti_type": "Select your AC's convertible capacity tier (8-in-1, 7-in-1, or None).",
+          "h_vane_enabled": "Enable if your AC unit has motorized horizontal swing louvers."
+        }
+      },
+      "attach_blaster": {
+        "title": "Step 3: Attach IR Blaster",
+        "description": "Select the IR Blaster / Transmitter entity and protocol payload format to control **{name}** via Infrared.",
+        "data": {
+          "blaster_entity_id": "IR Blaster / Transmitter Entity",
+          "ir_format": "IR Protocol Payload Format"
         }
       }
     },
@@ -14,27 +69,36 @@
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid authentication",
       "unknown": "Unexpected error",
-      "invalid_install_date": "Date cannot be in the future or more than 8 months back (MirAIe keeps ~8 months)"
+      "invalid_install_date": "Date cannot be in the future or more than 8 months back (MirAIe keeps ~8 months)",
+      "blaster_required": "An IR Blaster entity is required when control mode is set to IR Only or Hybrid.",
+      "blaster_required_for_ir": "An IR Blaster entity must be selected when Infrared Primary is chosen."
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "no_devices_found": "No AC devices were found on this MirAIe account."
     }
   },
+
   "options": {
     "step": {
       "init": {
-        "title": "Select AC Units",
-        "description": "Select which AC unit(s) to configure. The integration will automatically reload to apply changes instantly without restarting Home Assistant.",
+        "title": "Configure {device_name}",
+        "description": "Configure options for **{device_name}** (Model: **{model_code}**).",
         "data": {
-          "devices": "Select AC Unit(s)"
+          "install_date": "Energy History Start Date",
+          "blaster_entity_id": "IR Blaster / Transmitter Entity",
+          "primary_backend": "Primary Control Backend Transport",
+          "hybrid_submode": "Hybrid Control Mode"
         }
       },
       "device_settings": {
-        "title": "Configure Settings",
-        "description": "Configure settings for the selected AC unit(s). The integration will automatically reload to apply changes instantly.",
+        "title": "Configure {device_name}",
+        "description": "Configure options for **{device_name}** (Model: **{model_code}**).",
         "data": {
-          "install_date": "History start date (YYYY-MM-DD)",
-          "half_degree_precision": "Enable 0.5°C temperature precision"
+          "install_date": "Energy History Start Date",
+          "blaster_entity_id": "IR Blaster / Transmitter Entity",
+          "primary_backend": "Primary Control Backend Transport",
+          "hybrid_submode": "Hybrid Control Mode"
         }
       }
     },
@@ -42,23 +106,28 @@
       "invalid_install_date": "Date cannot be in the future or more than 8 months back (MirAIe keeps ~8 months)"
     }
   },
+
+
   "entity": {
     "climate": {
       "miraie_in": {
         "state_attributes": {
           "preset_mode": {
             "state": {
+              "none": "None",
+              "eco": "Eco",
+              "boost": "Boost",
               "clean": "Clean",
-              "cv_110": "HC",
-              "cv_100": "FC",
-              "cv_90": "90%",
-              "cv_80": "80%",
-              "cv_70": "70%",
-              "cv_60": "60%",
-              "cv_55": "55%",
-              "cv_50": "50%",
-              "cv_40": "40%",
-              "cv_0": "Off"
+              "cv_110": "Converti 110% (High Cap)",
+              "cv_100": "Converti 100% (Full Cap)",
+              "cv_90": "Converti 90%",
+              "cv_80": "Converti 80%",
+              "cv_70": "Converti 70%",
+              "cv_60": "Converti 60%",
+              "cv_55": "Converti 55%",
+              "cv_50": "Converti 50%",
+              "cv_40": "Converti 40%",
+              "cv_0": "Converti Min (0%)"
             }
           }
         }
@@ -70,6 +139,12 @@
       },
       "nanoe": {
         "name": "Nanoe"
+      },
+      "hybrid_submode": {
+        "name": "Hybrid Automatic Control"
+      },
+      "active_backend": {
+        "name": "Primary Transport Backend"
       }
     },
     "button": {
@@ -89,8 +164,18 @@
       },
       "coil_cleaning": {
         "name": "Coil Cleaning"
+      },
+      "ir_blaster_available": {
+        "name": "IR Blaster Available"
+      },
+      "cloud_mqtt_connected": {
+        "name": "Cloud MQTT Connected"
+      },
+      "device_online": {
+        "name": "Device Online"
       }
     },
+
     "sensor": {
       "yesterday_consumption": {
         "name": "Yesterday's Energy"
@@ -116,6 +201,16 @@
       "last_controlled_via": {
         "name": "Last Controlled Via"
       }
+    }
+  },
+  "issues": {
+    "manual_migration_required": {
+      "title": "Manual Upgrade Required for MirAIe India",
+      "description": "MirAIe India 2.0 introduces independent per-device entries and IR blaster support. Auto-migration could not split your legacy account entry automatically. Please delete the old 'MirAIe Cloud Account' entry under Settings -> Devices & Services -> MirAIe India and re-add your account via Add Integration. All your existing entity names, automations, and dashboards will be preserved seamlessly!"
+    },
+    "migration_successful": {
+      "title": "Migrated to MirAIe 2.0 — IR Blaster Setup Available",
+      "description": "Your Panasonic AC integration has been successfully updated to MirAIe 2.0!\n\nIf you want to set up local IR control or hybrid failover for your Wi-Fi AC unit:\n1. Go to **Settings -> Devices & Services -> MirAIe India**.\n2. Click the **Configure (Settings Cog)** next to your AC device.\n3. Select your **IR Blaster / Transmitter** entity."
     }
   }
 }

@@ -13,28 +13,52 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
 from .const import DOMAIN
 
 PARALLEL_UPDATES = 0
 from .logger import LOGGER
 
 
+from homeassistant.helpers import entity_registry as er
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the MirAIe Binary Sensors."""
     hub: MirAIeHub = entry.runtime_data
+    coordinators = getattr(hub, "coordinators", {})
+    ent_reg = er.async_get(hass)
 
     entities = []
+    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    is_ir_entry = entry_data.get("is_ir_only", False)
+
     for device in hub.home.devices:
-        entities.append(MirAIeFilterCleanBinarySensor(device))
-        entities.append(MirAIeCoilCleanBinarySensor(device))
+        coordinator = coordinators.get(device.id)
+        has_wifi = getattr(coordinator, "has_wifi", True) if coordinator else getattr(getattr(device, "details", None), "has_wifi", True)
+
+        if not is_ir_entry and has_wifi:
+            entities.append(MirAIeFilterCleanBinarySensor(device))
+            entities.append(MirAIeCoilCleanBinarySensor(device))
+            if coordinator:
+                entities.append(MirAIeCloudMQTTConnectedBinarySensor(device, coordinator))
+                entities.append(MirAIeDeviceOnlineBinarySensor(device, coordinator))
+
+        if coordinator and coordinator.blaster_entity_id:
+            entities.append(MirAIeIRBlasterAvailableBinarySensor(device, coordinator))
+        else:
+            unq_id = f"{device.id}_ir_blaster_available"
+            entity_id = ent_reg.async_get_entity_id("binary_sensor", DOMAIN, unq_id)
+            if entity_id:
+                ent_reg.async_remove(entity_id)
+                LOGGER.info("Cleaned up orphaned binary sensor %s after IR blaster removal", entity_id)
 
     async_add_entities(entities)
+
 
 
 class MirAIeFilterCleanBinarySensor(BinarySensorEntity):
@@ -125,10 +149,165 @@ class MirAIeCoilCleanBinarySensor(BinarySensorEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         LOGGER.debug("Successfully added coil cleaning binary sensor to HA")
-        self.device.register_callback(self.async_write_ha_state)
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         LOGGER.debug("Successfully removed coil cleaning binary sensor from HA")
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+class MirAIeIRBlasterAvailableBinarySensor(BinarySensorEntity):
+    """Binary sensor reporting availability of configured IR blaster entity."""
+
+    def __init__(self, device: MirAIeDevice, coordinator) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "ir_blaster_available"
+        self._attr_unique_id = f"{device.id}_ir_blaster_available"
+        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self.device = device
+        self.coordinator = coordinator
+
+    @property
+    def is_on(self) -> bool:
+        blaster_id = self.coordinator.blaster_entity_id
+        if not blaster_id:
+            return False
+        state = self.coordinator.hass.states.get(blaster_id)
+        return state is not None and state.state not in ["unavailable", "unknown"]
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+        )
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if hasattr(self, "coordinator") and self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+        blaster_id = self.coordinator.blaster_entity_id
+        if blaster_id:
+            from homeassistant.helpers.event import async_track_state_change_event
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.coordinator.hass, [blaster_id], self._async_blaster_changed
+                )
+            )
+
+    async def _async_blaster_changed(self, event) -> None:
+        self.async_write_ha_state()
+
+
+class MirAIeCloudMQTTConnectedBinarySensor(BinarySensorEntity):
+    """Binary sensor reporting MirAIe broker MQTT connection status."""
+
+    def __init__(self, device: MirAIeDevice, coordinator) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "cloud_mqtt_connected"
+        self._attr_unique_id = f"{device.id}_cloud_mqtt_connected"
+        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self.device = device
+        self.coordinator = coordinator
+
+    @property
+    def is_on(self) -> bool:
+        hub = getattr(self.coordinator, "hub", None)
+        if hub and hasattr(hub, "broker"):
+            broker = hub.broker
+            client = getattr(broker, "client", None)
+            if client is not None:
+                is_connected = getattr(client, "is_connected", None)
+                if callable(is_connected):
+                    return is_connected()
+                return not getattr(client, "_closed", False)
+        return False
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+        )
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if hasattr(self, "coordinator") and self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
+        from homeassistant.helpers.event import async_track_time_interval
+        from homeassistant.core import callback
+        from datetime import timedelta
+        
+        @callback
+        def _update_state(now=None):
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_track_time_interval(self.hass, _update_state, timedelta(seconds=10))
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+class MirAIeDeviceOnlineBinarySensor(BinarySensorEntity):
+    """Binary sensor reporting device cloud online status."""
+
+    def __init__(self, device: MirAIeDevice, coordinator) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "device_online"
+
+        self._attr_unique_id = f"{device.id}_device_online"
+        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self.device = device
+        self.coordinator = coordinator
+
+    @property
+    def is_on(self) -> bool:
+        return self.device.status.is_online
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+        )
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if hasattr(self, "coordinator") and self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+
 

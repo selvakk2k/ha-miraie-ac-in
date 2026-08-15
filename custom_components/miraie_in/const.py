@@ -4,7 +4,30 @@ import re
 DOMAIN = "miraie_in"
 PACKAGE_NAME = "custom_components.miraie_in"
 CONF_INSTALL_DATE = "install_date"
-CONF_HALF_DEGREE_PRECISION = "half_degree_precision"
+
+# 2.0 Hybrid Architecture Config Keys
+
+CONF_CONTROL_PLANE = "control_plane"
+CONF_MODEL_CODE = "model_code"
+CONF_BLASTER_ENTITY_ID = "blaster_entity_id"
+CONF_IR_FORMAT = "ir_format"
+CONF_PRIMARY_BACKEND = "primary_backend"
+CONF_HYBRID_SUBMODE = "hybrid_submode"
+CONF_SWING_TYPE = "swing_type"
+CONF_HAS_HEAT = "has_heat"
+CONF_HAS_NANOE = "has_nanoe"
+CONF_CONVERTI_TIER = "converti_tier"
+
+CONTROL_PLANE_CLOUD = "cloud"
+CONTROL_PLANE_IR = "ir"
+CONTROL_PLANE_BOTH = "both"
+
+BACKEND_CLOUD = "cloud"
+BACKEND_IR = "ir"
+
+HYBRID_SUBMODE_AUTO = "auto"
+HYBRID_SUBMODE_MANUAL = "manual"
+
 
 # Possible swing state
 H0 = "H0"
@@ -21,27 +44,24 @@ V3 = "V3"
 V4 = "V4"
 V5 = "V5"
 
+SWING_V_MAP = {0: V0, 1: V1, 2: V2, 3: V3, 4: V4, 5: V5}
+SWING_H_MAP = {0: H0, 1: H1, 2: H2, 3: H3, 4: H4, 5: H5}
+
 # Preset for Clean
 PRESET_CLEAN = "clean"
 
-# Preset for Converti
-# Shared across both Converti variants.
+# Preset for Converti (formatted as cv_NNN for custom card & HA translation engine compatibility)
 PRESET_CONVERTI_C110 = "cv_110"
 PRESET_CONVERTI_C100 = "cv_100"
 PRESET_CONVERTI_C90 = "cv_90"
 PRESET_CONVERTI_C80 = "cv_80"
 PRESET_CONVERTI_C70 = "cv_70"
-PRESET_CONVERTI_C40 = "cv_40"
-PRESET_CONVERTI_C0 = "cv_0"
-
-# Converti 7-in-1 only.
-PRESET_CONVERTI_C55 = "cv_55"
-
-# Converti 8-in-1 only (replaces the 55% step with 60%/50%).
 PRESET_CONVERTI_C60 = "cv_60"
+PRESET_CONVERTI_C55 = "cv_55"
 PRESET_CONVERTI_C50 = "cv_50"
+PRESET_CONVERTI_C40 = "cv_40"
 
-# Converti 7-in-1 capacity steps: 110/100/90/80/70/55/40/0.
+# Converti 7-in-1 capacity steps: cv_110/cv_100/cv_90/cv_80/cv_70/cv_55/cv_40.
 CONVERTI_7IN1_PRESET_MODES = [
     PRESET_CONVERTI_C110,
     PRESET_CONVERTI_C100,
@@ -50,10 +70,9 @@ CONVERTI_7IN1_PRESET_MODES = [
     PRESET_CONVERTI_C70,
     PRESET_CONVERTI_C55,
     PRESET_CONVERTI_C40,
-    PRESET_CONVERTI_C0,
 ]
 
-# Converti 8-in-1 capacity steps: 110/100/90/80/70/60/50/40/0.
+# Converti 8-in-1 capacity steps: cv_110/cv_100/cv_90/cv_80/cv_70/cv_60/cv_50/cv_40.
 CONVERTI_8IN1_PRESET_MODES = [
     PRESET_CONVERTI_C110,
     PRESET_CONVERTI_C100,
@@ -63,7 +82,6 @@ CONVERTI_8IN1_PRESET_MODES = [
     PRESET_CONVERTI_C60,
     PRESET_CONVERTI_C50,
     PRESET_CONVERTI_C40,
-    PRESET_CONVERTI_C0,
 ]
 
 # --- Converti 7-in-1 vs 8-in-1 model support ---

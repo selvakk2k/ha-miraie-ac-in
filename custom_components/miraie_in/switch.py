@@ -13,6 +13,7 @@ from homeassistant.components.switch import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -33,7 +34,8 @@ async def async_setup_entry(
 
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = entry.runtime_data
-
+    coordinators = getattr(hub, "coordinators", {})
+    ent_reg = er.async_get(hass)
 
     entities = []
     for device in hub.home.devices:
@@ -44,7 +46,23 @@ async def async_setup_entry(
         if supports_nanoe(model_number):
             entities.append(MirAIeNanoeSwitch(device))
 
+        coordinator = coordinators.get(device.id)
+        if coordinator:
+            entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+            is_ir_only = entry_data.get("is_ir_only", False) or not coordinator.has_wifi
+            if not is_ir_only and coordinator.blaster_entity_id:
+                entities.append(MirAIeHybridSubmodeSwitch(device, coordinator))
+                entities.append(MirAIeBackendSelectSwitch(device, coordinator))
+            else:
+                for suffix in ("_hybrid_submode", "_active_backend"):
+                    unq_id = f"{device.id}{suffix}"
+                    entity_id = ent_reg.async_get_entity_id("switch", DOMAIN, unq_id)
+                    if entity_id:
+                        ent_reg.async_remove(entity_id)
+                        LOGGER.info("Cleaned up orphaned entity %s after IR blaster removal", entity_id)
+
     async_add_entities(entities)
+
 
 
 class MirAIeDisplaySwitch(SwitchEntity):
@@ -94,19 +112,15 @@ class MirAIeDisplaySwitch(SwitchEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        
         LOGGER.debug("Successfully added display switch to HA")
-        
-        # Sensors should also register callbacks to HA when their state changes
-        self.device.register_callback(self.async_write_ha_state)
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        
         LOGGER.debug("Successfully removed display switch from HA")
-        
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
 
 
 class MirAIeNanoeSwitch(SwitchEntity):
@@ -158,9 +172,151 @@ class MirAIeNanoeSwitch(SwitchEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         LOGGER.debug("Successfully added Nanoe switch to HA")
-        self.device.register_callback(self.async_write_ha_state)
+        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         LOGGER.debug("Successfully removed Nanoe switch from HA")
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+
+from homeassistant.helpers.restore_state import RestoreEntity
+from .const import (
+    CONF_PRIMARY_BACKEND,
+    CONF_HYBRID_SUBMODE,
+)
+
+
+class MirAIeHybridSubmodeSwitch(SwitchEntity, RestoreEntity):
+    """Switch toggling between Hybrid Automatic and Manual control mode."""
+
+    def __init__(self, device: MirAIeDevice, coordinator) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_name = "Hybrid Automatic Control"
+        self._attr_unique_id = f"{device.id}_hybrid_submode"
+        self.device = device
+        self.coordinator = coordinator
+
+    @property
+    def icon(self) -> str:
+        return "mdi:auto-fix" if self.is_on else "mdi:hand-back-right"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+        )
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.hybrid_submode == "auto"
+
+    def _persist_option(self, option_key: str, option_val: str) -> None:
+        entry = self.coordinator.hass.config_entries.async_get_entry(self.coordinator.entry_id)
+        if not entry:
+            return
+        options = dict(entry.options)
+        devices_opt = dict(options.get("devices", {}))
+        dev_opt = dict(devices_opt.get(self.coordinator.device_id, {}))
+        dev_opt[option_key] = option_val
+        devices_opt[self.coordinator.device_id] = dev_opt
+        options["devices"] = devices_opt
+        self.coordinator.hass.config_entries.async_update_entry(entry, options=options)
+
+    async def async_turn_on(self) -> None:
+        self.coordinator.hybrid_submode = "auto"
+        self._persist_option(CONF_HYBRID_SUBMODE, "auto")
+        self.async_write_ha_state()
+
+    async def async_turn_off(self) -> None:
+        self.coordinator.hybrid_submode = "manual"
+        self._persist_option(CONF_HYBRID_SUBMODE, "manual")
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore state and subscribe to coordinator state updates."""
+        await super().async_added_to_hass()
+        if hasattr(self, "coordinator") and self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+        # Ensure switch state reflects current coordinator hybrid_submode
+        self.async_write_ha_state()
+
+
+class MirAIeBackendSelectSwitch(SwitchEntity, RestoreEntity):
+    """Switch toggling active primary backend transport (Cloud vs IR)."""
+
+    def __init__(self, device: MirAIeDevice, coordinator) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_name = "Primary Transport Backend"
+        self._attr_unique_id = f"{device.id}_active_backend"
+        self.device = device
+        self.coordinator = coordinator
+
+    @property
+    def icon(self) -> str:
+        return "mdi:cloud-sync" if self.is_on else "mdi:remote"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=self.device.details.brand,
+            model=self.device.details.model_number,
+        )
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.primary_backend == "cloud"
+
+    def _persist_option(self, option_key: str, option_val: str) -> None:
+        entry = self.coordinator.hass.config_entries.async_get_entry(self.coordinator.entry_id)
+        if not entry:
+            return
+        options = dict(entry.options)
+        devices_opt = dict(options.get("devices", {}))
+        dev_opt = dict(devices_opt.get(self.coordinator.device_id, {}))
+        dev_opt[option_key] = option_val
+        devices_opt[self.coordinator.device_id] = dev_opt
+        options["devices"] = devices_opt
+        self.coordinator.hass.config_entries.async_update_entry(entry, options=options)
+
+    async def async_turn_on(self) -> None:
+        if self.coordinator.hybrid_submode == "auto":
+            self.coordinator.hybrid_submode = "manual"
+            self._persist_option(CONF_HYBRID_SUBMODE, "manual")
+            LOGGER.info("External touch on backend switch: Flipped hybrid mode to Manual for %s", self.device.id)
+        self.coordinator.primary_backend = "cloud"
+        self._persist_option(CONF_PRIMARY_BACKEND, "cloud")
+        self.async_write_ha_state()
+
+    async def async_turn_off(self) -> None:
+        if self.coordinator.hybrid_submode == "auto":
+            self.coordinator.hybrid_submode = "manual"
+            self._persist_option(CONF_HYBRID_SUBMODE, "manual")
+            LOGGER.info("External touch on backend switch: Flipped hybrid mode to Manual for %s", self.device.id)
+        self.coordinator.primary_backend = "ir"
+        self._persist_option(CONF_PRIMARY_BACKEND, "ir")
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore state and subscribe to coordinator state updates."""
+        await super().async_added_to_hass()
+        if hasattr(self, "coordinator") and self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+        # Ensure switch state reflects current coordinator primary_backend
+        self.async_write_ha_state()
+
+

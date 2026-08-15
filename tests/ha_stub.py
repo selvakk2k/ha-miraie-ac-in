@@ -5,12 +5,19 @@ import types
 from enum import Enum, IntFlag
 from pathlib import Path
 
-# Prefer local workspace miraie-ac-in library if present
 LOCAL_MIRAIE_AC = Path("/home/skk/Documents/GitHub/miraie-ac")
+LOCAL_PANASONIC_MODELS = Path("/home/skk/Documents/GitHub/panasonic-ac-models")
+
 if LOCAL_MIRAIE_AC.exists():
     if str(LOCAL_MIRAIE_AC) in sys.path:
         sys.path.remove(str(LOCAL_MIRAIE_AC))
     sys.path.insert(0, str(LOCAL_MIRAIE_AC))
+
+if LOCAL_PANASONIC_MODELS.exists():
+    if str(LOCAL_PANASONIC_MODELS) in sys.path:
+        sys.path.remove(str(LOCAL_PANASONIC_MODELS))
+    sys.path.insert(0, str(LOCAL_PANASONIC_MODELS))
+
 
 
 class _HADynamicModule(types.ModuleType):
@@ -37,29 +44,50 @@ def setup_ha_stubs():
             sys.path.remove(str(LOCAL_MIRAIE_AC))
         sys.path.insert(0, str(LOCAL_MIRAIE_AC))
 
-    pan_mod = types.ModuleType("panasonic_ac_models")
-    class ACModelLookup:
-        @classmethod
-        def is_cooling_only(cls, model):
-            m = str(model)
-            return False if ("EZ" in m or "KZ" in m) else True
-        @classmethod
-        def get_capabilities(cls, model):
-            m = str(model)
-            has_heat = 1 if ("EZ" in m or "KZ" in m) else 0
-            has_nanoe = 1 if ("XU" in m or "HU" in m) else 0
-            converti_type = "8-in-1" if "BKY" in m else ("7-in-1" if "AKY" in m or "NU" in m else "none")
-            return {
-                "has_heat_mode": has_heat,
-                "has_nanoe": has_nanoe,
-                "converti_type": converti_type,
-            }
-    pan_mod.ACModelLookup = ACModelLookup
-    sys.modules["panasonic_ac_models"] = pan_mod
+    try:
+        import panasonic_ac_models
+    except ImportError:
+        pan_mod = types.ModuleType("panasonic_ac_models")
+        class ACModelLookup:
+            @classmethod
+            def is_cooling_only(cls, model):
+                m = str(model)
+                return False if ("EZ" in m or "KZ" in m) else True
+            @classmethod
+            def get_capabilities(cls, model):
+                m = str(model)
+                has_heat = 1 if ("EZ" in m or "KZ" in m) else 0
+                has_nanoe = 1 if ("XU" in m or "HU" in m) else 0
+                has_wifi = 0 if ("-1" in m or "-2" in m or "KN" in m or "CW" in m) else 1
+                converti_type = "8-in-1" if ("BKY" in m or "CKY" in m) else ("7-in-1" if "AKY" in m or "NU" in m else "none")
+                return {
+                    "has_wifi": has_wifi,
+                    "has_heat_mode": has_heat,
+                    "has_nanoe": has_nanoe,
+                    "converti_type": converti_type,
+                }
+        pan_mod.ACModelLookup = ACModelLookup
+        sys.modules["panasonic_ac_models"] = pan_mod
+
     try:
         import voluptuous
     except ImportError:
         vol = types.ModuleType("voluptuous")
+        class MockHass:
+            def __init__(self):
+                self.data = {}
+                self.config_entries = MagicMock()
+                self.services = MagicMock()
+                self.services.async_call = AsyncMock()
+                self.states = MagicMock()
+                
+                async def _dummy_task(coro):
+                    pass
+                self.async_create_task = MagicMock(side_effect=_dummy_task)
+                
+                async def _dummy_exec(func, *args, **kwargs):
+                    return func(*args, **kwargs)
+                self.async_add_executor_job = AsyncMock(side_effect=_dummy_exec)
         class Schema:
             def __init__(self, schema):
                 self.schema = schema
@@ -107,21 +135,47 @@ def setup_ha_stubs():
     class ConfigEntry:
         pass
     class ConfigFlow:
+        def async_show_menu(self, step_id, menu_options, description_placeholders=None):
+            return {"type": "menu", "step_id": step_id, "menu_options": menu_options}
+        def add_suggested_values_to_schema(self, data_schema, suggested_values):
+            return data_schema
+        def async_show_form(self, step_id, data_schema=None, errors=None, description_placeholders=None):
+            return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors, "description_placeholders": description_placeholders}
+        def async_create_entry(self, title="", data=None, options=None):
+            return {"type": "create_entry", "title": title, "data": data, "options": options}
+        def async_abort(self, reason=""):
+            return {"type": "abort", "reason": reason}
+        async def async_set_unique_id(self, unique_id=None, raise_on_progress=True):
+            self.unique_id = unique_id
+        def _abort_if_unique_id_configured(self):
+            pass
         @classmethod
         def __init_subclass__(cls, **kwargs):
             super().__init_subclass__()
+
     class OptionsFlow:
-        def async_show_form(self, step_id, data_schema=None, errors=None):
-            return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors}
+        def __init__(self, config_entry=None):
+            self.config_entry = config_entry
+        def add_suggested_values_to_schema(self, data_schema, suggested_values):
+            return data_schema
+        def async_show_menu(self, step_id, menu_options, description_placeholders=None):
+            return {"type": "menu", "step_id": step_id, "menu_options": menu_options}
+        def async_show_form(self, step_id, data_schema=None, errors=None, description_placeholders=None):
+            return {"type": "form", "step_id": step_id, "data_schema": data_schema, "errors": errors, "description_placeholders": description_placeholders}
         def async_create_entry(self, title="", data=None):
             return {"type": "create_entry", "title": title, "data": data}
+
     class ConfigFlowResult:
         pass
     homeassistant.config_entries.ConfigEntry = ConfigEntry
     homeassistant.config_entries.ConfigFlow = ConfigFlow
     homeassistant.config_entries.OptionsFlow = OptionsFlow
     homeassistant.config_entries.ConfigFlowResult = ConfigFlowResult
+    import homeassistant.core
+    homeassistant.core.callback = lambda func: func
+
     import homeassistant.exceptions
+
     class HomeAssistantError(Exception):
         pass
     homeassistant.exceptions.HomeAssistantError = HomeAssistantError
@@ -242,24 +296,45 @@ def setup_ha_stubs():
 
     # Selector helper stubs
     import homeassistant.helpers.selector as selector_mod
+    class SelectorBase(dict):
+        def __init__(self, *args, **kwargs):
+            super().__init__(**kwargs)
+        def __call__(self, v):
+            return v
     class SelectOptionDict(dict):
         def __init__(self, value="", label=""):
             super().__init__(value=value, label=label)
             self.value = value
             self.label = label
-    class SelectSelector(dict):
-        def __init__(self, *args, **kwargs):
-            super().__init__(**kwargs)
+    class SelectSelector(SelectorBase):
+        pass
     class SelectSelectorConfig(dict):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.__dict__.update(kwargs)
     class SelectSelectorMode(Enum):
         DROPDOWN = "dropdown"
+        LIST = "list"
+    class BooleanSelector(SelectorBase):
+        pass
+    class EntitySelector(SelectorBase):
+        pass
+    class EntitySelectorConfig(dict):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.__dict__.update(kwargs)
+    class DateSelector(SelectorBase):
+        pass
+
     selector_mod.SelectOptionDict = SelectOptionDict
     selector_mod.SelectSelector = SelectSelector
     selector_mod.SelectSelectorConfig = SelectSelectorConfig
     selector_mod.SelectSelectorMode = SelectSelectorMode
+    selector_mod.BooleanSelector = BooleanSelector
+    selector_mod.EntitySelector = EntitySelector
+    selector_mod.EntitySelectorConfig = EntitySelectorConfig
+    selector_mod.DateSelector = DateSelector
+
 
     # Event helper stubs
     import homeassistant.helpers.event
@@ -297,6 +372,17 @@ def setup_ha_stubs():
     homeassistant.helpers.issue_registry.IssueSeverity = IssueSeverity
     homeassistant.helpers.issue_registry.async_create_issue = lambda *args, **kwargs: None
 
+    # Infrared helper stubs
+    ir_mod = types.ModuleType("homeassistant.components.infrared")
+    ir_helpers_mod = types.ModuleType("homeassistant.components.infrared.helpers")
+
+    async def _async_send_command_stub(hass, entity_id, command):
+        return True
+    ir_helpers_mod.async_send_command = _async_send_command_stub
+    ir_mod.helpers = ir_helpers_mod
+    sys.modules["homeassistant.components.infrared"] = ir_mod
+    sys.modules["homeassistant.components.infrared.helpers"] = ir_helpers_mod
+
     # restore_state helper stub
     import homeassistant.helpers.restore_state
     class RestoreEntity:
@@ -305,6 +391,8 @@ def setup_ha_stubs():
         async def async_get_last_state(self):
             return None
     homeassistant.helpers.restore_state.RestoreEntity = RestoreEntity
+
+
 
     # Ensure climate module dict strictly lacks precision constants
     for const_name in ("PRECISION_HALVES", "PRECISION_WHOLE", "PRECISION_TENTHS"):

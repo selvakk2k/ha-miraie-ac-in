@@ -1,0 +1,4402 @@
+{
+  "$schema": "./schema.json",
+  "version": "1.0.0",
+  "summary": {
+    "total_wifi_models": 398,
+    "total_wifi_families": 115,
+    "updated_at": "2026-08-06",
+    "family_count": 110,
+    "model_count": 383,
+    "total_families": 144,
+    "total_models": 486,
+    "wifi_families": 121,
+    "non_wifi_families": 23
+  },
+  "families": [
+    {
+      "family_key": "AU-18-A",
+      "series": "AU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 3.9,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-AU18AKYA",
+        "CS-AU18AKYAD",
+        "CS-AU18AKYFA",
+        "CS-AU18AKY",
+        "CS-AU18AKYD",
+        "CS-AU18AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "AU-12-A",
+      "series": "AU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-AU12AKY",
+        "CS-AU12AKYD",
+        "CS-AU12AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "AU-24-A",
+      "series": "AU",
+      "generation": "A",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-AU24AKY",
+        "CS-AU24AKYD",
+        "CS-AU24AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "AU-18-B",
+      "series": "AU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-AU18BKY",
+        "CS-AU18BKYF",
+        "CS-AU18BKYFD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "AU-12-B",
+      "series": "AU",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-AU12BKY",
+        "CS-AU12BKYD",
+        "CS-AU12BKYF",
+        "CS-AU12BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-A3",
+      "series": "EU",
+      "generation": "A3",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "3X",
+        "3XD",
+        "3XF",
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18AKY3X",
+        "CS-EU18AKY3XD",
+        "CS-EU18AKY3XF",
+        "CS-EU18AKY3",
+        "CS-EU18AKY3D",
+        "CS-EU18AKY3F"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-A3",
+      "series": "EU",
+      "generation": "A3",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.9,
+      "iseer_max": 3.9,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12AKY3",
+        "CS-EU12AKY3D",
+        "CS-EU12AKY3F"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-A3",
+      "series": "EU",
+      "generation": "A3",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24AKY3",
+        "CS-EU24AKY3D",
+        "CS-EU24AKY3F"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-A5",
+      "series": "EU",
+      "generation": "A5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 9,
+      "iseer_min": 5.1,
+      "iseer_max": 5.2,
+      "star_rating_min": 4,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18AKY5X",
+        "CS-EU18AKY5XD",
+        "CS-EU18AKY5XF",
+        "CS-EU18AKY5XFM",
+        "CS-EU18AKY5XM",
+        "CS-EU18AKY5A",
+        "CS-EU18AKY5AD",
+        "CS-EU18AKY5AF",
+        "CS-EU18AKY5AM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-A5",
+      "series": "EU",
+      "generation": "A5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 5,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12AKY5",
+        "CS-EU12AKY5D",
+        "CS-EU12AKY5F",
+        "CS-EU12AKY5FM",
+        "CS-EU12AKY5M"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-A5",
+      "series": "EU",
+      "generation": "A5",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 5,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24AKY5",
+        "CS-EU24AKY5D",
+        "CS-EU24AKY5F",
+        "CS-EU24AKY5FM",
+        "CS-EU24AKY5M"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-B3",
+      "series": "EU",
+      "generation": "B3",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 8,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "3X",
+        "3XD",
+        "3XF",
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18BKY3X",
+        "CS-EU18BKY3XD",
+        "CS-EU18BKY3XF",
+        "CS-EU18BKY3XFM",
+        "CS-EU18BKY3",
+        "CS-EU18BKY3D",
+        "CS-EU18BKY3F",
+        "CS-EU18BKY3FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-B3",
+      "series": "EU",
+      "generation": "B3",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12BKY3",
+        "CS-EU12BKY3D",
+        "CS-EU12BKY3F",
+        "CS-EU12BKY3FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-B3",
+      "series": "EU",
+      "generation": "B3",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24BKY3",
+        "CS-EU24BKY3D",
+        "CS-EU24BKY3F",
+        "CS-EU24BKY3FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-B5",
+      "series": "EU",
+      "generation": "B5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 5,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18BKY5X",
+        "CS-EU18BKY5XD",
+        "CS-EU18BKY5XF",
+        "CS-EU18BKY5XFM",
+        "CS-EU18BKY5XPM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-B5",
+      "series": "EU",
+      "generation": "B5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12BKY5",
+        "CS-EU12BKY5D",
+        "CS-EU12BKY5F",
+        "CS-EU12BKY5FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-B5",
+      "series": "EU",
+      "generation": "B5",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24BKY5",
+        "CS-EU24BKY5D",
+        "CS-EU24BKY5F",
+        "CS-EU24BKY5FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-C3",
+      "series": "EU",
+      "generation": "C3",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 7,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "3XF",
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18CKY3FM",
+        "CS-EU18CKY3XF",
+        "CS-EU18CKY3XFH",
+        "CS-EU18CKY3XFMH",
+        "CS-EU18CKY3",
+        "CS-EU18CKY3D",
+        "CS-EU18CKY3F"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-C3",
+      "series": "EU",
+      "generation": "C3",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12CKY3",
+        "CS-EU12CKY3D",
+        "CS-EU12CKY3F",
+        "CS-EU12CKY3FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-C3",
+      "series": "EU",
+      "generation": "C3",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 3.45,
+      "iseer_max": 3.45,
+      "star_rating_min": 2,
+      "star_rating_max": 2,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24CKY3",
+        "CS-EU24CKY3D",
+        "CS-EU24CKY3F",
+        "CS-EU24CKY3FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-C4",
+      "series": "EU",
+      "generation": "C4",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18CKY4X",
+        "CS-EU18CKY4XD",
+        "CS-EU18CKY4XF",
+        "CS-EU18CKY4XFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-C4",
+      "series": "EU",
+      "generation": "C4",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12CKY4",
+        "CS-EU12CKY4D",
+        "CS-EU12CKY4F",
+        "CS-EU12CKY4FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-C4",
+      "series": "EU",
+      "generation": "C4",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24CKY4FM"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-18-C5",
+      "series": "EU",
+      "generation": "C5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 7,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU18CKY5X",
+        "CS-EU18CKY5XD",
+        "CS-EU18CKY5XF",
+        "CS-EU18CKY5XFM-G",
+        "CS-EU18CKY5XFM-S",
+        "CS-EU18CKY5XFM",
+        "CS-EU18CKY5XFMH"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-12-C5",
+      "series": "EU",
+      "generation": "C5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU12CKY5",
+        "CS-EU12CKY5D",
+        "CS-EU12CKY5F",
+        "CS-EU12CKY5FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EU-24-C5",
+      "series": "EU",
+      "generation": "C5",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EU24CKY5",
+        "CS-EU24CKY5D",
+        "CS-EU24CKY5F",
+        "CS-EU24CKY5FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EZ-18-B",
+      "series": "EZ",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 7,
+      "iseer_min": 4.25,
+      "iseer_max": 4.25,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EZ18BKY",
+        "CS-EZ18BKYD",
+        "CS-EZ18BKYF",
+        "CS-EZ18BKYX",
+        "CS-EZ18BKYXD",
+        "CS-EZ18BKYXF",
+        "CS-EZ18BKYXFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EZ-12-B",
+      "series": "EZ",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.25,
+      "iseer_max": 4.25,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EZ12BKY",
+        "CS-EZ12BKYD",
+        "CS-EZ12BKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EZ-24-B",
+      "series": "EZ",
+      "generation": "B",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.1,
+      "iseer_max": 4.1,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EZ24BKY",
+        "CS-EZ24BKYD",
+        "CS-EZ24BKYF",
+        "CS-EZ24BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EZ-18-C",
+      "series": "EZ",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 7,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EZ18CKY",
+        "CS-EZ18CKYD",
+        "CS-EZ18CKYF",
+        "CS-EZ18CKYX",
+        "CS-EZ18CKYXD",
+        "CS-EZ18CKYXF",
+        "CS-EZ18CKYXFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EZ-12-C",
+      "series": "EZ",
+      "generation": "C",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EZ12CKY",
+        "CS-EZ12CKYD",
+        "CS-EZ12CKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "EZ-24-C",
+      "series": "EZ",
+      "generation": "C",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-EZ24CKY",
+        "CS-EZ24CKYD",
+        "CS-EZ24CKYF",
+        "CS-EZ24CKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "HU-18-A",
+      "series": "HU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-HU18AKY",
+        "CS-HU18AKYD",
+        "CS-HU18AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "HU-12-A",
+      "series": "HU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-HU12AKY",
+        "CS-HU12AKYD",
+        "CS-HU12AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "HU-18-B",
+      "series": "HU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.15,
+      "iseer_max": 5.15,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-HU18BKY",
+        "CS-HU18BKYD",
+        "CS-HU18BKYF",
+        "CS-HU18BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "HU-12-B",
+      "series": "HU",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.2,
+      "iseer_max": 4.2,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-HU12BKY",
+        "CS-HU12BKYD",
+        "CS-HU12BKYF",
+        "CS-HU12BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "HU-18-C5",
+      "series": "HU",
+      "generation": "C5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-HU18CKY5X",
+        "CS-HU18CKY5XD",
+        "CS-HU18CKY5XF",
+        "CS-HU18CKY5XFMH-P"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "HU-12-C5",
+      "series": "HU",
+      "generation": "C5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-HU12CKY5",
+        "CS-HU12CKY5D",
+        "CS-HU12CKY5F",
+        "CS-HU12CKY5FM-P"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "KZ-18-A",
+      "series": "KZ",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 4.1,
+      "iseer_max": 4.5,
+      "star_rating_min": 3,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KZ18AKY",
+        "CS-KZ18AKYD",
+        "CS-KZ18AKYF",
+        "CS-KZ18AKYDSR",
+        "CS-KZ18AKYFSR",
+        "CS-KZ18AKYSR"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "KZ-24-A",
+      "series": "KZ",
+      "generation": "A",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.1,
+      "iseer_max": 4.1,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KZ24AKY",
+        "CS-KZ24AKYD",
+        "CS-KZ24AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "LU-18-A",
+      "series": "LU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-LU18AKY",
+        "CS-LU18AKYD",
+        "CS-LU18AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-A4",
+      "series": "NU",
+      "generation": "A4",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": 4.6,
+      "iseer_max": 4.6,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-NU18AKY4WX",
+        "CS-NU18AKY4WXD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-A4",
+      "series": "NU",
+      "generation": "A4",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.6,
+      "iseer_max": 4.6,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12AKY4D",
+        "CS-NU12AKY4F",
+        "CS-NU12AKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-24-A4",
+      "series": "NU",
+      "generation": "A4",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.6,
+      "iseer_max": 4.6,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU24AKY4D",
+        "CS-NU24AKY4F",
+        "CS-NU24AKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-A5",
+      "series": "NU",
+      "generation": "A5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-NU18AKY5WX",
+        "CS-NU18AKY5WXD",
+        "CS-NU18AKY5WXF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-A5",
+      "series": "NU",
+      "generation": "A5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12AKY5W"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-24-A5",
+      "series": "NU",
+      "generation": "A5",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU24AKY5D",
+        "CS-NU24AKY5F",
+        "CS-NU24AKY5W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-B4",
+      "series": "NU",
+      "generation": "B4",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-NU18BKY4WX",
+        "CS-NU18BKY4WXD",
+        "CS-NU18BKY4WXF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-B4",
+      "series": "NU",
+      "generation": "B4",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12BKY4D",
+        "CS-NU12BKY4F",
+        "CS-NU12BKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-24-B4",
+      "series": "NU",
+      "generation": "B4",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU24BKY4D",
+        "CS-NU24BKY4F",
+        "CS-NU24BKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-B5",
+      "series": "NU",
+      "generation": "B5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-NU18BKY5WX",
+        "CS-NU18BKY5WXD",
+        "CS-NU18BKY5WXF",
+        "CS-NU18BKY5WXH"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-B5",
+      "series": "NU",
+      "generation": "B5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12BKY5D",
+        "CS-NU12BKY5F",
+        "CS-NU12BKY5W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-24-B5",
+      "series": "NU",
+      "generation": "B5",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU24BKY5D",
+        "CS-NU24BKY5F",
+        "CS-NU24BKY5W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-Y4",
+      "series": "NU",
+      "generation": "Y4",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-NU18YKY4",
+        "CS-NU18YKY4D",
+        "CS-NU18YKY4F",
+        "CS-NU18YKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-Y5",
+      "series": "NU",
+      "generation": "Y5",
+      "capacity_class": "0.75T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU18YKY5D",
+        "CS-NU18YKY5F",
+        "CS-NU18YKY5W"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-Y5",
+      "series": "NU",
+      "generation": "Y5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12YKY5D",
+        "CS-NU12YKY5F",
+        "CS-NU12YKY5W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-Z4",
+      "series": "NU",
+      "generation": "Z4",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU18ZKY4D",
+        "CS-NU18ZKY4F",
+        "CS-NU18ZKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-Z4",
+      "series": "NU",
+      "generation": "Z4",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12ZKY4D",
+        "CS-NU12ZKY4F",
+        "CS-NU12ZKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-24-Z4",
+      "series": "NU",
+      "generation": "Z4",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU24ZKY4D",
+        "CS-NU24ZKY4F",
+        "CS-NU24ZKY4W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-18-Z5",
+      "series": "NU",
+      "generation": "Z5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W",
+        "WA",
+        "WD",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-NU18ZKY5D",
+        "CS-NU18ZKY5F",
+        "CS-NU18ZKY5W",
+        "CS-NU18ZKY5A",
+        "CS-NU18ZKY5WA",
+        "CS-NU18ZKY5WD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "NU-12-Z5",
+      "series": "NU",
+      "generation": "Z5",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-NU12ZKY5D",
+        "CS-NU12ZKY5F",
+        "CS-NU12ZKY5W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-18-6",
+      "series": "PU",
+      "generation": "6",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-18PUY6H59B"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-24-6",
+      "series": "PU",
+      "generation": "6",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-24PUY6H59B"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-18-7",
+      "series": "PU",
+      "generation": "7",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "S-18PUY7H5YD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-24-7",
+      "series": "PU",
+      "generation": "7",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": 4.7,
+      "iseer_max": 4.7,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "S-24PUY7H5YD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-18-8",
+      "series": "PU",
+      "generation": "8",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "S-18PUY8H5YD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-24-8",
+      "series": "PU",
+      "generation": "8",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 1,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "S-24PUY8H5YD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "QU-26-A",
+      "series": "QU",
+      "generation": "A",
+      "capacity_class": "2.2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-QU26AKY",
+        "CS-QU26AKYD",
+        "CS-QU26AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "QU-26-B",
+      "series": "QU",
+      "generation": "B",
+      "capacity_class": "2.2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-QU26BKY",
+        "CS-QU26BKYD",
+        "CS-QU26BKYF",
+        "CS-QU26BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "QU-30-C",
+      "series": "QU",
+      "generation": "C",
+      "capacity_class": "2.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-QU30CKY",
+        "CS-QU30CKYD",
+        "CS-QU30CKYF",
+        "CS-QU30CKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "QU-26-Z",
+      "series": "QU",
+      "generation": "Z",
+      "capacity_class": "2.2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-QU26ZKY",
+        "CS-QU26ZKYD",
+        "CS-QU26ZKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "RU-18-C",
+      "series": "RU",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU18CKY",
+        "CS-RU18CKYD",
+        "CS-RU18CKYF",
+        "CS-RU18CKY-1"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-12-C",
+      "series": "RU",
+      "generation": "C",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU12CKY",
+        "CS-RU12CKYD",
+        "CS-RU12CKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-24-C",
+      "series": "RU",
+      "generation": "C",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU24CKY",
+        "CS-RU24CKYD",
+        "CS-RU24CKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "SU-18-A3",
+      "series": "SU",
+      "generation": "A3",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 11,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "K",
+        "T",
+        "W",
+        "WD",
+        "WF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-SU18AKY3W",
+        "CS-SU18AKY3WD",
+        "CS-SU18AKY3WF",
+        "CS-SU18AKY3WX",
+        "CS-SU18AKY3WXD",
+        "CS-SU18AKY3WXF",
+        "CS-SU18AKY3T",
+        "CS-SU18AKY3TD",
+        "CS-SU18AKY3T-1",
+        "CS-SU18AKY3TK",
+        "CS-SU18AKY3TKD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-12-A3",
+      "series": "SU",
+      "generation": "A3",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "T",
+        "W",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-SU12AKY3",
+        "CS-SU12AKY3T",
+        "CS-SU12AKY3TD",
+        "CS-SU12AKY3D",
+        "CS-SU12AKY3F",
+        "CS-SU12AKY3W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-24-A3",
+      "series": "SU",
+      "generation": "A3",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-SU24AKY3D",
+        "CS-SU24AKY3F",
+        "CS-SU24AKY3W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "SU-17-A3",
+      "series": "SU",
+      "generation": "A3",
+      "capacity_class": "1.4T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "T"
+      ],
+      "indoor_units": [
+        "CS-SU17AKY3T"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-11-A3",
+      "series": "SU",
+      "generation": "A3",
+      "capacity_class": "?T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "T"
+      ],
+      "indoor_units": [
+        "CS-SU11AKY3T",
+        "CS-SU11AKY3TD",
+        "CS-SU11AKY3TF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-18-B3",
+      "series": "SU",
+      "generation": "B3",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "T",
+        "W",
+        "WD",
+        "WF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-SU18BKY3W",
+        "CS-SU18BKY3WD",
+        "CS-SU18BKY3WF",
+        "CS-SU18BKY3WXH",
+        "CS-SU18BKY3T",
+        "CS-SU18BKY3TD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-12-B3",
+      "series": "SU",
+      "generation": "B3",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "T",
+        "W",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-SU12BKY3D",
+        "CS-SU12BKY3F",
+        "CS-SU12BKY3W",
+        "CS-SU12BKY3",
+        "CS-SU12BKY3T",
+        "CS-SU12BKY3TD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-24-B3",
+      "series": "SU",
+      "generation": "B3",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "W"
+      ],
+      "indoor_units": [
+        "CS-SU24BKY3D",
+        "CS-SU24BKY3F",
+        "CS-SU24BKY3W"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "SU-18-Y",
+      "series": "SU",
+      "generation": "Y",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": 3.9,
+      "iseer_max": 3.9,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F"
+      ],
+      "indoor_units": [
+        "CS-SU18YKYTD",
+        "CS-SU18YKYTF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-12-Y",
+      "series": "SU",
+      "generation": "Y",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "WA",
+        "WD",
+        "WF"
+      ],
+      "indoor_units": [
+        "CS-SU12YKYWA",
+        "CS-SU12YKYWD",
+        "CS-SU12YKYWF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-24-Y",
+      "series": "SU",
+      "generation": "Y",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "WA",
+        "WD",
+        "WF"
+      ],
+      "indoor_units": [
+        "CS-SU24YKYWA",
+        "CS-SU24YKYWD",
+        "CS-SU24YKYWF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "SU-18-Z",
+      "series": "SU",
+      "generation": "Z",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": 3.9,
+      "iseer_max": 3.9,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "K",
+        "WT"
+      ],
+      "indoor_units": [
+        "CS-SU18ZKYTD",
+        "CS-SU18ZKYTF",
+        "CS-SU18ZKYTK",
+        "CS-SU18ZKYWT",
+        "CS-SU18ZKYWTD",
+        "CS-SU18ZKYWTF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-12-Z",
+      "series": "SU",
+      "generation": "Z",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "WA",
+        "WD",
+        "WF"
+      ],
+      "indoor_units": [
+        "CS-SU12ZKYWA",
+        "CS-SU12ZKYWD",
+        "CS-SU12ZKYWF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "SU-24-Z",
+      "series": "SU",
+      "generation": "Z",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "WA",
+        "WD",
+        "WF"
+      ],
+      "indoor_units": [
+        "CS-SU24ZKYWA",
+        "CS-SU24ZKYWD",
+        "CS-SU24ZKYWF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "TU-18-A",
+      "series": "TU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF"
+      ],
+      "indoor_units": [
+        "CS-TU18AKYD",
+        "CS-TU18AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "TU-12-A",
+      "series": "TU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-TU12AKY",
+        "CS-TU12AKYD",
+        "CS-TU12AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "TU-18-Z",
+      "series": "TU",
+      "generation": "Z",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-TU18ZKY-1",
+        "CS-TU18ZKY",
+        "CS-TU18ZKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "TU-18-Z5",
+      "series": "TU",
+      "generation": "Z5",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D"
+      ],
+      "indoor_units": [
+        "CS-TU18ZKY5D"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "VU-18-A",
+      "series": "VU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.85,
+      "iseer_max": 5.85,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-VU18AKY",
+        "CS-VU18AKYD",
+        "CS-VU18AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "VU-18-B",
+      "series": "VU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.85,
+      "iseer_max": 5.85,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-VU18BKY",
+        "CS-VU18BKYD",
+        "CS-VU18BKYF",
+        "CS-VU18BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "WU-18-B",
+      "series": "WU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-WU18BKYFM",
+        "CS-WU18BKYFMD",
+        "CS-WU18BKYM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "WU-12-B",
+      "series": "WU",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-WU12BKY",
+        "CS-WU12BKYD",
+        "CS-WU12BKYF",
+        "CS-WU12BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "WU-24-B",
+      "series": "WU",
+      "generation": "B",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-WU24BKY",
+        "CS-WU24BKYD",
+        "CS-WU24BKYF",
+        "CS-WU24BKYFM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "WU-18-C4",
+      "series": "WU",
+      "generation": "C4",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.2,
+      "iseer_max": 5.2,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-WU18CKY4X",
+        "CS-WU18CKY4XD",
+        "CS-WU18CKY4XF",
+        "CS-WU18CKY4XFM-P"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "XU-18-A",
+      "series": "XU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-XU18AKY",
+        "CS-XU18AKYD",
+        "CS-XU18AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "XU-12-A",
+      "series": "XU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": 5.1,
+      "iseer_max": 5.1,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD",
+        "YF",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-XU12AKY",
+        "CS-XU12AKYD",
+        "CS-XU12AKYF"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-12-A",
+      "series": "YU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": 3.95,
+      "iseer_max": 3.95,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU12AKYD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-24-A",
+      "series": "YU",
+      "generation": "A",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU24AKYD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-18-B",
+      "series": "YU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU18BKYXD",
+        "CS-YU18BKYD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-12-B",
+      "series": "YU",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": 4.0,
+      "iseer_max": 4.0,
+      "star_rating_min": 3,
+      "star_rating_max": 3,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU12BKYD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-24-B",
+      "series": "YU",
+      "generation": "B",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU24BKYD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-18-C",
+      "series": "YU",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "D",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-YU18CKYXD",
+        "CS-YU18CKYXDH"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-12-C",
+      "series": "YU",
+      "generation": "C",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU12CKYD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-24-C",
+      "series": "YU",
+      "generation": "C",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": 4.5,
+      "iseer_max": 4.5,
+      "star_rating_min": 4,
+      "star_rating_max": 4,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU24CKYD"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "YU-12-Z",
+      "series": "YU",
+      "generation": "Z",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "YD"
+      ],
+      "indoor_units": [
+        "CS-YU12ZKYD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "ZU-24-C5",
+      "series": "ZU",
+      "generation": "C5",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": 5.8,
+      "iseer_max": 5.8,
+      "star_rating_min": 5,
+      "star_rating_max": 5,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "D",
+        "F",
+        "base"
+      ],
+      "indoor_units": [
+        "CS-ZU24CKY5",
+        "CS-ZU24CKY5D",
+        "CS-ZU24CKY5F",
+        "CS-ZU24CKY5FM"
+      ],
+      "ac_types": [
+        "Room Air Conditioner (Variable Speed)",
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "RU-09-A",
+      "series": "RU",
+      "generation": "?",
+      "capacity_class": "0.75T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU9AKY",
+        "CS-RU9AKYD",
+        "CS-RU9AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-18-A",
+      "series": "RU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 6,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU18AKY",
+        "CS-RU18AKYD",
+        "CS-RU18AKYF",
+        "CS-RU18AKY-1",
+        "CS-RU18AKY-2",
+        "CS-RU18AKYF-2"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-12-A",
+      "series": "RU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU12AKY",
+        "CS-RU12AKYD",
+        "CS-RU12AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-18-B",
+      "series": "RU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU18BKY",
+        "CS-RU18BKYD",
+        "CS-RU18BKYF",
+        "CS-RU18BKY-1"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-17-B",
+      "series": "RU",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "8-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU17BKY"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "RU-12-B",
+      "series": "RU",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-RU12BKY",
+        "CS-RU12BKYD",
+        "CS-RU12BKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "PD-18-1",
+      "series": "PD",
+      "generation": "?",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-18PD1RY",
+        "S-18PD9RYM"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "PD-24-1",
+      "series": "PD",
+      "generation": "?",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-24PBB8H5YB",
+        "S-24PD1RY",
+        "S-24PD9RYM",
+        "S-24PB9ZYM"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-18-A",
+      "series": "KN",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN18AKY",
+        "CS-KN18AKYD",
+        "CS-KN18AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-12-A",
+      "series": "KN",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN12AKY",
+        "CS-KN12AKYD",
+        "CS-KN12AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-24-A",
+      "series": "KN",
+      "generation": "A",
+      "capacity_class": "2T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN24AKY",
+        "CS-KN24AKYD",
+        "CS-KN24AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-18-B",
+      "series": "KN",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN18BKY",
+        "CS-KN18BKYD",
+        "CS-KN18BKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-12-B",
+      "series": "KN",
+      "generation": "B",
+      "capacity_class": "1T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN12BKY",
+        "CS-KN12BKYD",
+        "CS-KN12BKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-24-B",
+      "series": "KN",
+      "generation": "B",
+      "capacity_class": "2T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN24BKY",
+        "CS-KN24BKYD",
+        "CS-KN24BKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-18-C",
+      "series": "KN",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN18CKY",
+        "CS-KN18CKYD",
+        "CS-KN18CKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-12-C",
+      "series": "KN",
+      "generation": "C",
+      "capacity_class": "1T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN12CKY",
+        "CS-KN12CKYD",
+        "CS-KN12CKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-24-C",
+      "series": "KN",
+      "generation": "C",
+      "capacity_class": "2T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN24CKY",
+        "CS-KN24CKYD",
+        "CS-KN24CKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-18-C3X",
+      "series": "KN",
+      "generation": "C3X",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN18CKY3X",
+        "CS-KN18CKY3XD",
+        "CS-KN18CKY3XF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KN-12-C3X",
+      "series": "KN",
+      "generation": "C3X",
+      "capacity_class": "1T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KN12CKY3X",
+        "CS-KN12CKY3XD",
+        "CS-KN12CKY3XF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "KU-18-A",
+      "series": "KU",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 2,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KU18AKY",
+        "CS-KU18AKYD"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "KU-12-A",
+      "series": "KU",
+      "generation": "A",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KU12AKY",
+        "CS-KU12AKYD",
+        "CS-KU12AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "KU-24-A",
+      "series": "KU",
+      "generation": "A",
+      "capacity_class": "2T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KU24AKY",
+        "CS-KU24AKYD",
+        "CS-KU24AKYF"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "KU-12-Z",
+      "series": "KU",
+      "generation": "Z",
+      "capacity_class": "1T",
+      "speed_type": "variable",
+      "model_count": 4,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CS-KU12ZKY",
+        "CS-KU12ZKYD",
+        "CS-KU12ZKYF",
+        "CS-KU12ZKYF1"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "LN-18-A",
+      "series": "LN",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-LN183AG",
+        "CW-LN183AM",
+        "CW-LN183AR"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "LN-18-B",
+      "series": "LN",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "7-in-1",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-LN183BG",
+        "CW-LN183BM",
+        "CW-LN183BR"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "LN-18-C",
+      "series": "LN",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-LN183CG",
+        "CW-LN183CM",
+        "CW-LN183CR"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "LU-18-C",
+      "series": "LU",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-LU183CG",
+        "CW-LU183CM",
+        "CW-LU183CR"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-18-5",
+      "series": "PU",
+      "generation": "5",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-18PUB5H59B"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-24-5",
+      "series": "PU",
+      "generation": "5",
+      "capacity_class": "2T",
+      "speed_type": "fixed",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-24PUB5H59B"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-18-R",
+      "series": "PU",
+      "generation": "?",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 1,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-18PU8RY"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "PU-24-R",
+      "series": "PU",
+      "generation": "?",
+      "capacity_class": "2T",
+      "speed_type": "fixed",
+      "model_count": 2,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "S-24PU8NY",
+        "S-24PU8RY"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    },
+    {
+      "family_key": "XN-18-A",
+      "series": "XN",
+      "generation": "A",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 6,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-XN184AG",
+        "CW-XN184AM",
+        "CW-XN184AR",
+        "CW-XN185AG",
+        "CW-XN185AM",
+        "CW-XN185AR"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "XN-18-B",
+      "series": "XN",
+      "generation": "B",
+      "capacity_class": "1.5T",
+      "speed_type": "fixed",
+      "model_count": 6,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 0,
+      "has_heat_mode": 0,
+      "has_nanoe": 0,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-XN184BG",
+        "CW-XN184BM",
+        "CW-XN184BR",
+        "CW-XN185BGT",
+        "CW-XN185BMT",
+        "CW-XN185BRT"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "2-way"
+    },
+    {
+      "family_key": "XU-18-C",
+      "series": "XU",
+      "generation": "C",
+      "capacity_class": "1.5T",
+      "speed_type": "variable",
+      "model_count": 3,
+      "iseer_min": null,
+      "iseer_max": null,
+      "star_rating_min": null,
+      "star_rating_max": null,
+      "has_wifi": 1,
+      "has_heat_mode": 0,
+      "has_nanoe": 1,
+      "converti_type": "none",
+      "variants": [
+        "base"
+      ],
+      "indoor_units": [
+        "CW-XU185CGT",
+        "CW-XU185CMT",
+        "CW-XU185CRT"
+      ],
+      "ac_types": [
+        "Split"
+      ],
+      "swing_type": "4-way"
+    }
+  ]
+}

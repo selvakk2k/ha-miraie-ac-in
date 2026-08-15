@@ -1,10 +1,12 @@
 """The mirAIe integration."""
 from __future__ import annotations
+from typing import Any
 
 from .logger import LOGGER
 
 from miraie_ac import MirAIeBroker, MirAIeHub
 
+from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -18,9 +20,21 @@ from datetime import date
 import aiohttp
 import asyncio
 
-from .const import CONF_INSTALL_DATE, DOMAIN
+from .const import (
+    CONF_INSTALL_DATE,
+    CONF_BLASTER_ENTITY_ID,
+    CONF_PRIMARY_BACKEND,
+    CONF_HYBRID_SUBMODE,
+    DOMAIN,
+    SWING_V_MAP,
+    SWING_H_MAP,
+    V0,
+    H0,
+)
+from .coordinator import MirAIeDeviceCoordinator
 from .sensor import async_backfill_energy_statistics
 from .utils import six_months_ago
+
 
 
 
@@ -127,35 +141,274 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     session = async_get_clientsession(hass)
-    # If a previously-installed miraie-ac-in version is still loaded in this
-    # running process (e.g. right after an integration upgrade, before HA has
-    # restarted), MirAIeHub() may not yet accept a session argument. Fall back
-    # to a self-managed session in that case; this resolves itself on the next
-    # HA restart once the updated dependency is actually loaded.
-    # See https://github.com/selvakk2k/ha-miraie-ac-in/issues/2
-    try:
-        hub = MirAIeHub(session)
-    except TypeError:
-        LOGGER.warning(
-            "miraie-ac-in installed in this process does not accept a shared "
-            "session yet (likely an integration upgrade pending a Home "
-            "Assistant restart); using a self-managed session for now. This "
-            "should resolve automatically after the next restart."
-        )
+    has_username = "username" in entry.data
+    is_ir_only = entry.data.get("is_ir_only", False) or not has_username
+
+    if is_ir_only or not has_username:
         hub = MirAIeHub()
-    broker = MirAIeBroker()
-    try:
-        await hub.init(entry.data["username"], entry.data["password"], broker)
-    except (aiohttp.ClientError, TimeoutError) as err:
-        raise ConfigEntryNotReady from err
-    except Exception as err:
-        # Generic catch for miraie_ac auth failure or other unexpected init errors
-        raise ConfigEntryAuthFailed from err
+        hub.home = type("Home", (), {"devices": []})()
+        dev_id = entry.unique_id or f"manual_{entry.entry_id}"
+        model_code = entry.data.get("model_code", "CS-CU-RU18CKY-1")
+        name = entry.data.get("name", entry.title)
+
+        async def _dummy_async_coro(*args, **kwargs):
+            return None
+
+        dummy_dev = type("Device", (), {
+            "id": dev_id,
+            "friendly_name": name,
+            "details": type("Details", (), {"model_number": model_code, "brand": "Panasonic", "firmware_version": "IR-1.0", "has_wifi": not entry.data.get("is_ir_only", False)})(),
+            "status": type("Status", (), {
+                "is_online": True,
+                "power_mode": type("Pwr", (), {"value": "off"})(),
+                "hvac_mode": type("Md", (), {"value": "cool"})(),
+                "temperature": 24,
+                "room_temperature": 25.0,
+                "fan_mode": type("Fn", (), {"value": "auto"})(),
+                "v_swing_mode": type("Vs", (), {"value": 0})(),
+                "h_swing_mode": type("Hs", (), {"value": 0})(),
+                "converti_mode": type("Cv", (), {"value": 0})(),
+                "preset_mode": type("Pr", (), {"value": "none"})(),
+            })(),
+            "register_callback": lambda *args, **kwargs: None,
+            "remove_callback": lambda *args, **kwargs: None,
+            "turn_on": _dummy_async_coro,
+            "turn_off": _dummy_async_coro,
+            "set_temperature": _dummy_async_coro,
+            "set_hvac_mode": _dummy_async_coro,
+            "set_fan_mode": _dummy_async_coro,
+            "set_v_swing_mode": _dummy_async_coro,
+            "set_h_swing_mode": _dummy_async_coro,
+            "set_preset_mode": _dummy_async_coro,
+            "set_converti_mode": _dummy_async_coro,
+            "set_display_mode": _dummy_async_coro,
+            "set_nanoe": _dummy_async_coro,
+        })()
+        hub.home.devices = [dummy_dev]
+        has_wifi = not entry.data.get("is_ir_only", False)
+        coord = MirAIeDeviceCoordinator(
+            hass,
+            entry_id=entry.entry_id,
+            device_id=dev_id,
+            model_code=model_code,
+            has_wifi=has_wifi,
+            control_mode="ir" if not has_wifi else "hybrid",
+            primary_backend=entry.options.get(CONF_PRIMARY_BACKEND, "ir"),
+            hybrid_submode="manual",
+            blaster_entity_id=entry.options.get(CONF_BLASTER_ENTITY_ID, ""),
+        )
+        setattr(hub, "coordinators", {dev_id: coord})
+    else:
+        try:
+            hub = MirAIeHub(session)
+        except TypeError:
+            hub = MirAIeHub()
+        broker = MirAIeBroker()
+        try:
+            await hub.init(entry.data["username"], entry.data["password"], broker)
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise ConfigEntryNotReady from err
+        except Exception as err:
+            raise ConfigEntryAuthFailed from err
+
+        # Auto-split legacy v1.x single-parent account entries into per-device config entries
+        if "device_id" not in entry.data:
+            LOGGER.info("Legacy single-account entry detected (%s). Auto-migrating to per-device entries...", entry.entry_id)
+            devices = getattr(getattr(hub, "home", None), "devices", [])
+            if devices:
+                existing_entries = hass.config_entries.async_entries(DOMAIN)
+                existing_dev_ids = {e.data.get("device_id") for e in existing_entries if e.data.get("device_id")}
+
+                migrated_count = 0
+                failed_devices = []
+                for device in devices:
+                    if device.id in existing_dev_ids:
+                        migrated_count += 1
+                        continue
+                    model_code = getattr(getattr(device, "details", None), "model_number", "") or ""
+
+                    # Extract all options from legacy entry to preserve install_date and any device-specific settings
+                    legacy_devices_opt = entry.options.get("devices", {})
+                    legacy_dev_opts = legacy_devices_opt.get(device.id, {})
+                    new_options = dict(legacy_dev_opts)
+
+                    legacy_install_date = legacy_dev_opts.get("install_date") or entry.options.get("install_date")
+                    if legacy_install_date:
+                        new_options["install_date"] = legacy_install_date
+
+                    blaster_id = legacy_dev_opts.get(CONF_BLASTER_ENTITY_ID) or entry.options.get(CONF_BLASTER_ENTITY_ID)
+                    if blaster_id:
+                        new_options[CONF_BLASTER_ENTITY_ID] = blaster_id
+
+                    primary = legacy_dev_opts.get(CONF_PRIMARY_BACKEND) or entry.options.get(CONF_PRIMARY_BACKEND)
+                    if primary:
+                        new_options[CONF_PRIMARY_BACKEND] = primary
+
+                    submode = legacy_dev_opts.get(CONF_HYBRID_SUBMODE) or entry.options.get(CONF_HYBRID_SUBMODE)
+                    if submode:
+                        new_options[CONF_HYBRID_SUBMODE] = submode
+
+                    ir_fmt = legacy_dev_opts.get("working_ir_format") or entry.options.get("working_ir_format")
+                    if ir_fmt:
+                        new_options["working_ir_format"] = ir_fmt
+
+                    try:
+                        result = await hass.config_entries.flow.async_init(
+                            DOMAIN,
+                            context={"source": config_entries.SOURCE_IMPORT},
+                            data={
+                                "username": entry.data["username"],
+                                "password": entry.data["password"],
+                                "device_id": device.id,
+                                "name": device.friendly_name,
+                                "model_code": model_code,
+                                "is_ir_only": False,
+                                "options": new_options,
+                            },
+                        )
+                        if isinstance(result, dict) and result.get("type") in ("create_entry", "abort"):
+                            migrated_count += 1
+                        else:
+                            LOGGER.warning("Auto-migration: Unexpected flow result for device %s: %s", device.id, result)
+                            failed_devices.append(device.id)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        LOGGER.exception("Auto-migration failed for device %s: %s", device.id, exc)
+                        failed_devices.append(device.id)
+
+                if not failed_devices and migrated_count >= len(devices):
+                    LOGGER.info(
+                        "Successfully auto-migrated all %d device(s) into individual config entries. Removing legacy parent entry %s",
+                        migrated_count,
+                        entry.entry_id,
+                    )
+                    _notify_migration_successful(hass)
+                    hass.async_create_task(hass.config_entries.async_remove(entry.entry_id))
+                    return True
+
+                LOGGER.error(
+                    "Auto-migration partially or completely failed (failed devices: %s). Preserving legacy parent entry %s to prevent data loss.",
+                    failed_devices,
+                    entry.entry_id,
+                )
+                async_create_issue(
+                    hass,
+                    DOMAIN,
+                    f"manual_migration_required_{entry.entry_id}",
+                    is_fixable=False,
+                    issue_domain=DOMAIN,
+                    severity=IssueSeverity.WARNING,
+                    translation_key="manual_migration_required",
+                )
+                return False
+            else:
+                entry_title = getattr(entry, "title", "MirAIe Cloud Account")
+                LOGGER.warning("Auto-migration: No devices discovered for legacy entry %s", entry_title)
+                async_create_issue(
+                    hass,
+                    DOMAIN,
+                    f"manual_migration_required_{entry.entry_id}",
+                    is_fixable=False,
+                    issue_domain=DOMAIN,
+                    severity=IssueSeverity.WARNING,
+                    translation_key="manual_migration_required",
+                )
+                return False
 
     entry.runtime_data = hub
 
+    # Process manual devices added via options flow
+    manual_devices_opt = entry.options.get("manual_devices", [])
+    for m_dev in manual_devices_opt:
+        m_id = m_dev["id"]
+        if not any(d.id == m_id for d in hub.home.devices):
+            m_dummy = type("Device", (), {
+                "id": m_id,
+                "friendly_name": m_dev.get("name", "Manual AC"),
+                "details": type("Details", (), {"model_number": m_dev.get("model_code", "CS-CU-KN18YKY"), "brand": "Panasonic", "firmware_version": "IR-1.0", "has_wifi": False})(),
+                "status": type("Status", (), {
+                    "is_online": True,
+                    "power_mode": type("Pwr", (), {"value": "off"})(),
+                    "hvac_mode": type("Md", (), {"value": "cool"})(),
+                    "temperature": 24,
+                    "room_temperature": 25.0,
+                    "fan_mode": type("Fn", (), {"value": "auto"})(),
+                    "v_swing_mode": type("Vs", (), {"value": 0})(),
+                    "h_swing_mode": type("Hs", (), {"value": 0})(),
+                    "converti_mode": type("Cv", (), {"value": 0})(),
+                    "preset_mode": type("Pr", (), {"value": "none"})(),
+                })(),
+                "register_callback": lambda *args, **kwargs: None,
+                "remove_callback": lambda *args, **kwargs: None,
+                "turn_on": _dummy_async_coro,
+                "turn_off": _dummy_async_coro,
+                "set_temperature": _dummy_async_coro,
+                "set_hvac_mode": _dummy_async_coro,
+                "set_fan_mode": _dummy_async_coro,
+                "set_v_swing_mode": _dummy_async_coro,
+                "set_h_swing_mode": _dummy_async_coro,
+                "set_preset_mode": _dummy_async_coro,
+                "set_converti_mode": _dummy_async_coro,
+                "set_display_mode": _dummy_async_coro,
+                "set_nanoe": _dummy_async_coro,
+            })()
+            hub.home.devices.append(m_dummy)
+
+
+    # Initialize 2.0 State Coordinators for all discovered & manual AC units
+    coordinators = {}
+    devices_opt = entry.options.get("devices", {})
+
+    try:
+        try:
+            from panasonic_ac_models import ACModelLookup
+        except ImportError:
+            from .panasonic_ac_models import ACModelLookup
+        lookup = await hass.async_add_executor_job(ACModelLookup)
+    except Exception as exc:
+        LOGGER.error("Failed to load ACModelLookup: %s", exc)
+        lookup = None
+
+    target_dev_id = entry.data.get("device_id")
+    target_devices = hub.home.devices
+    if target_dev_id:
+        matched = [d for d in hub.home.devices if d.id == target_dev_id]
+        if matched:
+            target_devices = matched
+
+    for device in target_devices:
+        dev_opt = devices_opt.get(device.id, {})
+        blaster_id = dev_opt.get(CONF_BLASTER_ENTITY_ID) or entry.options.get(CONF_BLASTER_ENTITY_ID)
+        primary = dev_opt.get(CONF_PRIMARY_BACKEND) or entry.options.get(CONF_PRIMARY_BACKEND, "cloud" if not is_ir_only else "ir")
+        submode = dev_opt.get(CONF_HYBRID_SUBMODE) or entry.options.get(CONF_HYBRID_SUBMODE, "auto" if not is_ir_only else "manual")
+
+        model_code = dev_opt.get("model_code") or entry.options.get("model_code") or getattr(getattr(device, "details", None), "model_number", "") or ""
+
+        coordinator = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id=entry.entry_id,
+            device_id=device.id,
+            model_code=model_code,
+            has_wifi=getattr(getattr(device, "details", None), "has_wifi", True) if not is_ir_only else False,
+            blaster_entity_id=blaster_id,
+            primary_backend=primary,
+            hybrid_submode=submode,
+            ir_format=dev_opt.get("working_ir_format") or entry.options.get("working_ir_format"),
+            lookup=lookup,
+        )
+        coordinator.hub = hub
+        coordinators[device.id] = coordinator
+
+        device.register_callback(_make_cloud_cb(hass, coordinator, device))
+
+    setattr(hub, "coordinators", coordinators)
+
+
+
+
+
     # Migrate old-format unique_ids (idempotent, safe to run every startup)
     _migrate_unique_ids(hass, entry, hub)
+
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -207,23 +460,108 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update by automatically reloading the integration entry."""
+    """Reload config entry automatically when options are updated."""
     await hass.config_entries.async_reload(entry.entry_id)
+
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hub: MirAIeHub = entry.runtime_data
-        if hasattr(hub, "close"):
-            await hub.close()
-        else:
-            for task in list(getattr(hub, "background_tasks", [])):
-                task.cancel()
-            if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
-                await hub.http.close()
+        hub: MirAIeHub | None = getattr(entry, "runtime_data", None)
+        if hub:
+            try:
+                if hasattr(hub, "close"):
+                    await hub.close()
+                else:
+                    for task in list(getattr(hub, "background_tasks", [])):
+                        task.cancel()
+                    if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
+                        await hub.http.close()
+            except Exception as err:
+                LOGGER.debug("Error closing hub during unload of %s: %s", entry.title, err)
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove a config entry."""
+    LOGGER.info("Removed config entry: %s (%s)", entry.title, entry.entry_id)
+
+
+def _notify_migration_successful(hass: HomeAssistant) -> None:
+    """Notify users of successful 2.0 migration and IR blaster setup instructions."""
+    try:
+        from homeassistant.components import persistent_notification
+        title = "MirAIe 2.0 Migration Complete"
+        msg = (
+            "Your Panasonic AC integration has been successfully updated to **MirAIe 2.0**!\n\n"
+            "Each AC unit is now managed as an individual device entry with hybrid Cloud + IR support.\n\n"
+            "**To set up an IR Blaster / Transmitter for your cloud AC unit:**\n"
+            "1. Go to **Settings -> Devices & Services -> MirAIe India**.\n"
+            "2. Find your AC device and click the **Configure (Settings Cog)** button.\n"
+            "3. Select your **IR Blaster / Transmitter** entity."
+        )
+        persistent_notification.async_create(
+            hass,
+            msg,
+            title=title,
+            notification_id="miraie_20_migration_complete",
+        )
+    except Exception as exc:
+        LOGGER.debug("Could not send migration notification: %s", exc)
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate mirAIe_in config entry to version 2."""
+    LOGGER.info("Migrating mirAIe_in config entry %s from version %s", config_entry.entry_id, config_entry.version)
+
+    if config_entry.version == 1:
+        hass.config_entries.async_update_entry(config_entry, version=2)
+        LOGGER.info("Migrated mirAIe_in config entry %s to version 2", config_entry.entry_id)
+        _notify_migration_successful(hass)
+
+    return True
+
+
+def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any):
+    def _cloud_cb(*args, **kwargs):
+        status_obj = getattr(dev, "status", None)
+        if status_obj:
+            v_swing = getattr(status_obj, "v_swing_mode", None)
+            h_swing = getattr(status_obj, "h_swing_mode", None)
+            v_val = v_swing.value if v_swing and hasattr(v_swing, "value") else v_swing
+            h_val = h_swing.value if h_swing and hasattr(h_swing, "value") else h_swing
+
+            c_mode = getattr(status_obj, "converti_mode", None)
+            c_val = getattr(c_mode, "value", 0) if c_mode else 0
+            if isinstance(c_val, str):
+                import re
+                m = re.search(r"\d+", c_val)
+                c_val = int(m.group(0)) if m else 0
+
+            preset_obj = getattr(status_obj, "preset_mode", None)
+            preset_val = preset_obj.value if preset_obj and hasattr(preset_obj, "value") else str(preset_obj or "none")
+            nanoe_val = getattr(status_obj, "nanoe_mode", "off")
+
+            cloud_data = {
+                "pwr": "on" if getattr(status_obj, "power_mode", None) and getattr(status_obj, "power_mode").value == "on" else "off",
+                "md": getattr(status_obj, "hvac_mode", None).value if getattr(status_obj, "hvac_mode", None) else None,
+                "tset": getattr(status_obj, "temperature", None),
+                "acfs": getattr(status_obj, "fan_mode", None).value if getattr(status_obj, "fan_mode", None) else None,
+                "acvs": SWING_V_MAP.get(v_val, V0) if v_val is not None else None,
+                "achs": SWING_H_MAP.get(h_val, H0) if h_val is not None else None,
+                "acec": "on" if preset_val == "eco" else "off",
+                "acngs": "on" if str(nanoe_val).lower() in ("on", "1", "true") else "off",
+                "converti": c_val,
+                "preset": preset_val,
+            }
+            hass.async_create_task(coord.async_handle_cloud_update(cloud_data))
+    return _cloud_cb
+
+
+
+
 
 
 
