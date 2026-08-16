@@ -23,7 +23,7 @@
       },
       "cloud_devices": {
         "title": "Configure {device_name}",
-        "description": "Configuring control transport and options for **{device_name}** (Model: **{model_code}**). Leaving IR Blaster empty selects Cloud-Only mode.",
+        "description": "Configuring control transport and options for **{device_name}** ({model_display}). Leaving IR Blaster empty selects Cloud-Only mode.",
         "data": {
           "primary_backend": "Primary Transport Backend",
           "hybrid_submode": "Hybrid Failover Strategy",

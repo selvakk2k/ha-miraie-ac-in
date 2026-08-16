@@ -120,20 +120,35 @@ async def validate_input(
                             for dev in space.get("devices", []):
                                 dev_id = dev.get("deviceId")
                                 if dev_id:
+                                    direct_model = (
+                                        dev.get("modelNumber")
+                                        or dev.get("modelName")
+                                        or dev.get("model")
+                                        or (dev.get("details") or {}).get("modelNumber")
+                                        or ""
+                                    )
                                     raw_devices.append({
                                         "id": dev_id,
                                         "name": dev.get("deviceName", "MirAIe Cloud AC"),
-                                        "model_code": "",
+                                        "model_code": direct_model,
                                     })
 
                         if raw_devices:
                             device_ids = ",".join([d["id"] for d in raw_devices])
                             try:
                                 res_details = await hub.http.get(
-                                    f"https://app.miraie.in/simplifi/v1/deviceManagement/devices/deviceId?deviceIds={device_ids}",
+                                    f"https://app.miraie.in/simplifi/v1/deviceManagement/devices/deviceId/{device_ids}",
                                     headers=headers,
                                 )
                                 details_list = await res_details.json()
+                                if isinstance(details_list, dict):
+                                    if "data" in details_list and isinstance(details_list["data"], list):
+                                        details_list = details_list["data"]
+                                    elif "devices" in details_list and isinstance(details_list["devices"], list):
+                                        details_list = details_list["devices"]
+                                    else:
+                                        details_list = [details_list]
+
                                 if isinstance(details_list, list):
                                     details_map = {
                                         dd.get("deviceId"): dd.get("modelNumber") or dd.get("modelName") or ""
@@ -141,7 +156,7 @@ async def validate_input(
                                         if isinstance(dd, dict) and dd.get("deviceId")
                                     }
                                     for rd in raw_devices:
-                                        if rd["id"] in details_map:
+                                        if rd["id"] in details_map and details_map[rd["id"]]:
                                             rd["model_code"] = details_map[rd["id"]]
                             except Exception as exc:
                                 _LOGGER.debug("Could not fetch batched device details: %s", exc)
@@ -272,6 +287,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         current_dev = devices[idx]
         dev_name = current_dev.get("name", "AC Unit")
         dev_model = current_dev.get("model_code", "")
+        model_display = f"Model: **{dev_model}**" if dev_model else "Model: Auto-detecting via Cloud"
         default_install = six_months_ago(date.today()).isoformat()
 
         if user_input is None:
@@ -280,7 +296,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=build_cloud_devices_schema(default_install),
                 description_placeholders={
                     "device_name": dev_name,
-                    "model_code": dev_model,
+                    "model_display": model_display,
+                    "model_code": dev_model or "Auto-detected",
                 },
             )
 
@@ -304,7 +321,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 description_placeholders={
                     "device_name": dev_name,
-                    "model_code": dev_model,
+                    "model_display": model_display,
+                    "model_code": dev_model or "Auto-detected",
                 },
                 errors=errors,
             )
@@ -322,7 +340,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 description_placeholders={
                     "device_name": dev_name,
-                    "model_code": dev_model,
+                    "model_display": model_display,
+                    "model_code": dev_model or "Auto-detected",
                 },
                 errors=errors,
             )
