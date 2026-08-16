@@ -840,22 +840,29 @@ async def async_backfill_energy_statistics(
     recorded_weekly_sum = _extract_recorded_range_sum(entries, last_sunday, end_date)
     recorded_total_weekly = (recorded_weekly_sum + today_api_val) if recorded_weekly_sum is not None else None
 
+    diff_weekly_no_today = abs(recorded_weekly_sum - weekly_api_val) if (weekly_api_val is not None and recorded_weekly_sum is not None) else 999.0
+    diff_weekly_with_today = abs(recorded_total_weekly - weekly_api_val) if (weekly_api_val is not None and recorded_total_weekly is not None) else 999.0
+    weekly_diff = min(diff_weekly_no_today, diff_weekly_with_today)
+
     LOGGER.info(
-        "[%s] [Gating 2/3 Weekly Check] API Weekly Total: %s kWh | Recorder Stats Total (incl today %s kWh): %s kWh",
+        "[%s] [Gating 2/3 Weekly Check] API Weekly Total: %s kWh | Recorder Stats Total (excl today %s kWh, incl today %s kWh): min diff=%s kWh",
         device.friendly_name,
         weekly_api_val if weekly_api_val is not None else "N/A",
-        round(today_api_val, 3),
+        round(recorded_weekly_sum, 3) if recorded_weekly_sum is not None else "N/A",
         round(recorded_total_weekly, 3) if recorded_total_weekly is not None else "N/A",
+        round(weekly_diff, 3) if weekly_diff != 999.0 else "N/A",
     )
 
-    if weekly_api_val is not None and recorded_total_weekly is not None:
-        if abs(recorded_total_weekly - weekly_api_val) > 0.15:
+    if weekly_api_val is not None and (recorded_weekly_sum is not None or recorded_total_weekly is not None):
+        if weekly_diff > 0.15:
             LOGGER.warning(
-                "[%s] [Gating 2/3 Weekly Check] MISMATCH (API: %s kWh vs Recorder Total: %s kWh) -> triggering statistics rebuild",
+                "[%s] [Gating 2/3 Weekly Check] MISMATCH (API: %s kWh vs Recorder: %s kWh / %s kWh) -> triggering statistics rebuild",
                 device.friendly_name,
                 weekly_api_val,
-                round(recorded_total_weekly, 3),
+                round(recorded_weekly_sum, 3) if recorded_weekly_sum is not None else "N/A",
+                round(recorded_total_weekly, 3) if recorded_total_weekly is not None else "N/A",
             )
+            await _async_clear_statistics_helper(hass, statistic_id)
             await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
             return
         LOGGER.info("[%s] [Gating 2/3 Weekly Check] PASSED (API and Recorder match)", device.friendly_name)
@@ -874,22 +881,29 @@ async def async_backfill_energy_statistics(
     recorded_monthly_sum = _extract_recorded_range_sum(entries, start_of_month, end_date)
     recorded_total_monthly = (recorded_monthly_sum + today_api_val) if recorded_monthly_sum is not None else None
 
+    diff_monthly_no_today = abs(recorded_monthly_sum - monthly_api_val) if (monthly_api_val is not None and recorded_monthly_sum is not None) else 999.0
+    diff_monthly_with_today = abs(recorded_total_monthly - monthly_api_val) if (monthly_api_val is not None and recorded_total_monthly is not None) else 999.0
+    monthly_diff = min(diff_monthly_no_today, diff_monthly_with_today)
+
     LOGGER.info(
-        "[%s] [Gating 3/3 Monthly Check] API Monthly Total: %s kWh | Recorder Stats Total (incl today %s kWh): %s kWh",
+        "[%s] [Gating 3/3 Monthly Check] API Monthly Total: %s kWh | Recorder Stats Total (excl today %s kWh, incl today %s kWh): min diff=%s kWh",
         device.friendly_name,
         monthly_api_val if monthly_api_val is not None else "N/A",
-        round(today_api_val, 3),
+        round(recorded_monthly_sum, 3) if recorded_monthly_sum is not None else "N/A",
         round(recorded_total_monthly, 3) if recorded_total_monthly is not None else "N/A",
+        round(monthly_diff, 3) if monthly_diff != 999.0 else "N/A",
     )
 
-    if monthly_api_val is not None and recorded_total_monthly is not None:
-        if abs(recorded_total_monthly - monthly_api_val) > 0.2:
+    if monthly_api_val is not None and (recorded_monthly_sum is not None or recorded_total_monthly is not None):
+        if monthly_diff > 0.2:
             LOGGER.warning(
-                "[%s] [Gating 3/3 Monthly Check] MISMATCH (API: %s kWh vs Recorder Total: %s kWh) -> triggering statistics rebuild",
+                "[%s] [Gating 3/3 Monthly Check] MISMATCH (API: %s kWh vs Recorder Total: %s kWh / %s kWh) -> triggering statistics rebuild",
                 device.friendly_name,
                 monthly_api_val,
-                round(recorded_total_monthly, 3),
+                round(recorded_monthly_sum, 3) if recorded_monthly_sum is not None else "N/A",
+                round(recorded_total_monthly, 3) if recorded_total_monthly is not None else "N/A",
             )
+            await _async_clear_statistics_helper(hass, statistic_id)
             await _async_rebuild_from_api(hass, hub, device, statistic_id, default_start_date, end_date, last_sum=0.0)
             return
         LOGGER.info("[%s] [Gating 3/3 Monthly Check] PASSED (API and Recorder match)", device.friendly_name)
@@ -965,6 +979,7 @@ async def _async_rebuild_from_api(
     last_sum: float = 0.0,
 ) -> None:
     """Fetch daily energy from MirAIe API and build/import statistics points."""
+    await _async_clear_statistics_helper(hass, statistic_id)
     daily = await hub.get_energy_consumption_full(
         device, ConsumptionPeriodType.DAILY, start_date, end_date
     )
