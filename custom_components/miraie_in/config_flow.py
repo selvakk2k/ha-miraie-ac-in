@@ -94,24 +94,79 @@ async def validate_input(
     except TypeError:
         hub = MirAIeHub()
 
+    if not hasattr(hub, "_broker"):
+        hub._broker = None
+
     discovered_devices = []
     # pylint: disable=protected-access
     try:
         await hub._authenticate(data["username"], data["password"])
         try:
-            await hub._get_home_details()
-            if hasattr(hub, "home") and hub.home and hasattr(hub.home, "devices"):
-                for dev in hub.home.devices:
-                    dev_id = getattr(dev, "id", None)
-                    if dev_id:
-                        model_number = None
-                        if hasattr(dev, "details") and dev.details:
-                            model_number = getattr(dev.details, "model_number", None)
-                        discovered_devices.append({
-                            "id": dev_id,
-                            "name": getattr(dev, "friendly_name", "MirAIe Cloud AC"),
-                            "model_code": model_number or "",
-                        })
+            # 1. Primary: Direct REST endpoint query (fast, safe, no MQTT connection required)
+            headers = {
+                "Authorization": f"Bearer {getattr(getattr(hub, 'user', None), 'access_token', '')}",
+                "Content-Type": "application/json",
+            }
+            if hasattr(hub, "http") and hub.http:
+                try:
+                    res = await hub.http.get(
+                        "https://app.miraie.in/simplifi/v1/homeManagement/homes",
+                        headers=headers,
+                    )
+                    resp = await res.json()
+                    if isinstance(resp, list) and len(resp) > 0:
+                        raw_devices = []
+                        for space in resp[0].get("spaces", []):
+                            for dev in space.get("devices", []):
+                                dev_id = dev.get("deviceId")
+                                if dev_id:
+                                    raw_devices.append({
+                                        "id": dev_id,
+                                        "name": dev.get("deviceName", "MirAIe Cloud AC"),
+                                        "model_code": "",
+                                    })
+
+                        if raw_devices:
+                            device_ids = ",".join([d["id"] for d in raw_devices])
+                            try:
+                                res_details = await hub.http.get(
+                                    f"https://app.miraie.in/simplifi/v1/deviceManagement/devices/deviceId?deviceIds={device_ids}",
+                                    headers=headers,
+                                )
+                                details_list = await res_details.json()
+                                if isinstance(details_list, list):
+                                    details_map = {
+                                        dd.get("deviceId"): dd.get("modelNumber") or dd.get("modelName") or ""
+                                        for dd in details_list
+                                        if isinstance(dd, dict) and dd.get("deviceId")
+                                    }
+                                    for rd in raw_devices:
+                                        if rd["id"] in details_map:
+                                            rd["model_code"] = details_map[rd["id"]]
+                            except Exception as exc:
+                                _LOGGER.debug("Could not fetch batched device details: %s", exc)
+
+                        discovered_devices = raw_devices
+                except Exception as exc:
+                    _LOGGER.debug("REST homes fetch did not return device list: %s", exc)
+
+            # 2. Fallback: Parse hub.home / _get_home_details (for mock environments and test harnesses)
+            if not discovered_devices:
+                if not hasattr(hub, "home") or not hub.home:
+                    if hasattr(hub, "_get_home_details"):
+                        await hub._get_home_details()
+                if hasattr(hub, "home") and hub.home and hasattr(hub.home, "devices"):
+                    for dev in hub.home.devices:
+                        dev_id = getattr(dev, "id", None)
+                        if dev_id:
+                            model_number = None
+                            if hasattr(dev, "details") and dev.details:
+                                model_number = getattr(dev.details, "model_number", None)
+                            discovered_devices.append({
+                                "id": dev_id,
+                                "name": getattr(dev, "friendly_name", "MirAIe Cloud AC"),
+                                "model_code": model_number or "",
+                            })
         except Exception as exc:
             _LOGGER.warning("Direct device discovery failed during validation: %s", exc)
 
