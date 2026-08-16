@@ -64,8 +64,10 @@ async def async_setup_entry(
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = entry.runtime_data
     coordinators = getattr(hub, "coordinators", {})
+    target_id = getattr(entry, "data", {}).get("device_id")
+    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
 
-    entities = [MirAIeClimate(device, entry, coordinators.get(device.id)) for device in hub.home.devices]
+    entities = [MirAIeClimate(device, entry, coordinators.get(device.id)) for device in devices]
 
     async_add_entities(entities)
 

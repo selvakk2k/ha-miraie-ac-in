@@ -261,9 +261,17 @@ def setup_ha_stubs():
         POWER = "power"
         VOLTAGE = "voltage"
         CURRENT = "current"
+        SIGNAL_STRENGTH = "signal_strength"
 
     homeassistant.components.sensor.SensorStateClass = SensorStateClass
     homeassistant.components.sensor.SensorDeviceClass = SensorDeviceClass
+
+    class BinarySensorDeviceClass(Enum):
+        PROBLEM = "problem"
+        CONNECTIVITY = "connectivity"
+        RUNNING = "running"
+
+    homeassistant.components.binary_sensor.BinarySensorDeviceClass = BinarySensorDeviceClass
 
     # Recorder symbols
     import homeassistant.components.recorder.statistics
@@ -338,7 +346,8 @@ def setup_ha_stubs():
 
     # Event helper stubs
     import homeassistant.helpers.event
-    homeassistant.helpers.event.async_track_time_change = lambda hass, action, hour=None, minute=None, second=None: (lambda: None)
+    homeassistant.helpers.event.async_track_time_change = lambda *args, **kwargs: (lambda: None)
+    homeassistant.helpers.event.async_track_time_interval = lambda *args, **kwargs: (lambda: None)
 
     # Entity helper stubs
     import homeassistant.helpers.entity
@@ -388,9 +397,49 @@ def setup_ha_stubs():
     class RestoreEntity:
         async def async_added_to_hass(self):
             pass
-        async def async_get_last_state(self):
-            return None
     homeassistant.helpers.restore_state.RestoreEntity = RestoreEntity
+
+    # entity_registry helper stub
+    import homeassistant.helpers.entity_registry as entity_registry_mod
+    class MockRegistryEntry:
+        def __init__(self, domain, platform, unique_id, config_entry=None, entity_id=None):
+            self.domain = domain
+            self.platform = platform
+            self.unique_id = unique_id
+            self.config_entry_id = getattr(config_entry, "entry_id", config_entry)
+            self.entity_id = entity_id or f"{domain}.{unique_id}"
+
+    class MockEntityRegistry:
+        def __init__(self):
+            self.entities = {}
+
+        def async_get_or_create(self, domain, platform, unique_id, *, config_entry=None):
+            for e in self.entities.values():
+                if e.domain == domain and e.platform == platform and e.unique_id == unique_id:
+                    return e
+            e = MockRegistryEntry(domain, platform, unique_id, config_entry)
+            self.entities[e.entity_id] = e
+            return e
+
+        def async_get_entity_id(self, domain, platform, unique_id):
+            for e in self.entities.values():
+                if e.domain == domain and e.platform == platform and e.unique_id == unique_id:
+                    return e.entity_id
+            return None
+
+        def async_entries_for_config_entry(self, entry_id):
+            return [e for e in self.entities.values() if e.config_entry_id == entry_id]
+
+        def async_remove(self, entity_id):
+            self.entities.pop(entity_id, None)
+
+        def async_update_entity(self, entity_id, *, new_unique_id=None):
+            if entity_id in self.entities and new_unique_id:
+                self.entities[entity_id].unique_id = new_unique_id
+
+    _mock_ent_reg = MockEntityRegistry()
+    entity_registry_mod.async_get = lambda hass: _mock_ent_reg
+    entity_registry_mod.async_entries_for_config_entry = lambda reg, entry_id: reg.async_entries_for_config_entry(entry_id)
 
 
 

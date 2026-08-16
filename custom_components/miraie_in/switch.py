@@ -38,7 +38,10 @@ async def async_setup_entry(
     ent_reg = er.async_get(hass)
 
     entities = []
-    for device in hub.home.devices:
+    target_id = getattr(entry, "data", {}).get("device_id")
+    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+
+    for device in devices:
         entities.append(MirAIeDisplaySwitch(device))
         
         # Untested: Expose Nanoe switch only if the model supports it
