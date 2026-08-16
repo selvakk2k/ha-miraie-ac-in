@@ -2,8 +2,10 @@
 
 import sys
 import types
+import asyncio
 from enum import Enum, IntFlag
 from pathlib import Path
+from unittest.mock import MagicMock, AsyncMock
 
 LOCAL_MIRAIE_AC = Path("/home/skk/Documents/GitHub/miraie-ac")
 LOCAL_PANASONIC_MODELS = Path("/home/skk/Documents/GitHub/panasonic-ac-models")
@@ -351,10 +353,12 @@ def setup_ha_stubs():
 
     # Entity helper stubs
     import homeassistant.helpers.entity
+    import homeassistant.const
     class EntityCategory(Enum):
         CONFIG = "config"
         DIAGNOSTIC = "diagnostic"
     homeassistant.helpers.entity.EntityCategory = EntityCategory
+    homeassistant.const.EntityCategory = EntityCategory
 
     # Dispatcher helper stubs
     import homeassistant.helpers.dispatcher
@@ -391,6 +395,31 @@ def setup_ha_stubs():
     ir_mod.helpers = ir_helpers_mod
     sys.modules["homeassistant.components.infrared"] = ir_mod
     sys.modules["homeassistant.components.infrared.helpers"] = ir_helpers_mod
+
+    # Binary sensor helper stubs
+    import homeassistant.components.binary_sensor as bin_sensor_mod
+    class BinarySensorDeviceClass(Enum):
+        PROBLEM = "problem"
+        CONNECTIVITY = "connectivity"
+        RUNNING = "running"
+    bin_sensor_mod.BinarySensorDeviceClass = BinarySensorDeviceClass
+    class BinarySensorEntity:
+        def __init__(self):
+            pass
+    bin_sensor_mod.BinarySensorEntity = BinarySensorEntity
+
+    # Diagnostics helper stubs
+    import homeassistant.components.diagnostics as diag_mod
+    def async_redact_data(data, to_redact):
+        if isinstance(data, dict):
+            return {
+                k: "**REDACTED**" if k in to_redact else async_redact_data(v, to_redact)
+                for k, v in data.items()
+            }
+        elif isinstance(data, list):
+            return [async_redact_data(item, to_redact) for item in data]
+        return data
+    diag_mod.async_redact_data = async_redact_data
 
     # restore_state helper stub
     import homeassistant.helpers.restore_state
@@ -503,3 +532,48 @@ def setup_ha_stubs():
     for const_name in ("PRECISION_HALVES", "PRECISION_WHOLE", "PRECISION_TENTHS"):
         if const_name in homeassistant.components.climate.__dict__:
             del homeassistant.components.climate.__dict__[const_name]
+
+
+class MockEntry:
+    def __init__(self, entry_id, data=None, options=None, title="MirAIe AC"):
+        self.entry_id = entry_id
+        self.data = data or {}
+        self.options = options or {}
+        self.title = title
+        self.unique_id = data.get("device_id") if data else entry_id
+
+    def async_on_unload(self, listener):
+        pass
+
+    def add_update_listener(self, listener):
+        return lambda: None
+
+
+class MockHass:
+    def __init__(self):
+        self.data = {}
+        self.config_entries = MagicMock()
+        self.config_entries.async_entries = MagicMock(return_value=[])
+        self.config_entries.async_get_entry = MagicMock(return_value=None)
+        self.config_entries.async_update_entry = MagicMock()
+        self.services = MagicMock()
+        self.services.async_call = AsyncMock()
+        self.states = MagicMock()
+        self.bus = MagicMock()
+        self.bus.async_listen_once = MagicMock()
+
+        def _dummy_task(coro):
+            try:
+                loop = asyncio.get_running_loop()
+                return loop.create_task(coro)
+            except RuntimeError:
+                return None
+        self.async_create_task = MagicMock(side_effect=_dummy_task)
+
+        async def _dummy_exec(func, *args, **kwargs):
+            return func(*args, **kwargs)
+        self.async_add_executor_job = AsyncMock(side_effect=_dummy_exec)
+
+
+# Auto-install Home Assistant stubs on import
+setup_ha_stubs()
