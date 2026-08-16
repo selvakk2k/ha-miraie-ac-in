@@ -601,6 +601,56 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"name": name},
         )
 
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle re-authentication with MirAIe Cloud."""
+        self._reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm re-authentication with new credentials."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            session = async_get_clientsession(self.hass)
+            try:
+                await validate_input(self.hass, user_input, session)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                errors["base"] = "unknown"
+            else:
+                if getattr(self, "_reauth_entry", None):
+                    self.hass.config_entries.async_update_entry(
+                        self._reauth_entry,
+                        data={
+                            **self._reauth_entry.data,
+                            "username": user_input["username"],
+                            "password": user_input["password"],
+                        },
+                    )
+                    await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
+                    return self.async_abort(reason="reauth_successful")
+
+        reauth_entry = getattr(self, "_reauth_entry", None)
+        default_user = reauth_entry.data.get("username", "") if reauth_entry else ""
+        schema = vol.Schema(
+            {
+                vol.Required("username", default=default_user): str,
+                vol.Required("password"): str,
+            }
+        )
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"username": default_user},
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
