@@ -407,12 +407,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         lookup = None
 
     target_dev_id = entry.data.get("device_id")
-    target_devices = hub.home.devices
     if target_dev_id:
         matched = [d for d in hub.home.devices if d.id == target_dev_id]
-        if matched:
-            target_devices = matched
-            hub.home.devices = matched
+        if not matched:
+            found_ids = [d.id for d in hub.home.devices]
+            LOGGER.error(
+                "ConfigEntry %s expects device_id '%s', but it was not found in MirAIe cloud account (available devices: %s). Postponing setup.",
+                entry.entry_id,
+                target_dev_id,
+                found_ids,
+            )
+            raise ConfigEntryNotReady(f"Device {target_dev_id} not found in MirAIe account")
+        target_devices = matched
+        hub.home.devices = matched
+    else:
+        target_devices = hub.home.devices
 
     _cleanup_cross_device_entities(hass, entry, target_dev_id)
 

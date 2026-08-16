@@ -86,8 +86,8 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         self.mod_switch = importlib.import_module("custom_components.miraie_in.switch")
         self.mod_button = importlib.import_module("custom_components.miraie_in.button")
 
-    async def test_13_devices_create_exactly_13_climate_entities(self):
-        """Simulate a 13-device user account and verify exactly 1 climate entity per entry."""
+    async def test_13_devices_happy_path_isolation(self):
+        """Simulate a 13-device user account on happy path and verify exactly 1 climate entity per entry."""
         # 1. Create 13 mock devices in a single MirAIe home
         all_devices = [
             MockDevice(
@@ -184,6 +184,68 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(unique_device_ids), 13)
         for i in range(1, 14):
             self.assertIn(f"dev_{i}", unique_device_ids)
+
+    async def test_mismatched_device_id_raises_not_ready_and_prevents_entity_generation(self):
+        """Verify that an entry with an unknown/missing device_id raises ConfigEntryNotReady and generates 0 entities."""
+        from homeassistant.exceptions import ConfigEntryNotReady
+
+        # Account has devices dev_1..dev_13
+        all_devices = [
+            MockDevice(device_id=f"dev_{i}", friendly_name=f"AC Room {i}")
+            for i in range(1, 14)
+        ]
+        hass = MockHass()
+
+        entry_mismatched = MockEntry(
+            entry_id="entry_dev_mismatched",
+            title="Mismatched AC",
+            data={
+                "username": "user@example.com",
+                "password": "password",
+                "device_id": "dev_non_existent_99",
+                "name": "Mismatched AC",
+                "model_code": "CS-CU-RU18CKY-1",
+                "is_ir_only": False,
+            },
+            options={},
+        )
+
+        mock_hub = MagicMock()
+        mock_home = MagicMock()
+        mock_home.devices = list(all_devices)
+        mock_hub.home = mock_home
+        mock_hub.init = AsyncMock(return_value=True)
+
+        # 1. Assert async_setup_entry in __init__.py raises ConfigEntryNotReady
+        with patch("custom_components.miraie_in.MirAIeHub", return_value=mock_hub), \
+             patch("custom_components.miraie_in.MirAIeBroker"), \
+             patch("custom_components.miraie_in.async_backfill_energy_statistics", new_callable=AsyncMock):
+            with self.assertRaises(ConfigEntryNotReady):
+                await self.mod_init.async_setup_entry(hass, entry_mismatched)
+
+        # 2. Directly verify each platform module produces 0 entities when given a mismatched device_id
+        entry_mismatched.runtime_data = mock_hub
+        mock_hub.coordinators = {}
+
+        created_climate = []
+        await self.mod_climate.async_setup_entry(hass, entry_mismatched, lambda ents: created_climate.extend(ents))
+        self.assertEqual(len(created_climate), 0, "Platform climate must create 0 entities for a mismatched device_id")
+
+        created_switches = []
+        await self.mod_switch.async_setup_entry(hass, entry_mismatched, lambda ents: created_switches.extend(ents))
+        self.assertEqual(len(created_switches), 0, "Platform switch must create 0 entities for a mismatched device_id")
+
+        created_sensors = []
+        await self.mod_sensor.async_setup_entry(hass, entry_mismatched, lambda ents, update_before_add=False: created_sensors.extend(ents))
+        self.assertEqual(len(created_sensors), 0, "Platform sensor must create 0 entities for a mismatched device_id")
+
+        created_binary = []
+        await self.mod_binary_sensor.async_setup_entry(hass, entry_mismatched, lambda ents: created_binary.extend(ents))
+        self.assertEqual(len(created_binary), 0, "Platform binary_sensor must create 0 entities for a mismatched device_id")
+
+        created_buttons = []
+        await self.mod_button.async_setup_entry(hass, entry_mismatched, lambda ents: created_buttons.extend(ents))
+        self.assertEqual(len(created_buttons), 0, "Platform button must create 0 entities for a mismatched device_id")
 
     async def test_cross_device_entity_registry_cleanup(self):
         """Verify _cleanup_cross_device_entities automatically removes orphaned cross-device duplicates."""

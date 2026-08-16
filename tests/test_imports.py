@@ -203,9 +203,29 @@ class TestModuleImports(unittest.TestCase):
             async def dummy_init(username, password, broker):
                 pass
 
+            mock_dev = type("Dev", (), {
+                "id": "test_dev",
+                "friendly_name": "Test AC",
+                "details": type("Det", (), {"model_number": "CS-123", "brand": "Panasonic", "firmware_version": "1.0", "has_wifi": True})(),
+                "status": type("St", (), {
+                    "is_online": True,
+                    "power_mode": type("Pwr", (), {"value": "off"})(),
+                    "hvac_mode": type("Md", (), {"value": "cool"})(),
+                    "temperature": 24,
+                    "room_temperature": 25.0,
+                    "fan_mode": type("Fn", (), {"value": "auto"})(),
+                    "v_swing_mode": type("Vs", (), {"value": 0})(),
+                    "h_swing_mode": type("Hs", (), {"value": 0})(),
+                    "converti_mode": type("Cv", (), {"value": 0})(),
+                    "preset_mode": type("Pr", (), {"value": "none"})(),
+                })(),
+                "register_callback": lambda *args: None,
+                "remove_callback": lambda *args: None,
+            })()
+
             hub = MirAIeHub()
             hub.init = dummy_init
-            hub.home = type("Home", (), {"devices": []})()
+            hub.home = type("Home", (), {"devices": [mock_dev]})()
 
             with patch("custom_components.miraie_in.MirAIeHub", return_value=hub), patch("custom_components.miraie_in._migrate_unique_ids"):
                 await mod_init.async_setup_entry(MockHass(), MockConfigEntry())
