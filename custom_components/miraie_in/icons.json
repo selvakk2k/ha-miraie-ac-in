@@ -48,11 +48,23 @@
       },
       "nanoe": {
         "default": "mdi:air-filter"
+      },
+      "hybrid_submode": {
+        "default": "mdi:robot"
+      },
+      "active_backend": {
+        "default": "mdi:transit-connection-variant"
       }
     },
     "button": {
       "start_coil_clean": {
         "default": "mdi:spray-bottle"
+      },
+      "rebuild_energy_statistics": {
+        "default": "mdi:database-sync"
+      },
+      "verify_energy_statistics": {
+        "default": "mdi:database-check"
       }
     },
     "binary_sensor": {
@@ -61,6 +73,15 @@
       },
       "coil_cleaning": {
         "default": "mdi:spray-bottle"
+      },
+      "ir_blaster_available": {
+        "default": "mdi:remote"
+      },
+      "cloud_mqtt_connected": {
+        "default": "mdi:cloud-check"
+      },
+      "device_online": {
+        "default": "mdi:wifi-check"
       }
     }
   }

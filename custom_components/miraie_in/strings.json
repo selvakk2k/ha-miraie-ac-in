@@ -63,6 +63,14 @@
           "blaster_entity_id": "IR Blaster / Transmitter Entity",
           "ir_format": "IR Protocol Payload Format"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate MirAIe Account",
+        "description": "Please update your credentials for MirAIe Cloud account **{username}**.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -75,7 +83,8 @@
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
-      "no_devices_found": "No AC devices were found on this MirAIe account."
+      "no_devices_found": "No AC devices were found on this MirAIe account.",
+      "reauth_successful": "Re-authentication was successful"
     }
   },
   "options": {
@@ -162,6 +171,15 @@
       },
       "coil_cleaning": {
         "name": "Coil Cleaning"
+      },
+      "ir_blaster_available": {
+        "name": "IR Blaster Available"
+      },
+      "cloud_mqtt_connected": {
+        "name": "Cloud MQTT Connected"
+      },
+      "device_online": {
+        "name": "Device Online"
       }
     },
     "sensor": {

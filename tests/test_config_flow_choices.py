@@ -174,6 +174,38 @@ class TestConfigFlowChoices(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(devices[0]["name"], "Room 2 AC")
             self.assertEqual(devices[0]["model_code"], "CS-CU-EU18CKY5XFM")
 
+    async def test_reauth_flow_success(self):
+        """Test async_step_reauth and async_step_reauth_confirm."""
+        from unittest.mock import AsyncMock, patch
+        hass = MockHass()
+        mock_entry = MagicMock()
+        mock_entry.entry_id = "test_entry_123"
+        mock_entry.data = {"username": "old_user@example.com", "password": "old_password"}
+        hass.config_entries.async_get_entry = MagicMock(return_value=mock_entry)
+        hass.config_entries.async_update_entry = MagicMock()
+        hass.config_entries.async_reload = AsyncMock(return_value=True)
+
+        flow = ConfigFlow()
+        flow.hass = hass
+        flow.context = {"entry_id": "test_entry_123"}
+
+        # Step 1: Trigger reauth
+        res_reauth = await flow.async_step_reauth(mock_entry.data)
+        self.assertEqual(res_reauth["type"], "form")
+        self.assertEqual(res_reauth["step_id"], "reauth_confirm")
+
+        # Step 2: Confirm reauth with validated new password
+        with patch("custom_components.miraie_in.config_flow.validate_input", new_callable=AsyncMock) as mock_validate:
+            mock_validate.return_value = ({"title": "MirAIe"}, [{"id": "dev1"}])
+            res_confirm = await flow.async_step_reauth_confirm({
+                "username": "new_user@example.com",
+                "password": "new_password"
+            })
+            self.assertEqual(res_confirm["type"], "abort")
+            self.assertEqual(res_confirm["reason"], "reauth_successful")
+            hass.config_entries.async_update_entry.assert_called_once()
+            hass.config_entries.async_reload.assert_called_once_with("test_entry_123")
+
 
 if __name__ == "__main__":
     unittest.main()
