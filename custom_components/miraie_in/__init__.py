@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.start import async_at_started
@@ -120,14 +121,16 @@ def _migrate_unique_ids(
 
 
 def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, target_dev_id: str) -> None:
-    """Clean up any entities registered under this entry_id that belong to a different device_id."""
+    """Clean up any entities and device entries registered under this entry_id that belong to a different device_id."""
     if not target_dev_id:
         return
-    registry = er.async_get(hass)
+
+    # 1. Clean up Entity Registry (removes foreign entities from this entry)
+    ent_reg = er.async_get(hass)
     entries_to_remove = []
     clean_target_id = target_dev_id.lower().replace("-", "_")
 
-    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+    for entity_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
         unq_id = entity_entry.unique_id
         if not unq_id:
             continue
@@ -136,8 +139,22 @@ def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, targ
             entries_to_remove.append(entity_entry.entity_id)
 
     for ent_id in entries_to_remove:
-        registry.async_remove(ent_id)
+        ent_reg.async_remove(ent_id)
         LOGGER.info("Pruned duplicate cross-device entity %s from entry %s", ent_id, entry.entry_id)
+
+    # 2. Clean up Device Registry (removes foreign device associations from this entry)
+    try:
+        dev_reg = dr.async_get(hass)
+        for dev_entry in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
+            matching_identifiers = [
+                ident[1] for ident in dev_entry.identifiers
+                if ident[0] == DOMAIN
+            ]
+            if matching_identifiers and target_dev_id not in matching_identifiers:
+                dev_reg.async_update_device(dev_entry.id, remove_config_entry_id=entry.entry_id)
+                LOGGER.info("Pruned foreign device %s (%s) from entry %s", dev_entry.id, matching_identifiers, entry.entry_id)
+    except Exception as exc:
+        LOGGER.debug("Could not prune device registry entries for %s: %s", entry.entry_id, exc)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

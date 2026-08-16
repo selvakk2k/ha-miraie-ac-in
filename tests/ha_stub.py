@@ -441,6 +441,62 @@ def setup_ha_stubs():
     entity_registry_mod.async_get = lambda hass: _mock_ent_reg
     entity_registry_mod.async_entries_for_config_entry = lambda reg, entry_id: reg.async_entries_for_config_entry(entry_id)
 
+    # device_registry helper stub
+    import homeassistant.helpers.device_registry as device_registry_mod
+    class MockDeviceEntry:
+        def __init__(self, id, identifiers=None, config_entries=None, name=None, manufacturer=None, model=None, sw_version=None):
+            self.id = id
+            self.identifiers = set(identifiers or [])
+            self.config_entries = set(config_entries or [])
+            self.name = name
+            self.manufacturer = manufacturer
+            self.model = model
+            self.sw_version = sw_version
+
+    class MockDeviceRegistry:
+        def __init__(self):
+            self.devices = {}
+
+        def async_get_or_create(self, *, config_entry_id=None, identifiers=None, **kwargs):
+            idents = set(identifiers or [])
+            for dev in self.devices.values():
+                if dev.identifiers.intersection(idents):
+                    if config_entry_id:
+                        dev.config_entries.add(config_entry_id)
+                    return dev
+            dev_id = f"device_entry_{len(self.devices) + 1}"
+            dev = MockDeviceEntry(
+                id=dev_id,
+                identifiers=idents,
+                config_entries={config_entry_id} if config_entry_id else set(),
+                **kwargs,
+            )
+            self.devices[dev_id] = dev
+            return dev
+
+        def async_get_device(self, identifiers=None):
+            idents = set(identifiers or [])
+            for dev in self.devices.values():
+                if dev.identifiers.intersection(idents):
+                    return dev
+            return None
+
+        def async_entries_for_config_entry(self, config_entry_id):
+            return [d for d in self.devices.values() if config_entry_id in d.config_entries]
+
+        def async_update_device(self, device_id, *, remove_config_entry_id=None, **kwargs):
+            if device_id in self.devices:
+                dev = self.devices[device_id]
+                if remove_config_entry_id:
+                    dev.config_entries.discard(remove_config_entry_id)
+
+        def async_remove_device(self, device_id):
+            self.devices.pop(device_id, None)
+
+    _mock_dev_reg = MockDeviceRegistry()
+    device_registry_mod.async_get = lambda hass: _mock_dev_reg
+    device_registry_mod.async_entries_for_config_entry = lambda reg, entry_id: reg.async_entries_for_config_entry(entry_id)
+
 
 
     # Ensure climate module dict strictly lacks precision constants

@@ -221,6 +221,76 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         remaining_uids = {e.unique_id for e in entries_after}
         self.assertEqual(remaining_uids, {"dev_living", "dev_living_room_temperature"})
 
+    async def test_cross_device_registry_169_device_cleanup(self):
+        """Simulate the exact 169-device registry corruption and verify cleanup down to 13."""
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers import entity_registry as er
+
+        hass = MockHass()
+        dev_reg = dr.async_get(hass)
+        ent_reg = er.async_get(hass)
+
+        # 1. Populate DeviceRegistry and EntityRegistry with 169 cross-device entries
+        # (All 13 entries linked to all 13 devices = 13 x 13 = 169 device links)
+        for i in range(1, 14):
+            entry_id = f"entry_dev_{i}"
+            entry = MockEntry(
+                entry_id=entry_id,
+                data={"device_id": f"dev_{i}"},
+            )
+            for j in range(1, 14):
+                dev_id = f"dev_{j}"
+                # Link device j to entry i in DeviceRegistry
+                dev_reg.async_get_or_create(
+                    config_entry_id=entry_id,
+                    identifiers={("miraie_in", dev_id)},
+                    name=f"PANASONIC AC {j}",
+                )
+                # Link entity j to entry i in EntityRegistry
+                ent_reg.async_get_or_create("climate", "miraie_in", dev_id, config_entry=entry)
+
+        # Verify pre-cleanup count across all 13 entries = 169 device links and 169 entities
+        total_dev_links_before = sum(
+            len(dr.async_entries_for_config_entry(dev_reg, f"entry_dev_{i}"))
+            for i in range(1, 14)
+        )
+        self.assertEqual(total_dev_links_before, 169, "Pre-condition: must start with 169 device links")
+
+        # 2. Run self-healing cleanup across all 13 entries
+        for i in range(1, 14):
+            entry_id = f"entry_dev_{i}"
+            target_dev_id = f"dev_{i}"
+            entry = MockEntry(
+                entry_id=entry_id,
+                data={"device_id": target_dev_id},
+            )
+            self.mod_init._cleanup_cross_device_entities(hass, entry, target_dev_id)
+
+        # 3. Assert post-cleanup state in DeviceRegistry: exactly 1 device per entry (total 13, not 169)
+        for i in range(1, 14):
+            entry_id = f"entry_dev_{i}"
+            target_dev_id = f"dev_{i}"
+            entry_devices = dr.async_entries_for_config_entry(dev_reg, entry_id)
+            self.assertEqual(
+                len(entry_devices),
+                1,
+                f"Entry {entry_id} must have exactly 1 device in DeviceRegistry, got {len(entry_devices)}"
+            )
+            # Verify the 1 device is indeed dev_i
+            matched_idents = [ident[1] for ident in entry_devices[0].identifiers if ident[0] == "miraie_in"]
+            self.assertEqual(matched_idents, [target_dev_id])
+
+        # Assert total device links across the entire system is strictly 13
+        total_dev_links_after = sum(
+            len(dr.async_entries_for_config_entry(dev_reg, f"entry_dev_{i}"))
+            for i in range(1, 14)
+        )
+        self.assertEqual(
+            total_dev_links_after,
+            13,
+            f"Expected total 13 device links across all entries in DeviceRegistry, got {total_dev_links_after} (169-device bug!)"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
