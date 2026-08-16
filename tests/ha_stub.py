@@ -180,7 +180,16 @@ def setup_ha_stubs():
 
     class HomeAssistantError(Exception):
         pass
+    class ConfigEntryNotReady(HomeAssistantError):
+        pass
+    class ConfigEntryAuthFailed(HomeAssistantError):
+        pass
+    class ConfigEntryError(HomeAssistantError):
+        pass
     homeassistant.exceptions.HomeAssistantError = HomeAssistantError
+    homeassistant.exceptions.ConfigEntryNotReady = ConfigEntryNotReady
+    homeassistant.exceptions.ConfigEntryAuthFailed = ConfigEntryAuthFailed
+    homeassistant.exceptions.ConfigEntryError = ConfigEntryError
 
     import homeassistant.components.sensor
 
