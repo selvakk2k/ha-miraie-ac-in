@@ -41,7 +41,10 @@ async def async_get_config_entry_diagnostics(
         "devices": []
     }
     
-    for device in hub.home.devices:
+    target_id = getattr(entry, "data", {}).get("device_id")
+    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+
+    for device in devices:
         device_data = {
             "id": device.id,
             "friendly_name": device.friendly_name,

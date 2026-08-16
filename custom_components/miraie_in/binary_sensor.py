@@ -36,8 +36,10 @@ async def async_setup_entry(
     entities = []
     entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
+    target_id = entry_data.get("device_id")
+    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
 
-    for device in hub.home.devices:
+    for device in devices:
         coordinator = coordinators.get(device.id)
         has_wifi = getattr(coordinator, "has_wifi", True) if coordinator else getattr(getattr(device, "details", None), "has_wifi", True)
 

@@ -398,38 +398,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
     
+    target_id = getattr(entry, "data", {}).get("device_id")
+    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+
     # 1. Setup Energy Sensors (which need active polling — Wi-Fi models only)
     energy_sensors = []
     if not is_ir_entry:
-        for device in hub.home.devices:
+        for device in devices:
             coord = coordinators.get(device.id)
             has_wifi = getattr(coord, "has_wifi", True) if coord else getattr(getattr(device, "details", None), "has_wifi", True)
             if not has_wifi:
                 continue
 
             clean_dev_id = re.sub(r"[^a-z0-9_]", "_", device.id.lower())
-        statistic_id = f"sensor.{clean_dev_id}_energy_history"
-        try:
-            last_stats = await get_instance(hass).async_add_executor_job(
-                get_last_statistics, hass, 100, statistic_id, False, {"sum"}
-            )
-            if last_stats and last_stats.get(statistic_id):
-                entries = sorted(last_stats[statistic_id], key=lambda e: float(e.get("start") or 0.0))
-                for entry in reversed(entries):
-                    raw_sum = float(entry.get("sum") or 0.0)
-                    if 0 < raw_sum <= 400:
-                        setattr(device, "backfilled_energy_sum", raw_sum)
-                        LOGGER.debug("[%s] Restored backfilled_energy_sum=%s kWh from recorder statistics", device.friendly_name, raw_sum)
-                        break
-        except Exception as e:
-            LOGGER.debug("Could not pre-initialize backfilled_energy_sum for %s: %s", device.friendly_name, e)
+            statistic_id = f"sensor.{clean_dev_id}_energy_history"
+            try:
+                last_stats = await get_instance(hass).async_add_executor_job(
+                    get_last_statistics, hass, 100, statistic_id, False, {"sum"}
+                )
+                if last_stats and last_stats.get(statistic_id):
+                    entries = sorted(last_stats[statistic_id], key=lambda e: float(e.get("start") or 0.0))
+                    for entry_stat in reversed(entries):
+                        raw_sum = float(entry_stat.get("sum") or 0.0)
+                        if 0 < raw_sum <= 400:
+                            setattr(device, "backfilled_energy_sum", raw_sum)
+                            LOGGER.debug("[%s] Restored backfilled_energy_sum=%s kWh from recorder statistics", device.friendly_name, raw_sum)
+                            break
+            except Exception as e:
+                LOGGER.debug("Could not pre-initialize backfilled_energy_sum for %s: %s", device.friendly_name, e)
 
-        energy_sensors += [
-            MirAIeYesterdayEnergySensor(hub, device),
-            MirAIeTodayEnergySensor(hub, device),
-            MirAIeWeeklyEnergySensor(hub, device),
-            MirAIeMonthlyEnergySensor(hub, device),
-        ]
+            energy_sensors += [
+                MirAIeYesterdayEnergySensor(hub, device),
+                MirAIeTodayEnergySensor(hub, device),
+                MirAIeWeeklyEnergySensor(hub, device),
+                MirAIeMonthlyEnergySensor(hub, device),
+            ]
     async_add_entities(energy_sensors, update_before_add=True)
 
     poll_sensors = list(energy_sensors)
@@ -449,9 +452,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # 2. Setup Non-Polling Sensors (updated via device callback pushed via MQTT)
     pushed_sensors = []
-    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
-    is_ir_entry = entry_data.get("is_ir_only", False)
-    for device in hub.home.devices:
+    for device in devices:
         coordinator = coordinators.get(device.id)
         pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
         pushed_sensors.append(MirAIeModelCapabilitiesSensor(device, coordinator))

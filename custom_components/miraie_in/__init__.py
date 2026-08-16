@@ -119,6 +119,27 @@ def _migrate_unique_ids(
         LOGGER.info("Migrated %d entity unique_id(s) to new format", migrated)
 
 
+def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, target_dev_id: str) -> None:
+    """Clean up any entities registered under this entry_id that belong to a different device_id."""
+    if not target_dev_id:
+        return
+    registry = er.async_get(hass)
+    entries_to_remove = []
+    clean_target_id = target_dev_id.lower().replace("-", "_")
+
+    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        unq_id = entity_entry.unique_id
+        if not unq_id:
+            continue
+        clean_unq = unq_id.lower().replace("-", "_")
+        if target_dev_id not in unq_id and clean_target_id not in clean_unq:
+            entries_to_remove.append(entity_entry.entity_id)
+
+    for ent_id in entries_to_remove:
+        registry.async_remove(ent_id)
+        LOGGER.info("Pruned duplicate cross-device entity %s from entry %s", ent_id, entry.entry_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up mirAIe from a config entry."""
 
@@ -374,6 +395,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         matched = [d for d in hub.home.devices if d.id == target_dev_id]
         if matched:
             target_devices = matched
+            hub.home.devices = matched
+
+    _cleanup_cross_device_entities(hass, entry, target_dev_id)
 
     for device in target_devices:
         dev_opt = devices_opt.get(device.id, {})
