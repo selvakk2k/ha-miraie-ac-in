@@ -26,6 +26,7 @@ from .sensor import async_backfill_energy_statistics, async_rebuild_full_energy_
 
 PARALLEL_UPDATES = 0
 from .logger import LOGGER
+from .utils import get_devices_for_entry
 
 
 async def async_setup_entry(
@@ -35,8 +36,8 @@ async def async_setup_entry(
     hub: MirAIeHub = entry.runtime_data
 
     entities = []
-    target_id = getattr(entry, "data", {}).get("device_id")
-    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+    devices = get_devices_for_entry(hub, entry)
+
 
     for device in devices:
         entities.append(MirAIeCoilCleanButton(device))

@@ -1,6 +1,9 @@
 import calendar
 from datetime import date, timedelta
+from typing import Any
 from homeassistant.util import dt as dt_util
+from .logger import LOGGER
+
 
 def get_last_sunday() -> date:
     """Returns the datetime.date object corresponding to the last sunday before today.
@@ -29,3 +32,35 @@ def six_months_ago(today: date) -> date:
 def eight_months_ago(today: date) -> date:
     """Return the date 8 months ago from `today`."""
     return months_ago(today, 8)
+
+
+def get_devices_for_entry(hub: Any, entry: Any) -> list[Any]:
+    """Resolve the devices belonging to a given ConfigEntry.
+
+    For per-device entries with 'device_id', returns a list containing the single matched device.
+    If 'device_id' is specified but not found in the account, logs an error and returns []
+    (preventing silent fallbacks or cross-device entity duplication).
+    """
+    if not hub or not hasattr(hub, "home") or not hasattr(hub.home, "devices"):
+        return []
+
+    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    target_id = entry_data.get("device_id")
+
+    if target_id:
+        matched = [d for d in hub.home.devices if getattr(d, "id", None) == target_id]
+        if not matched:
+            found_ids = [getattr(d, "id", None) for d in hub.home.devices]
+            from .logger import LOGGER
+            LOGGER.error(
+                "Device ID '%s' for entry '%s' not found in MirAIe account devices: %s",
+                target_id,
+                getattr(entry, "title", getattr(entry, "entry_id", "unknown")),
+                found_ids,
+            )
+            return []
+        return matched
+
+    # Fallback only when device_id is not specified (e.g. single-device setups or IR dummy device)
+    return list(hub.home.devices)
+

@@ -353,6 +353,39 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
             f"Expected total 13 device links across all entries in DeviceRegistry, got {total_dev_links_after} (169-device bug!)"
         )
 
+    def test_get_devices_for_entry_helper(self):
+        """Verify get_devices_for_entry helper behavior under all matching conditions."""
+        from custom_components.miraie_in.utils import get_devices_for_entry
+
+        dev1 = MockDevice(device_id="dev_1", friendly_name="Living Room AC")
+        dev2 = MockDevice(device_id="dev_2", friendly_name="Bedroom AC")
+
+        mock_hub = MagicMock()
+        mock_home = MagicMock()
+        mock_home.devices = [dev1, dev2]
+        mock_hub.home = mock_home
+
+        # 1. Matching target_id
+        entry_dev1 = MockEntry(entry_id="e1", title="Living Room AC", data={"device_id": "dev_1"})
+        res = get_devices_for_entry(mock_hub, entry_dev1)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].id, "dev_1")
+
+        # 2. Mismatched target_id -> returns empty list (never falls back to all devices)
+        entry_mismatched = MockEntry(entry_id="e_bad", title="Ghost AC", data={"device_id": "dev_99"})
+        res = get_devices_for_entry(mock_hub, entry_mismatched)
+        self.assertEqual(res, [], "Mismatched device_id must return empty list without falling back")
+
+        # 3. Missing target_id in entry.data -> returns hub.home.devices (for single-device or IR entries)
+        entry_no_id = MockEntry(entry_id="e_no_id", title="Legacy AC", data={})
+        res = get_devices_for_entry(mock_hub, entry_no_id)
+        self.assertEqual(len(res), 2)
+
+        # 4. Hub is None or invalid -> returns empty list safely
+        self.assertEqual(get_devices_for_entry(None, entry_dev1), [])
+        self.assertEqual(get_devices_for_entry(object(), entry_dev1), [])
+
 
 if __name__ == "__main__":
     unittest.main()
+

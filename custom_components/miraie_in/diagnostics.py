@@ -7,6 +7,7 @@ from homeassistant.helpers import device_registry as dr
 
 from miraie_ac import MirAIeHub
 from .const import DOMAIN, get_converti_preset_modes, supports_heat_mode, supports_nanoe
+from .utils import get_devices_for_entry
 
 
 TO_REDACT = {
@@ -41,8 +42,8 @@ async def async_get_config_entry_diagnostics(
         "devices": []
     }
     
-    target_id = getattr(entry, "data", {}).get("device_id")
-    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+    devices = get_devices_for_entry(hub, entry)
+
 
     for device in devices:
         device_data = {

@@ -23,6 +23,7 @@ from .const import (
 )
 
 from .logger import LOGGER
+from .utils import get_devices_for_entry
 
 PARALLEL_UPDATES = 0
 
@@ -38,8 +39,8 @@ async def async_setup_entry(
     ent_reg = er.async_get(hass)
 
     entities = []
-    target_id = getattr(entry, "data", {}).get("device_id")
-    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+    devices = get_devices_for_entry(hub, entry)
+
 
     for device in devices:
         entities.append(MirAIeDisplaySwitch(device))

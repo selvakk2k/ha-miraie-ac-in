@@ -34,9 +34,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
-from .utils import six_months_ago
+from .utils import six_months_ago, get_last_sunday, get_devices_for_entry
 from .logger import LOGGER
-from .utils import get_last_sunday
+
 
 
 
@@ -398,8 +398,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
     
-    target_id = getattr(entry, "data", {}).get("device_id")
-    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+    devices = get_devices_for_entry(hub, entry)
+
 
     # 1. Setup Energy Sensors (which need active polling — Wi-Fi models only)
     energy_sensors = []

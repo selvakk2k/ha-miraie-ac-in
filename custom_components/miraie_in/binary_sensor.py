@@ -18,9 +18,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
+from .logger import LOGGER
+from .utils import get_devices_for_entry
 
 PARALLEL_UPDATES = 0
-from .logger import LOGGER
 
 
 from homeassistant.helpers import entity_registry as er
@@ -36,8 +37,8 @@ async def async_setup_entry(
     entities = []
     entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
-    target_id = entry_data.get("device_id")
-    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+    devices = get_devices_for_entry(hub, entry)
+
 
     for device in devices:
         coordinator = coordinators.get(device.id)
