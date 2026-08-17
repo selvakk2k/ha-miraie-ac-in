@@ -54,6 +54,7 @@ from .const import (
 
 
 from .logger import LOGGER
+from .utils import get_devices_for_entry
 
 PARALLEL_UPDATES = 0
 
@@ -64,12 +65,12 @@ async def async_setup_entry(
     """Set up the MirAIe Climate Hub."""
     hub: MirAIeHub = entry.runtime_data
     coordinators = getattr(hub, "coordinators", {})
-    target_id = getattr(entry, "data", {}).get("device_id")
-    devices = [d for d in hub.home.devices if d.id == target_id] if target_id else hub.home.devices
+    devices = get_devices_for_entry(hub, entry)
 
     entities = [MirAIeClimate(device, entry, coordinators.get(device.id)) for device in devices]
 
     async_add_entities(entities)
+
 
 
 class MirAIeClimate(ClimateEntity):
