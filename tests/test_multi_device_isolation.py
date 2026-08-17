@@ -376,14 +376,36 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         res = get_devices_for_entry(mock_hub, entry_mismatched)
         self.assertEqual(res, [], "Mismatched device_id must return empty list without falling back")
 
-        # 3. Missing target_id in entry.data -> returns hub.home.devices (for single-device or IR entries)
-        entry_no_id = MockEntry(entry_id="e_no_id", title="Legacy AC", data={})
-        res = get_devices_for_entry(mock_hub, entry_no_id)
-        self.assertEqual(len(res), 2)
+        # 3. Missing target_id on a multi-device account -> returns empty list (BLOCKS FAN-OUT)
+        entry_no_id_multi = MockEntry(entry_id="e_no_id", title="Legacy Multi AC", data={"username": "u@example.com"})
+        res = get_devices_for_entry(mock_hub, entry_no_id_multi)
+        self.assertEqual(res, [], "Multi-device cloud account missing device_id must return empty list (preventing fanout)")
 
-        # 4. Hub is None or invalid -> returns empty list safely
+        # 4. Missing target_id on a single-device account -> safely returns single device
+        single_hub = MagicMock()
+        single_home = MagicMock()
+        single_home.devices = [dev1]
+        single_hub.home = single_home
+        entry_no_id_single = MockEntry(entry_id="e_single", title="Legacy Single AC", data={"username": "u@example.com"})
+        res_single = get_devices_for_entry(single_hub, entry_no_id_single)
+        self.assertEqual(len(res_single), 1)
+        self.assertEqual(res_single[0].id, "dev_1")
+
+        # 5. Standalone IR entry (is_ir_only) -> returns dummy device safely
+        dummy_dev = MockDevice(device_id="manual_1", friendly_name="IR AC")
+        ir_hub = MagicMock()
+        ir_home = MagicMock()
+        ir_home.devices = [dummy_dev]
+        ir_hub.home = ir_home
+        entry_ir = MockEntry(entry_id="e_ir", title="IR AC", data={"is_ir_only": True})
+        res_ir = get_devices_for_entry(ir_hub, entry_ir)
+        self.assertEqual(len(res_ir), 1)
+        self.assertEqual(res_ir[0].id, "manual_1")
+
+        # 6. Hub is None or invalid -> returns empty list safely
         self.assertEqual(get_devices_for_entry(None, entry_dev1), [])
         self.assertEqual(get_devices_for_entry(object(), entry_dev1), [])
+
 
 
 if __name__ == "__main__":
