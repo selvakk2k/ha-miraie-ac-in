@@ -38,37 +38,31 @@ class TestMultipleIRDevices(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result_final["data"]["name"], "Bedroom AC")
         self.assertEqual(result_final["options"]["blaster_entity_id"], "infrared.bedroom_blaster")
 
-    async def test_add_multiple_manual_devices_in_options(self):
+    async def test_options_flow_device_settings_ir_entry(self):
         from custom_components.miraie_in.config_flow import OptionsFlowHandler
 
         options_flow = OptionsFlowHandler()
         mock_entry = MagicMock()
+        mock_entry.data = {"is_ir_only": True, "device_id": "manual_123", "name": "Living Room AC"}
         mock_entry.options = {
-            "manual_devices": [
-                {
-                    "id": "manual_1_living_room_ac",
-                    "name": "Living Room AC",
-                    "model_code": "CS-CU-RU18CKY-1",
-                    "blaster_entity_id": "infrared.living_room_blaster",
-                }
-            ]
+            "blaster_entity_id": "infrared.living_room_blaster",
+            "primary_backend": "ir",
+            "hybrid_submode": "manual",
         }
         options_flow.config_entry = mock_entry
 
-        result = await options_flow.async_step_add_manual_device(
+        result = await options_flow.async_step_device_settings(
             user_input={
-                "name": "Guest Room AC",
-                "model_code": "CS-CU-KN18YKY",
-                "blaster_entity_id": "infrared.guest_blaster",
+                "install_date": "2026-01-01",
+                "blaster_entity_id": "infrared.updated_blaster",
                 "primary_backend": "ir",
+                "hybrid_submode": "manual",
             }
         )
 
         self.assertEqual(result["type"], "create_entry")
-        manual_devs = result["data"]["manual_devices"]
-        self.assertEqual(len(manual_devs), 2)
-        self.assertEqual(manual_devs[1]["name"], "Guest Room AC")
-        self.assertEqual(manual_devs[1]["blaster_entity_id"], "infrared.guest_blaster")
+        self.assertEqual(result["data"]["blaster_entity_id"], "infrared.updated_blaster")
+
 
 
 if __name__ == "__main__":

@@ -27,59 +27,54 @@ class TestConfigFlowDevices(unittest.TestCase):
         self.assertEqual(res["type"], "form")
         self.assertEqual(res["step_id"], "device_settings")
 
-    async def async_test_options_flow_manage_devices_form_render(self):
-        """Test async_step_manage_devices form rendering when user_input is None."""
+    async def async_test_options_flow_device_settings_form_render(self):
+        """Test async_step_device_settings form rendering when user_input is None."""
         from tests.fixtures import MockConfigEntry, MockDevice
 
         dev1 = MockDevice(device_id="dev_living", friendly_name="Living Room AC")
-        dev2 = MockDevice(device_id="dev_bed", friendly_name="Bedroom AC")
-        entry = MockConfigEntry(devices=[dev1, dev2])
+        entry = MockConfigEntry(devices=[dev1], data={"device_id": "dev_living"})
 
         flow = self.mod_flow.OptionsFlowHandler()
         flow.config_entry = entry
 
-        res = await flow.async_step_manage_devices(user_input=None)
+        res = await flow.async_step_device_settings(user_input=None)
         self.assertEqual(res["type"], "form")
-        self.assertEqual(res["step_id"], "manage_devices")
+        self.assertEqual(res["step_id"], "device_settings")
 
-    async def async_test_options_flow_all_clear_branch(self):
-        """Test async_step_device_settings with __all__ device setting clears overrides."""
+    async def async_test_options_flow_device_settings_save(self):
+        """Test async_step_device_settings successfully saves options."""
         from tests.fixtures import MockConfigEntry, MockDevice
 
         dev1 = MockDevice(device_id="dev1")
         entry = MockConfigEntry(
             options={"install_date": "2026-01-01", "devices": {"dev1": {"install_date": "2026-02-01"}}},
             devices=[dev1],
+            data={"device_id": "dev1"},
         )
 
         flow = self.mod_flow.OptionsFlowHandler()
         flow.config_entry = entry
 
-        await flow.async_step_manage_devices(user_input={"devices": ["__all__"]})
-        flow._selected_devices = ["__all__"]
-
         res = await flow.async_step_device_settings(user_input={"install_date": "2026-03-01"})
         self.assertEqual(res["type"], "create_entry")
-        # Ensure per-device overrides were cleared
-        self.assertEqual(res["data"]["devices"], {})
         self.assertEqual(res["data"]["install_date"], "2026-03-01")
+        self.assertEqual(res["data"]["devices"]["dev1"]["install_date"], "2026-03-01")
 
     async def async_test_options_flow_invalid_date_error_redisplay(self):
         """Test invalid install date returns form with error."""
         from tests.fixtures import MockConfigEntry, MockDevice
 
         dev1 = MockDevice(device_id="dev1")
-        entry = MockConfigEntry(devices=[dev1])
+        entry = MockConfigEntry(devices=[dev1], data={"device_id": "dev1"})
 
         flow = self.mod_flow.OptionsFlowHandler()
         flow.config_entry = entry
-
-        await flow.async_step_manage_devices(user_input={"devices": ["__all__"]})
 
         res = await flow.async_step_device_settings(user_input={"install_date": "invalid-date"})
         self.assertEqual(res["type"], "form")
         self.assertIn("errors", res)
         self.assertEqual(res["errors"]["install_date"], "invalid_install_date")
+
 
     async def async_test_cloud_devices_multi_device_discovery(self):
         """Test multi-device cloud discovery triggers flow.async_init for non-last devices."""
@@ -150,12 +145,13 @@ class TestConfigFlowDevices(unittest.TestCase):
     def test_run_async_tests(self):
         """Runner for async test methods."""
         asyncio.run(self.async_test_options_flow_init_menu_render())
-        asyncio.run(self.async_test_options_flow_manage_devices_form_render())
-        asyncio.run(self.async_test_options_flow_all_clear_branch())
+        asyncio.run(self.async_test_options_flow_device_settings_form_render())
+        asyncio.run(self.async_test_options_flow_device_settings_save())
         asyncio.run(self.async_test_options_flow_invalid_date_error_redisplay())
         asyncio.run(self.async_test_cloud_devices_multi_device_discovery())
         asyncio.run(self.async_test_feature_confirmation_missing_model_code_safe_default())
         asyncio.run(self.async_test_cloud_login_no_devices_aborts())
+
 
 
 if __name__ == "__main__":

@@ -406,6 +406,132 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_devices_for_entry(None, entry_dev1), [])
         self.assertEqual(get_devices_for_entry(object(), entry_dev1), [])
 
+    async def test_shared_session_pool_refcounting_and_unload(self):
+        """Verify that sibling entries share a hub/broker and unload ref-counts properly."""
+        from tests.ha_stub import MockHass
+        from unittest.mock import AsyncMock, patch
+
+        hass = MockHass()
+        hass.data = {}
+        hass.is_running = True
+        hass.async_create_task = MagicMock()
+        hass.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
+
+
+        mock_dev1 = MockDevice("dev_1", "Living Room AC")
+
+        mock_dev2 = MockDevice("dev_2", "Bedroom AC")
+        devices = [mock_dev1, mock_dev2]
+
+        mock_hub = MagicMock()
+        mock_hub.home = MagicMock(devices=devices)
+        mock_hub.init = AsyncMock()
+        mock_hub.close = AsyncMock()
+        mock_hub.background_tasks = []
+
+        entry1 = MockEntry(
+            entry_id="entry_1",
+            title="Living Room AC",
+            data={"username": "user@example.com", "password": "pass", "device_id": "dev_1"},
+        )
+        entry2 = MockEntry(
+            entry_id="entry_2",
+            title="Bedroom AC",
+            data={"username": "user@example.com", "password": "pass", "device_id": "dev_2"},
+        )
+
+        with patch("custom_components.miraie_in.MirAIeHub", return_value=mock_hub), \
+             patch("custom_components.miraie_in.MirAIeBroker", return_value=MagicMock()):
+
+
+            # Setup entry 1
+            await self.mod_init.async_setup_entry(hass, entry1)
+            self.assertEqual(mock_hub.init.call_count, 1)
+            self.assertIn("user@example.com", hass.data["miraie_in"]["sessions"])
+            self.assertEqual(hass.data["miraie_in"]["sessions"]["user@example.com"]["entries"], {"entry_1"})
+
+            # Setup entry 2 - should reuse existing hub without calling hub.init again
+            await self.mod_init.async_setup_entry(hass, entry2)
+            self.assertEqual(mock_hub.init.call_count, 1, "hub.init must only be called once for shared account")
+            self.assertEqual(hass.data["miraie_in"]["sessions"]["user@example.com"]["entries"], {"entry_1", "entry_2"})
+
+            # Unload entry 1 - hub should NOT be closed
+            with patch.object(hass.config_entries, "async_unload_platforms", AsyncMock(return_value=True)):
+                await self.mod_init.async_unload_entry(hass, entry1)
+                self.assertEqual(mock_hub.close.call_count, 0, "hub.close must NOT be called while sibling entry is active")
+                self.assertEqual(hass.data["miraie_in"]["sessions"]["user@example.com"]["entries"], {"entry_2"})
+
+                # Unload entry 2 - last entry unloads, hub MUST be closed
+                await self.mod_init.async_unload_entry(hass, entry2)
+                self.assertEqual(mock_hub.close.call_count, 1, "hub.close MUST be called when last entry unloads")
+                self.assertNotIn("user@example.com", hass.data["miraie_in"]["sessions"])
+
+    async def test_reauth_sibling_propagation(self):
+        """Verify reauth updates all sibling config entries sharing the same username."""
+        from custom_components.miraie_in.config_flow import ConfigFlow
+        from tests.ha_stub import MockHass
+        from unittest.mock import AsyncMock, patch
+
+        hass = MockHass()
+        flow = ConfigFlow()
+        flow.hass = hass
+
+        entry1 = MockEntry(
+            entry_id="entry_1",
+            title="Living Room AC",
+            data={"username": "old_user@example.com", "password": "old_password", "device_id": "dev_1"},
+        )
+        entry2 = MockEntry(
+            entry_id="entry_2",
+            title="Bedroom AC",
+            data={"username": "old_user@example.com", "password": "old_password", "device_id": "dev_2"},
+        )
+
+        hass.config_entries.async_entries = MagicMock(return_value=[entry1, entry2])
+        hass.config_entries.async_update_entry = MagicMock()
+        hass.config_entries.async_reload = AsyncMock()
+
+        flow._reauth_entry = entry1
+
+        with patch("custom_components.miraie_in.config_flow.validate_input", AsyncMock(return_value=({}, []))):
+            res = await flow.async_step_reauth_confirm(
+                {"username": "new_user@example.com", "password": "new_password"}
+            )
+            self.assertEqual(res["type"], "abort")
+            self.assertEqual(res["reason"], "reauth_successful")
+            self.assertEqual(hass.config_entries.async_update_entry.call_count, 2, "Both sibling entries must be updated on reauth")
+            self.assertEqual(hass.config_entries.async_reload.call_count, 2, "Both sibling entries must be reloaded")
+
+    async def test_incremental_device_onboarding(self):
+        """Verify newly discovered AC on existing account can be onboarded."""
+        from custom_components.miraie_in.config_flow import ConfigFlow
+        from unittest.mock import AsyncMock, patch
+
+        flow = ConfigFlow()
+        flow.hass = MagicMock()
+
+        existing_entry = MockEntry(
+            entry_id="entry_1",
+            title="Living Room AC",
+            data={"username": "user@example.com", "device_id": "dev_1"},
+        )
+        flow._async_current_entries = MagicMock(return_value=[existing_entry])
+
+        discovered = [
+            {"id": "dev_1", "name": "Living Room AC", "model_code": "CS-CU-RU18CKY"},
+            {"id": "dev_2", "name": "New Guest AC", "model_code": "CS-CU-RU18CKY"},
+        ]
+
+        with patch("custom_components.miraie_in.config_flow.validate_input", AsyncMock(return_value=({}, discovered))):
+            res = await flow.async_step_cloud_account(
+                {"username": "user@example.com", "password": "password123"}
+            )
+            self.assertEqual(res["type"], "form")
+            self.assertEqual(res["step_id"], "cloud_devices")
+            self.assertEqual(len(flow._discovered_cloud_devices), 1)
+            self.assertEqual(flow._discovered_cloud_devices[0]["id"], "dev_2", "Only unconfigured dev_2 should be queued for setup")
+
+
 
 
 if __name__ == "__main__":

@@ -34,7 +34,8 @@ from .const import (
 )
 from .coordinator import MirAIeDeviceCoordinator
 from .sensor import async_backfill_energy_statistics
-from .utils import six_months_ago
+from .utils import six_months_ago, get_devices_for_entry
+
 
 
 
@@ -237,17 +238,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         setattr(hub, "coordinators", {dev_id: coord})
     else:
-        try:
-            hub = MirAIeHub(session)
-        except TypeError:
-            hub = MirAIeHub()
-        broker = MirAIeBroker()
-        try:
-            await hub.init(entry.data["username"], entry.data["password"], broker)
-        except (aiohttp.ClientError, TimeoutError) as err:
-            raise ConfigEntryNotReady from err
-        except Exception as err:
-            raise ConfigEntryAuthFailed from err
+        if not hasattr(hass, "data") or not isinstance(getattr(hass, "data", None), dict):
+            hass.data = {}
+        sessions = hass.data.setdefault(DOMAIN, {}).setdefault("sessions", {})
+        username_key = entry.data["username"].lower()
+
+
+        if username_key in sessions:
+            account_session = sessions[username_key]
+            hub = account_session["hub"]
+            account_session["entries"].add(entry.entry_id)
+        else:
+            try:
+                hub = MirAIeHub(session)
+            except TypeError:
+                hub = MirAIeHub()
+            broker = MirAIeBroker()
+            try:
+                await hub.init(entry.data["username"], entry.data["password"], broker)
+            except (aiohttp.ClientError, TimeoutError) as err:
+                raise ConfigEntryNotReady from err
+            except Exception as err:
+                raise ConfigEntryAuthFailed from err
+
+            sessions[username_key] = {
+                "hub": hub,
+                "broker": broker,
+                "entries": {entry.entry_id},
+            }
+
 
         # Auto-split legacy v1.x single-parent account entries into per-device config entries
         if "device_id" not in entry.data:
@@ -407,23 +426,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         lookup = None
 
     target_dev_id = entry.data.get("device_id")
-    if target_dev_id:
-        matched = [d for d in hub.home.devices if d.id == target_dev_id]
-        if not matched:
-            found_ids = [d.id for d in hub.home.devices]
-            LOGGER.error(
-                "ConfigEntry %s expects device_id '%s', but it was not found in MirAIe cloud account (available devices: %s). Postponing setup.",
-                entry.entry_id,
-                target_dev_id,
-                found_ids,
-            )
-            raise ConfigEntryNotReady(f"Device {target_dev_id} not found in MirAIe account")
-        target_devices = matched
-        hub.home.devices = matched
-    else:
-        target_devices = hub.home.devices
+    target_devices = get_devices_for_entry(hub, entry)
+    if not target_devices and target_dev_id:
+        found_ids = [getattr(d, "id", None) for d in getattr(getattr(hub, "home", None), "devices", [])]
+        LOGGER.error(
+            "ConfigEntry %s expects device_id '%s', but it was not found in MirAIe cloud account (available devices: %s). Postponing setup.",
+            entry.entry_id,
+            target_dev_id,
+            found_ids,
+        )
+        raise ConfigEntryNotReady(f"Device {target_dev_id} not found in MirAIe account")
 
     _cleanup_cross_device_entities(hass, entry, target_dev_id)
+
 
     for device in target_devices:
         dev_opt = devices_opt.get(device.id, {})
@@ -482,7 +497,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def _run_startup_backfill(hass: HomeAssistant) -> None:
         """Run the initial backfill only once HA has fully finished starting."""
-        for device in hub.home.devices:
+        for device in target_devices:
             start_date = _get_device_install_date(device.id)
             task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, start_date)
@@ -495,12 +510,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
 
     async def nightly_backfill(now=None):
-        for device in hub.home.devices:
+        for device in target_devices:
             backfill_start = _get_device_install_date(device.id)
             task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, backfill_start)
             )
             task.add_done_callback(_log_backfill_result)
+
 
     # Run nightly backfill at 02:05 AM IST to ensure Panasonic cloud servers have finalized yesterday's daily batch
     unsub = async_track_time_change(hass, nightly_backfill, hour=2, minute=5, second=0)
@@ -518,20 +534,44 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hub: MirAIeHub | None = getattr(entry, "runtime_data", None)
-        if hub:
-            try:
-                if hasattr(hub, "close"):
-                    await hub.close()
-                else:
-                    for task in list(getattr(hub, "background_tasks", [])):
-                        task.cancel()
-                    if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
-                        await hub.http.close()
-            except Exception as err:
-                LOGGER.debug("Error closing hub during unload of %s: %s", entry.title, err)
+        entry_data = getattr(entry, "data", {}) if isinstance(getattr(entry, "data", {}), dict) else {}
+        username = entry_data.get("username", "").lower() if "username" in entry_data else None
+        is_ir_only = entry_data.get("is_ir_only", False) or not username
+
+        if is_ir_only or not username:
+            hub: MirAIeHub | None = getattr(entry, "runtime_data", None)
+            if hub:
+                try:
+                    if hasattr(hub, "close"):
+                        await hub.close()
+                    else:
+                        for task in list(getattr(hub, "background_tasks", [])):
+                            task.cancel()
+                        if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
+                            await hub.http.close()
+                except Exception as err:
+                    LOGGER.debug("Error closing hub during unload of %s: %s", entry.title, err)
+        else:
+            sessions = hass.data.get(DOMAIN, {}).get("sessions", {})
+            account_session = sessions.get(username)
+            if account_session:
+                account_session["entries"].discard(entry.entry_id)
+                if not account_session["entries"]:
+                    hub = account_session["hub"]
+                    try:
+                        if hasattr(hub, "close"):
+                            await hub.close()
+                        else:
+                            for task in list(getattr(hub, "background_tasks", [])):
+                                task.cancel()
+                            if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
+                                await hub.http.close()
+                    except Exception as err:
+                        LOGGER.debug("Error closing shared hub for %s: %s", username, err)
+                    sessions.pop(username, None)
 
     return unload_ok
+
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

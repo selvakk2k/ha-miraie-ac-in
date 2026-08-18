@@ -256,23 +256,13 @@ class MirAIeDeviceCoordinator:
                     await async_send_command(self.hass, self.blaster_entity_id, cmd_obj)
                     return True
                 except Exception as err:
-                    LOGGER.debug("Native infrared helper unavailable for %s: %s, using service calls", self.device_id, err)
-                    self._native_ir_helper_available = False
-
-            # Fallback service calls for infrared domain
-            infrared_service_attempts = [
-                {"entity_id": self.blaster_entity_id, "command": ir_data["raw"]},
-                {"entity_id": self.blaster_entity_id, "raw": ir_data["raw"]},
-                {"entity_id": self.blaster_entity_id, "command": [f"b64:{ir_data['broadlink_b64']}"]},
-            ]
-            for s_data in infrared_service_attempts:
-                try:
-                    await self.hass.services.async_call("infrared", "send_command", s_data, blocking=False)
-                    return True
-                except Exception as err2:
-                    LOGGER.debug("Infrared service attempt failed for %s: %s", self.device_id, err2)
+                    LOGGER.error("Native infrared transmission failed for %s: %s", self.device_id, err)
+                    return False
 
             return False
+
+
+
 
         elif target_domain == "esphome":
             # ESPHome transmit_raw service
