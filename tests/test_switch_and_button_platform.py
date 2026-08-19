@@ -85,22 +85,78 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
             primary_backend="cloud",
             hybrid_submode="auto",
         )
+        self.coordinator.state["power"] = "on"
+        self.coordinator.state["mode"] = "cool"
+        self.coordinator.state["temperature"] = 24.0
+        self.coordinator.state["room_temperature"] = 26.0
+        self.coordinator.state["nanoe"] = True
+        self.coordinator.state["display"] = "on"
 
     async def test_display_switch_turn_on_and_off(self):
-        """Test display switch toggles display mode."""
-        switch = MirAIeDisplaySwitch(self.mock_device)
+        """Test display switch toggles display mode via cloud."""
+        switch = MirAIeDisplaySwitch(self.mock_device, self.coordinator)
         self.assertTrue(switch.is_on)
 
         await switch.async_turn_off()
-        self.mock_device.set_display_mode.assert_awaited()
+        self.mock_device.set_display_mode.assert_awaited_with(LibDisplayMode.OFF)
+        self.assertEqual(self.coordinator.state.get("display"), "off")
+
+        await switch.async_turn_on()
+        self.mock_device.set_display_mode.assert_awaited_with(LibDisplayMode.ON)
+        self.assertEqual(self.coordinator.state.get("display"), "on")
+
+    async def test_display_switch_ir_primary(self):
+        """Test display switch dispatches IR command when primary_backend is ir."""
+        coord_ir = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id=self.mock_entry.entry_id,
+            device_id=self.mock_device.id,
+            model_code="CS-HZ24XKE",
+            has_wifi=False,
+            blaster_entity_id="infrared.living_room_blaster",
+            primary_backend="ir",
+        )
+        coord_ir.async_dispatch_ir_command = AsyncMock(return_value=True)
+
+        switch = MirAIeDisplaySwitch(self.mock_device, coord_ir)
+        self.assertTrue(switch.available)
+
+        await switch.async_turn_off()
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(mode="display", origin="IR")
+        self.assertEqual(coord_ir.state.get("display"), "off")
 
     async def test_nanoe_switch_turn_on_and_off(self):
         """Test nanoe switch toggles nanoe mode."""
-        switch = MirAIeNanoeSwitch(self.mock_device)
+        switch = MirAIeNanoeSwitch(self.mock_device, self.coordinator)
         self.assertTrue(switch.is_on)
 
         await switch.async_turn_off()
         self.mock_device.set_nanoe.assert_awaited_with(False)
+        self.assertFalse(self.coordinator.state.get("nanoe"))
+
+        await switch.async_turn_on()
+        self.mock_device.set_nanoe.assert_awaited_with(True)
+        self.assertTrue(self.coordinator.state.get("nanoe"))
+
+    async def test_nanoe_switch_ir_primary(self):
+        """Test nanoe switch dispatches IR command when primary_backend is ir."""
+        coord_ir = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id=self.mock_entry.entry_id,
+            device_id=self.mock_device.id,
+            model_code="CS-HZ24XKE",
+            has_wifi=False,
+            blaster_entity_id="infrared.living_room_blaster",
+            primary_backend="ir",
+        )
+        coord_ir.async_dispatch_ir_command = AsyncMock(return_value=True)
+
+        switch = MirAIeNanoeSwitch(self.mock_device, coord_ir)
+        self.assertTrue(switch.available)
+
+        await switch.async_turn_on()
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(nanoe=True, origin="IR")
+        self.assertTrue(coord_ir.state.get("nanoe"))
 
     async def test_coil_clean_button_press(self):
         """Test coil clean button triggers clean preset."""

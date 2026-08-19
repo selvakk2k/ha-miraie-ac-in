@@ -43,14 +43,14 @@ async def async_setup_entry(
 
 
     for device in devices:
-        entities.append(MirAIeDisplaySwitch(device))
+        coordinator = coordinators.get(device.id)
+        entities.append(MirAIeDisplaySwitch(device, coordinator))
         
         # Untested: Expose Nanoe switch only if the model supports it
         model_number = getattr(getattr(device, "details", None), "model_number", None)
         if supports_nanoe(model_number):
-            entities.append(MirAIeNanoeSwitch(device))
+            entities.append(MirAIeNanoeSwitch(device, coordinator))
 
-        coordinator = coordinators.get(device.id)
         if coordinator:
             entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
             is_ir_only = entry_data.get("is_ir_only", False) or not coordinator.has_wifi
@@ -70,14 +70,15 @@ async def async_setup_entry(
 
 
 class MirAIeDisplaySwitch(SwitchEntity):
-    """Representation of a MirAIe Climate."""
+    """Representation of a MirAIe Display LED switch."""
 
-    def __init__(self, device: MirAIeDevice) -> None:
+    def __init__(self, device: MirAIeDevice, coordinator=None) -> None:
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "display"
         self._attr_unique_id = f"{device.id}_display"
         self.device = device
+        self.coordinator = coordinator
 
     @property
     def icon(self) -> str | None:
@@ -101,22 +102,59 @@ class MirAIeDisplaySwitch(SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return True if display is on."""
+        if self.coordinator and "display" in self.coordinator.state:
+            return self.coordinator.state.get("display") == "on"
         return self.device.status.display_mode == DisplayMode.ON
 
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
+        if self.coordinator:
+            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir":
+                return True
         return self.device.status.is_online
 
+    async def _send_display_command(self, turn_on: bool) -> None:
+        target_mode = DisplayMode.ON if turn_on else DisplayMode.OFF
+        coord = self.coordinator
+        if coord:
+            coord.async_optimistic_update(
+                display=turn_on,
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+            )
+            if hasattr(self, "async_write_ha_state"):
+                try:
+                    self.async_write_ha_state()
+                except Exception:
+                    pass
+
+        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
+            success = await coord.async_dispatch_ir_command(mode="display", origin="IR")
+            if success:
+                return
+            LOGGER.warning("IR display command failed for %s, falling back to Cloud", self.device.id)
+
+        try:
+            await self.device.set_display_mode(target_mode)
+        except Exception as err:
+            LOGGER.warning("Cloud display command failed for %s: %s", self.device.id, err)
+            if coord and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None):
+                LOGGER.info("Auto Failover triggered: Transmitting IR display command for %s", self.device.id)
+                await coord.async_dispatch_ir_command(mode="display", origin="IR Failover")
+
     async def async_turn_off(self) -> None:
-        await self.device.set_display_mode(DisplayMode.OFF)
+        await self._send_display_command(False)
 
     async def async_turn_on(self) -> None:
-        await self.device.set_display_mode(DisplayMode.ON)
+        await self._send_display_command(True)
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         LOGGER.debug("Successfully added display switch to HA")
+        if self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
         self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
         self.device.register_callback(self._device_callback)
 
@@ -134,12 +172,13 @@ class MirAIeNanoeSwitch(SwitchEntity):
     physical Nanoe-compatible device to verify active MQTT control.
     """
 
-    def __init__(self, device: MirAIeDevice) -> None:
+    def __init__(self, device: MirAIeDevice, coordinator=None) -> None:
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "nanoe"
         self._attr_unique_id = f"{device.id}_nanoe"
         self.device = device
+        self.coordinator = coordinator
 
     @property
     def icon(self) -> str | None:
@@ -161,21 +200,57 @@ class MirAIeNanoeSwitch(SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return True if Nanoe is on."""
+        if self.coordinator and "nanoe" in self.coordinator.state:
+            return bool(self.coordinator.state.get("nanoe"))
         return getattr(self.device.status, "nanoe_mode", "off") == "on"
 
     @property
     def available(self) -> bool:
+        if self.coordinator:
+            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir":
+                return True
         return self.device.status.is_online
 
+    async def _send_nanoe_command(self, turn_on: bool) -> None:
+        coord = self.coordinator
+        if coord:
+            coord.async_optimistic_update(
+                nanoe=turn_on,
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+            )
+            if hasattr(self, "async_write_ha_state"):
+                try:
+                    self.async_write_ha_state()
+                except Exception:
+                    pass
+
+        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
+            success = await coord.async_dispatch_ir_command(nanoe=turn_on, origin="IR")
+            if success:
+                return
+            LOGGER.warning("IR nanoe command failed for %s, falling back to Cloud", self.device.id)
+
+        try:
+            await self.device.set_nanoe(turn_on)
+        except Exception as err:
+            LOGGER.warning("Cloud nanoe command failed for %s: %s", self.device.id, err)
+            if coord and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None):
+                LOGGER.info("Auto Failover triggered: Transmitting IR nanoe command for %s", self.device.id)
+                await coord.async_dispatch_ir_command(nanoe=turn_on, origin="IR Failover")
+
     async def async_turn_off(self) -> None:
-        await self.device.set_nanoe(False)
+        await self._send_nanoe_command(False)
 
     async def async_turn_on(self) -> None:
-        await self.device.set_nanoe(True)
+        await self._send_nanoe_command(True)
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         LOGGER.debug("Successfully added Nanoe switch to HA")
+        if self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
         self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
         self.device.register_callback(self._device_callback)
 

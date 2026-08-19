@@ -209,7 +209,7 @@ def generate_ir_code(
     if mode_key == "dry":
         fan_nibble = 0x3
     else:
-        fan_nibble_map = {"quiet": 0x2, "off": 0x2, "low": 0x3, "mid": 0x5, "medium": 0x5, "high": 0x7, "auto": 0xA}
+        fan_nibble_map = {"quiet": 0xA, "off": 0xA, "low": 0x3, "mid": 0x5, "medium": 0x5, "high": 0x7, "auto": 0xA}
         fan_nibble = fan_nibble_map.get(str(fan).lower(), 0x3)
 
     v_nibble_map = {"V0": 0xF, "V1": 0x1, "V2": 0x2, "V3": 0x3, "V4": 0x4, "V5": 0x5, "AUTO": 0xF}
@@ -229,7 +229,9 @@ def generate_ir_code(
 
     # Preset / Convertible Byte (Byte 21 -> Frame 2 Byte 13)
     preset_byte = 0x00
-    if mode_key in ("powerful", "boost"):
+    if str(fan).lower() in ("quiet", "off"):
+        preset_byte = 0x20
+    elif mode_key in ("powerful", "boost"):
         preset_byte = 0x01
     elif eco:
         preset_byte = 0x02

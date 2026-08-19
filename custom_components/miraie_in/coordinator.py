@@ -62,6 +62,7 @@ class MirAIeDeviceCoordinator:
             "h_vane": "H0",
             "eco": False,
             "nanoe": False,
+            "display": "on",
             "last_controlled_by": "Cloud",
             "provisional": False,
         }
@@ -105,7 +106,13 @@ class MirAIeDeviceCoordinator:
 
         # Map cloud payload keys
         if "pwr" in cloud_data:
-            self.state["power"] = "on" if str(cloud_data["pwr"]).lower() in ["on", "1", "true"] else "off"
+            new_power = "on" if str(cloud_data["pwr"]).lower() in ["on", "1", "true"] else "off"
+            if not in_ir_grace_window or new_power == self.state.get("power"):
+                self.state["power"] = new_power
+        if "acdc" in cloud_data:
+            new_disp = "on" if str(cloud_data["acdc"]).lower() in ["on", "1", "true"] else "off"
+            if not in_ir_grace_window or new_disp == self.state.get("display"):
+                self.state["display"] = new_disp
         if "md" in cloud_data:
             md_val = str(cloud_data["md"]).lower()
             if md_val not in ("powerful", "boost", "clean") and not md_val.startswith("converti_"):
@@ -356,6 +363,7 @@ class MirAIeDeviceCoordinator:
         h_vane: Optional[str] = None,
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
+        display: Optional[bool] = None,
         origin: str = "Cloud",
     ) -> None:
         """Optimistically update coordinator state for instant UI response."""
@@ -402,6 +410,8 @@ class MirAIeDeviceCoordinator:
                 self.state["converti"] = "cv_off"
         if nanoe is not None:
             self.state["nanoe"] = nanoe
+        if display is not None:
+            self.state["display"] = "on" if display else "off"
         self.state["last_controlled_by"] = origin
         self.state["provisional"] = True
 
