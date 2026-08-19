@@ -335,6 +335,7 @@ class MirAIeHybridSubmodeSwitch(SwitchEntity, RestoreEntity):
         dev_opt[option_key] = option_val
         devices_opt[self.coordinator.device_id] = dev_opt
         options["devices"] = devices_opt
+        self.coordinator._suppress_reload = True
         self.coordinator.hass.config_entries.async_update_entry(entry, options=options)
 
     async def async_turn_on(self) -> None:
@@ -396,6 +397,7 @@ class MirAIeBackendSelectSwitch(SwitchEntity, RestoreEntity):
         dev_opt[option_key] = option_val
         devices_opt[self.coordinator.device_id] = dev_opt
         options["devices"] = devices_opt
+        self.coordinator._suppress_reload = True
         self.coordinator.hass.config_entries.async_update_entry(entry, options=options)
 
     async def async_turn_on(self) -> None:
@@ -425,5 +427,3 @@ class MirAIeBackendSelectSwitch(SwitchEntity, RestoreEntity):
             )
         # Ensure switch state reflects current coordinator primary_backend
         self.async_write_ha_state()
-
-

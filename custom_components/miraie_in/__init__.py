@@ -547,7 +547,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry automatically when options are updated."""
+    """Reload config entry automatically when options are updated from Options Flow."""
+    hub = getattr(entry, "runtime_data", None)
+    coordinators = getattr(hub, "coordinators", {}) if hub else {}
+    if any(getattr(c, "_suppress_reload", False) for c in coordinators.values()):
+        for c in coordinators.values():
+            c._suppress_reload = False
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
