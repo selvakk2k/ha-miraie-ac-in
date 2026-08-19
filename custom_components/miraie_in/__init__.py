@@ -247,7 +247,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if username_key in sessions:
             account_session = sessions[username_key]
             hub = account_session["hub"]
+            broker = account_session["broker"]
             account_session["entries"].add(entry.entry_id)
+
+            # Ensure broker connection task is alive if a previous reload cancelled background tasks
+            bg_tasks = getattr(hub, "background_tasks", set())
+            has_running_broker = any(
+                not task.done() and not task.cancelled()
+                for task in bg_tasks
+            )
+            if not has_running_broker:
+                LOGGER.info("Restarting broker connection task for shared session %s", username_key)
+                try:
+                    topics = hub.get_device_topics()
+                    broker.set_topics(topics)
+                    loop = asyncio.get_running_loop()
+                    b_task = loop.create_task(
+                        broker.connect(hub.home.id, hub.user.access_token, hub.get_token)
+                    )
+                    hub.background_tasks.add(b_task)
+                    b_task.add_done_callback(hub.background_tasks.remove)
+                except Exception as err:
+                    LOGGER.warning("Could not restart broker task for %s: %s", username_key, err)
         else:
             try:
                 hub = MirAIeHub(session)
@@ -547,8 +568,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     else:
                         for task in list(getattr(hub, "background_tasks", [])):
                             task.cancel()
-                        if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
-                            await hub.http.close()
                 except Exception as err:
                     LOGGER.debug("Error closing hub during unload of %s: %s", entry.title, err)
         else:
@@ -564,8 +583,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         else:
                             for task in list(getattr(hub, "background_tasks", [])):
                                 task.cancel()
-                            if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
-                                await hub.http.close()
                     except Exception as err:
                         LOGGER.debug("Error closing shared hub for %s: %s", username, err)
                     sessions.pop(username, None)
