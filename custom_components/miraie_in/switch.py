@@ -110,17 +110,25 @@ class MirAIeDisplaySwitch(SwitchEntity):
     def available(self) -> bool:
         """Return True if entity is available."""
         if self.coordinator:
-            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir":
+            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir" or getattr(self.coordinator, "blaster_entity_id", None):
                 return True
         return self.device.status.is_online
 
     async def _send_display_command(self, turn_on: bool) -> None:
         target_mode = DisplayMode.ON if turn_on else DisplayMode.OFF
         coord = self.coordinator
+        is_cloud_offline = not getattr(getattr(self.device, "status", None), "is_online", True)
+        use_ir_first = (
+            coord and (
+                getattr(coord, "primary_backend", "cloud") == "ir"
+                or (is_cloud_offline and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None))
+            )
+        )
+
         if coord:
             coord.async_optimistic_update(
                 display=turn_on,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+                origin="IR" if use_ir_first else "Cloud",
             )
             if hasattr(self, "async_write_ha_state"):
                 try:
@@ -128,8 +136,11 @@ class MirAIeDisplaySwitch(SwitchEntity):
                 except Exception:
                     pass
 
-        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
-            success = await coord.async_dispatch_ir_command(mode="display", origin="IR")
+        if use_ir_first:
+            success = await coord.async_dispatch_ir_command(
+                mode="display",
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
+            )
             if success:
                 return
             LOGGER.warning("IR display command failed for %s, falling back to Cloud", self.device.id)
@@ -207,16 +218,24 @@ class MirAIeNanoeSwitch(SwitchEntity):
     @property
     def available(self) -> bool:
         if self.coordinator:
-            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir":
+            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir" or getattr(self.coordinator, "blaster_entity_id", None):
                 return True
         return self.device.status.is_online
 
     async def _send_nanoe_command(self, turn_on: bool) -> None:
         coord = self.coordinator
+        is_cloud_offline = not getattr(getattr(self.device, "status", None), "is_online", True)
+        use_ir_first = (
+            coord and (
+                getattr(coord, "primary_backend", "cloud") == "ir"
+                or (is_cloud_offline and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None))
+            )
+        )
+
         if coord:
             coord.async_optimistic_update(
                 nanoe=turn_on,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+                origin="IR" if use_ir_first else "Cloud",
             )
             if hasattr(self, "async_write_ha_state"):
                 try:
@@ -224,8 +243,11 @@ class MirAIeNanoeSwitch(SwitchEntity):
                 except Exception:
                     pass
 
-        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
-            success = await coord.async_dispatch_ir_command(nanoe=turn_on, origin="IR")
+        if use_ir_first:
+            success = await coord.async_dispatch_ir_command(
+                nanoe=turn_on,
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
+            )
             if success:
                 return
             LOGGER.warning("IR nanoe command failed for %s, falling back to Cloud", self.device.id)

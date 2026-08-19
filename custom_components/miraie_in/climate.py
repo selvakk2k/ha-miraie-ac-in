@@ -169,6 +169,14 @@ class MirAIeClimate(ClimateEntity):
     ) -> None:
         """Route command through Hybrid Coordinator based on active primary_backend and failover rules."""
         coord = getattr(self, "coordinator", None)
+        is_cloud_offline = not getattr(getattr(self.device, "status", None), "is_online", True)
+        use_ir_first = (
+            coord and (
+                getattr(coord, "primary_backend", "cloud") == "ir"
+                or (is_cloud_offline and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None))
+            )
+        )
+
         if coord:
             coord.async_optimistic_update(
                 mode=mode,
@@ -178,7 +186,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+                origin="IR" if use_ir_first else "Cloud",
             )
             if hasattr(self, "async_write_ha_state"):
                 try:
@@ -186,7 +194,7 @@ class MirAIeClimate(ClimateEntity):
                 except Exception:
                     pass
 
-        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
+        if use_ir_first:
             success = await coord.async_dispatch_ir_command(
                 mode=mode,
                 target_temp=temp,
@@ -195,7 +203,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
-                origin="IR",
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
                 if cloud_coro and hasattr(cloud_coro, "close"):
@@ -274,6 +282,10 @@ class MirAIeClimate(ClimateEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
+        coord = getattr(self, "coordinator", None)
+        if coord:
+            if not coord.has_wifi or getattr(coord, "primary_backend", "cloud") == "ir" or getattr(coord, "blaster_entity_id", None):
+                return True
         return self.device.status.is_online
 
     @property

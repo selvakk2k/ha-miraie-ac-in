@@ -155,6 +155,55 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.01)
         self.assertIn(("set_converti_mode", LibConvertiMode.C80), self.calls)
 
+    async def test_climate_available_when_cloud_offline_with_blaster(self):
+        """Test climate entity remains available when cloud is offline if blaster is attached."""
+        self.mock_device.status.is_online = False
+        # Without coordinator/blaster -> unavailable
+        climate_cloud_only = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=None)
+        self.assertFalse(climate_cloud_only.available)
+
+        # With blaster attached -> available
+        coord_hybrid = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id=self.mock_entry.entry_id,
+            device_id=self.mock_device.id,
+            model_code="CS-HZ24XKE",
+            has_wifi=True,
+            blaster_entity_id="infrared.living_room_blaster",
+            primary_backend="cloud",
+            hybrid_submode="auto",
+        )
+        climate_hybrid = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=coord_hybrid)
+        self.assertTrue(climate_hybrid.available)
+
+    async def test_offline_proactive_ir_dispatch(self):
+        """Test that offline cloud with auto hybrid proactively dispatches IR command."""
+        self.mock_device.status.is_online = False
+        coord_hybrid = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id=self.mock_entry.entry_id,
+            device_id=self.mock_device.id,
+            model_code="CS-HZ24XKE",
+            has_wifi=True,
+            blaster_entity_id="infrared.living_room_blaster",
+            primary_backend="cloud",
+            hybrid_submode="auto",
+        )
+        coord_hybrid.async_dispatch_ir_command = AsyncMock(return_value=True)
+        climate = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=coord_hybrid)
+
+        await climate.async_set_temperature(temperature=23.0)
+        coord_hybrid.async_dispatch_ir_command.assert_awaited_with(
+            mode=None,
+            target_temp=23,
+            fan=None,
+            v_vane=None,
+            h_vane=None,
+            eco=None,
+            nanoe=None,
+            origin="IR Failover (Offline)",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
