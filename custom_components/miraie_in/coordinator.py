@@ -101,8 +101,15 @@ class MirAIeDeviceCoordinator:
         """
         LOGGER.debug("Device %s: Cloud state update received: %s", self.device_id, cloud_data)
 
-        now = asyncio.get_event_loop().time()
-        in_ir_grace_window = (now - getattr(self, "_last_ir_command_timestamp", 0.0)) < 8.0
+        try:
+            loop = getattr(self.hass, "loop", None) or asyncio.get_running_loop()
+            now = loop.time()
+            if not isinstance(now, (int, float)):
+                now = 0.0
+        except Exception:
+            now = 0.0
+        last_ir_ts = getattr(self, "_last_ir_command_timestamp", 0.0)
+        in_ir_grace_window = (last_ir_ts > 0.0) and ((now - last_ir_ts) < 8.0)
 
         # Map cloud payload keys
         if "pwr" in cloud_data:
@@ -216,7 +223,11 @@ class MirAIeDeviceCoordinator:
         )
 
         # Optimistically update coordinator state IMMEDIATELY for zero-lag UI response
-        self._last_ir_command_timestamp = asyncio.get_event_loop().time()
+        try:
+            loop = getattr(self.hass, "loop", None) or asyncio.get_running_loop()
+            self._last_ir_command_timestamp = loop.time()
+        except Exception:
+            self._last_ir_command_timestamp = 0.0
         self.async_optimistic_update(
             mode=cmd_mode,
             target_temp=cmd_temp,
