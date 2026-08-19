@@ -204,6 +204,40 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
             origin="IR Failover (Offline)",
         )
 
+    async def test_broker_disconnected_proactive_ir_dispatch(self):
+        """Test that disconnected MQTT broker triggers proactive IR dispatch even if device is online."""
+        self.mock_device.status.is_online = True
+        mock_hub = MagicMock()
+        mock_hub.broker = MagicMock()
+        mock_hub.broker.connected = MagicMock()
+        mock_hub.broker.connected.is_set = MagicMock(return_value=False)
+
+        coord_hybrid = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id=self.mock_entry.entry_id,
+            device_id=self.mock_device.id,
+            model_code="CS-HZ24XKE",
+            has_wifi=True,
+            blaster_entity_id="infrared.living_room_blaster",
+            primary_backend="cloud",
+            hybrid_submode="auto",
+        )
+        coord_hybrid.hub = mock_hub
+        coord_hybrid.async_dispatch_ir_command = AsyncMock(return_value=True)
+        climate = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=coord_hybrid)
+
+        await climate.async_set_hvac_mode(HVACMode.COOL)
+        coord_hybrid.async_dispatch_ir_command.assert_awaited_with(
+            mode="cool",
+            target_temp=None,
+            fan=None,
+            v_vane=None,
+            h_vane=None,
+            eco=None,
+            nanoe=None,
+            origin="IR Failover (Offline)",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

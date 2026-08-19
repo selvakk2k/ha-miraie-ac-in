@@ -117,7 +117,10 @@ class MirAIeDisplaySwitch(SwitchEntity):
     async def _send_display_command(self, turn_on: bool) -> None:
         target_mode = DisplayMode.ON if turn_on else DisplayMode.OFF
         coord = self.coordinator
-        is_cloud_offline = not getattr(getattr(self.device, "status", None), "is_online", True)
+        hub = getattr(coord, "hub", None) if coord else None
+        broker = getattr(hub, "broker", None) if hub else None
+        broker_connected = broker.connected.is_set() if (broker and hasattr(broker, "connected")) else True
+        is_cloud_offline = (not getattr(getattr(self.device, "status", None), "is_online", True)) or (not broker_connected)
         use_ir_first = (
             coord and (
                 getattr(coord, "primary_backend", "cloud") == "ir"
@@ -224,7 +227,10 @@ class MirAIeNanoeSwitch(SwitchEntity):
 
     async def _send_nanoe_command(self, turn_on: bool) -> None:
         coord = self.coordinator
-        is_cloud_offline = not getattr(getattr(self.device, "status", None), "is_online", True)
+        hub = getattr(coord, "hub", None) if coord else None
+        broker = getattr(hub, "broker", None) if hub else None
+        broker_connected = broker.connected.is_set() if (broker and hasattr(broker, "connected")) else True
+        is_cloud_offline = (not getattr(getattr(self.device, "status", None), "is_online", True)) or (not broker_connected)
         use_ir_first = (
             coord and (
                 getattr(coord, "primary_backend", "cloud") == "ir"

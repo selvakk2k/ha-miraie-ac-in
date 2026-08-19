@@ -229,6 +229,8 @@ class MirAIeCloudMQTTConnectedBinarySensor(BinarySensorEntity):
         hub = getattr(self.coordinator, "hub", None)
         if hub and hasattr(hub, "broker"):
             broker = hub.broker
+            if broker and hasattr(broker, "connected"):
+                return broker.connected.is_set()
             client = getattr(broker, "client", None)
             if client is not None:
                 is_connected = getattr(client, "is_connected", None)
