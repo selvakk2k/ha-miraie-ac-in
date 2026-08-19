@@ -142,6 +142,7 @@ class MirAIeDisplaySwitch(SwitchEntity):
         if use_ir_first:
             success = await coord.async_dispatch_ir_command(
                 mode="display",
+                display=turn_on,
                 origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
@@ -154,7 +155,7 @@ class MirAIeDisplaySwitch(SwitchEntity):
             LOGGER.warning("Cloud display command failed for %s: %s", self.device.id, err)
             if coord and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None):
                 LOGGER.info("Auto Failover triggered: Transmitting IR display command for %s", self.device.id)
-                await coord.async_dispatch_ir_command(mode="display", origin="IR Failover")
+                await coord.async_dispatch_ir_command(mode="display", display=turn_on, origin="IR Failover")
 
     async def async_turn_off(self) -> None:
         await self._send_display_command(False)

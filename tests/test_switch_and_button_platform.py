@@ -119,11 +119,20 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
         coord_ir.async_dispatch_ir_command = AsyncMock(return_value=True)
 
         switch = MirAIeDisplaySwitch(self.mock_device, coord_ir)
-        self.assertTrue(switch.available)
+        # Precondition: AC is running COOL at 28C, Fan=auto, V-Vane=V2
+        coord_ir.state["mode"] = "cool"
+        coord_ir.state["temperature"] = 28
+        coord_ir.state["fan_speed"] = "auto"
+        coord_ir.state["v_vane"] = "V2"
 
         await switch.async_turn_off()
-        coord_ir.async_dispatch_ir_command.assert_awaited_with(mode="display", origin="IR")
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(mode="display", display=False, origin="IR")
         self.assertEqual(coord_ir.state.get("display"), "off")
+        # Ensure climate HVAC mode and temperature were NOT altered by display toggle
+        self.assertEqual(coord_ir.state.get("mode"), "cool")
+        self.assertEqual(coord_ir.state.get("temperature"), 28)
+        self.assertEqual(coord_ir.state.get("fan_speed"), "auto")
+        self.assertEqual(coord_ir.state.get("v_vane"), "V2")
 
     async def test_nanoe_switch_turn_on_and_off(self):
         """Test nanoe switch toggles nanoe mode."""

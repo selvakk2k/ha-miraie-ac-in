@@ -183,6 +183,7 @@ class MirAIeDeviceCoordinator:
         h_vane: Optional[str] = None,
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
+        display: Optional[bool] = None,
         origin: str = "IR",
     ) -> bool:
         """Generate and transmit IR payload via configured blaster entity.
@@ -228,16 +229,23 @@ class MirAIeDeviceCoordinator:
             self._last_ir_command_timestamp = loop.time()
         except Exception:
             self._last_ir_command_timestamp = 0.0
-        self.async_optimistic_update(
-            mode=cmd_mode,
-            target_temp=cmd_temp,
-            fan=cmd_fan,
-            v_vane=cmd_v,
-            h_vane=cmd_h,
-            eco=cmd_eco,
-            nanoe=cmd_nanoe,
-            origin=origin,
-        )
+
+        if cmd_mode == "display":
+            self.async_optimistic_update(
+                display=display if display is not None else (self.state.get("display") != "on"),
+                origin=origin,
+            )
+        else:
+            self.async_optimistic_update(
+                mode=cmd_mode,
+                target_temp=cmd_temp,
+                fan=cmd_fan,
+                v_vane=cmd_v,
+                h_vane=cmd_h,
+                eco=cmd_eco,
+                nanoe=cmd_nanoe,
+                origin=origin,
+            )
 
         # Determine target domain & service call based on blaster_entity_id
         target_domain = self.blaster_entity_id.split(".")[0]
@@ -379,7 +387,9 @@ class MirAIeDeviceCoordinator:
     ) -> None:
         """Optimistically update coordinator state for instant UI response."""
         if mode is not None:
-            if mode in ("powerful", "boost"):
+            if mode == "display":
+                pass
+            elif mode in ("powerful", "boost"):
                 self.state["power"] = "on"
                 self.state["active_preset"] = "powerful"
                 self.state["eco"] = False
