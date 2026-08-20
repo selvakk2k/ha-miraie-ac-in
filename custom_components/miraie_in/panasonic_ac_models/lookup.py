@@ -17,12 +17,12 @@ def normalize_code(raw_code: str) -> str:
     cleaned = raw_code.strip().upper()
     
     # Window AC series (LN, XN, CW)
-    if re.search(r'(?:CW|LN|XN)', cleaned):
+    if re.search(r'^(?:CS[-_/\s]?CU|CS/CU|CS|CU|CW)?[-_\s]?(?:CW|LN|XN)\d{2}', cleaned) or cleaned.startswith('CW'):
         body = re.sub(r'^(CS[-_/\s]?CU|CS/CU|CS|CU|CW)[-_\s]?', '', cleaned)
         return f'CW-{body}'
         
     # Commercial Cassette / Ductable series (S-18PU..., S-24PD...)
-    if cleaned.startswith('S-') or re.search(r'\d{2}P[UD]', cleaned):
+    if cleaned.startswith('S-') or re.search(r'^(?:CS[-_/\s]?CU|CS/CU|CS|CU|S)?[-_\s]?\d{2}P[UD]', cleaned):
         body = re.sub(r'^(CS[-_/\s]?CU|CS/CU|CS|CU|S)[-_\s]?', '', cleaned)
         return f'S-{body}'
 
