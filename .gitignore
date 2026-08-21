@@ -47,10 +47,12 @@ july_2026_ac_analysis_report.md
 htmlcov/
 .nox/
 .tox/
+pytest.ini
 
 # IDE / Editor configuration
 .vscode/
 .idea/
+pyrightconfig.json
 *.swp
 *.swo
 .DS_Store
