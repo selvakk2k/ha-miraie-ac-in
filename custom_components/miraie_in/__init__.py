@@ -121,7 +121,7 @@ def _migrate_unique_ids(
         LOGGER.info("Migrated %d entity unique_id(s) to new format", migrated)
 
 
-def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, target_dev_id: str) -> None:
+def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, target_dev_id: str | None) -> None:
     """Clean up any entities and device entries registered under this entry_id that belong to a different device_id."""
     if not target_dev_id:
         return
@@ -238,8 +238,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         setattr(hub, "coordinators", {dev_id: coord})
     else:
-        if not hasattr(hass, "data") or not isinstance(getattr(hass, "data", None), dict):
-            hass.data = {}
         sessions = hass.data.setdefault(DOMAIN, {}).setdefault("sessions", {})
         username_key = entry.data["username"].lower()
 
@@ -438,7 +436,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         try:
-            from panasonic_ac_models import ACModelLookup
+            from panasonic_ac_models import ACModelLookup  # type: ignore[import-not-found, import-untyped]
         except ImportError:
             from .panasonic_ac_models import ACModelLookup
         lookup = await hass.async_add_executor_job(ACModelLookup)
@@ -478,7 +476,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             blaster_entity_id=blaster_id,
             primary_backend=primary,
             hybrid_submode=submode,
-            ir_format=dev_opt.get("working_ir_format") or entry.options.get("working_ir_format"),
+            ir_format=dev_opt.get("working_ir_format") or entry.options.get("working_ir_format") or "auto",
             lookup=lookup,
         )
         coordinator.hub = hub
@@ -657,11 +655,18 @@ def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any
             preset_val = preset_obj.value if preset_obj and hasattr(preset_obj, "value") else str(preset_obj or "none")
             nanoe_val = getattr(status_obj, "nanoe_mode", "off")
 
+            power_obj = getattr(status_obj, "power_mode", None)
+            power_val = power_obj.value if power_obj and hasattr(power_obj, "value") else power_obj
+            hvac_obj = getattr(status_obj, "hvac_mode", None)
+            hvac_val = hvac_obj.value if hvac_obj and hasattr(hvac_obj, "value") else hvac_obj
+            fan_obj = getattr(status_obj, "fan_mode", None)
+            fan_val = fan_obj.value if fan_obj and hasattr(fan_obj, "value") else fan_obj
+
             cloud_data = {
-                "pwr": "on" if getattr(status_obj, "power_mode", None) and getattr(status_obj, "power_mode").value == "on" else "off",
-                "md": getattr(status_obj, "hvac_mode", None).value if getattr(status_obj, "hvac_mode", None) else None,
+                "pwr": "on" if power_val == "on" else "off",
+                "md": hvac_val,
                 "tset": getattr(status_obj, "temperature", None),
-                "acfs": getattr(status_obj, "fan_mode", None).value if getattr(status_obj, "fan_mode", None) else None,
+                "acfs": fan_val,
                 "acvs": SWING_V_MAP.get(v_val, V0) if v_val is not None else None,
                 "achs": SWING_H_MAP.get(h_val, H0) if h_val is not None else None,
                 "acec": "on" if preset_val == "eco" else "off",

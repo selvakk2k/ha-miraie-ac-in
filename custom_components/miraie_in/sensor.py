@@ -17,9 +17,9 @@ from homeassistant.components.recorder.statistics import (
 
 try:
     from homeassistant.components.recorder.statistics import StatisticMeanType
-    MEAN_TYPE_NONE = StatisticMeanType.NONE
+    MEAN_TYPE_NONE: Any = StatisticMeanType.NONE
 except ImportError:
-    MEAN_TYPE_NONE = 0
+    MEAN_TYPE_NONE: Any = 0
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy, UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 from homeassistant.core import HomeAssistant
@@ -45,7 +45,8 @@ class MirAIeEnergySensor(SensorEntity, ABC):
     @property
     @abstractmethod
     def period_type(self) -> ConsumptionPeriodType:
-        return None
+        """Return the consumption period type."""
+        ...
 
     @property
     def sensor_label(self) -> str:
@@ -193,7 +194,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
     async def async_update(self):
         """Update today's energy consumption sensor state and sync recorder statistic."""
         await super().async_update()
-        if self._attr_native_value is not None:
+        if self._attr_native_value is not None and isinstance(self._attr_native_value, (int, float, str)):
             await self._async_sync_today_statistic(float(self._attr_native_value))
 
     async def _async_sync_today_statistic(self, today_val: float) -> None:
@@ -209,7 +210,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
                 )
                 if last_stats and last_stats.get(statistic_id):
                     today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
-                    past_entries = [e for e in last_stats[statistic_id] if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
+                    past_entries = [e for e in last_stats[statistic_id] if (e.get("start") or 0.0) <= today_start_ts and (e.get("sum") or 0.0) > 0.0]
                     if past_entries:
                         baseline_sum = float(past_entries[-1].get("sum") or 0.0)
                         setattr(self.device, "backfilled_energy_sum", baseline_sum)
@@ -217,7 +218,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
             if baseline_sum <= 0.0:
                 return
 
-            expected_sum = round(baseline_sum + max(0.0, float(today_val)), 2)
+            expected_sum = round(baseline_sum + max(0.0, today_val), 2)
             now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
 
             # Check existing today statistic in DB to avoid unneeded imports
@@ -226,7 +227,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
             )
             today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
             if last_stats and last_stats.get(statistic_id):
-                today_entries = [e for e in last_stats[statistic_id] if float(e.get("start") or 0.0) >= today_start_ts]
+                today_entries = [e for e in last_stats[statistic_id] if (e.get("start") or 0.0) >= today_start_ts]
                 if today_entries:
                     latest_today_sum = float(today_entries[-1].get("sum") or 0.0)
                     if abs(latest_today_sum - expected_sum) < 0.02:
@@ -373,7 +374,7 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor, RestoreEntity):
         try:
             today_consumption = await super().get_energy_consumption()
             if today_consumption is not None:
-                today_val = max(0.0, float(today_consumption))
+                today_val = max(0.0, today_consumption)
         except Exception as e:
             LOGGER.debug("%s: Could not fetch today's consumption: %s", self.sensor_label, e)
 
@@ -395,7 +396,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     """Set up MirAIe energy and status sensors from a config entry."""
     hub: MirAIeHub = entry.runtime_data
     coordinators = getattr(hub, "coordinators", {})
-    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    entry_data = entry.data if hasattr(entry, "data") and isinstance(entry.data, dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
     
     devices = get_devices_for_entry(hub, entry)
@@ -451,7 +452,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         entry.async_on_unload(cancel_interval)
 
     # 2. Setup Non-Polling Sensors (updated via device callback pushed via MQTT)
-    pushed_sensors = []
+    pushed_sensors: list[SensorEntity] = []
     for device in devices:
         coordinator = coordinators.get(device.id)
         pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
@@ -664,7 +665,7 @@ async def _async_clear_statistics_helper(hass: HomeAssistant, statistic_id: str)
         return False
 
 
-def _extract_recorded_range_sum(entries: list[dict], start_day: date, end_day: date) -> float | None:
+def _extract_recorded_range_sum(entries: list[Any], start_day: date, end_day: date) -> float | None:
     """Calculate recorded statistics sum delta between local midnight of start_day and end_day + 1."""
     start_ts = _get_statistic_timestamp(start_day).timestamp()
     end_ts = _get_statistic_timestamp(end_day + timedelta(days=1)).timestamp()
@@ -910,14 +911,14 @@ async def async_backfill_energy_statistics(
 
     # All checks passed! Determine yesterday's baseline sum (ignoring any trailing 0.0 entries) and dispatch complete signal
     today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
-    past_entries = [e for e in entries if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
-    valid_past_sums = [float(e.get("sum") or 0.0) for e in entries if float(e.get("sum") or 0.0) > 0.0]
-    latest_entry_sum = float(past_entries[-1].get("sum")) if past_entries else (valid_past_sums[-1] if valid_past_sums else float(entries[-1].get("sum") or 0.0))
+    past_entries = [e for e in entries if (e.get("start") or 0.0) <= today_start_ts and (e.get("sum") or 0.0) > 0.0]
+    valid_past_sums = [float(e.get("sum") or 0.0) for e in entries if (e.get("sum") or 0.0) > 0.0]
+    latest_entry_sum = float(past_entries[-1].get("sum") or 0.0) if past_entries else (valid_past_sums[-1] if valid_past_sums else float(entries[-1].get("sum") or 0.0))
 
     # Verify & update today's recorder statistics entry against today's API value
     expected_today_sum = round(latest_entry_sum + today_api_val, 2)
     now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
-    today_entries = [e for e in entries if float(e.get("start") or 0.0) >= today_start_ts]
+    today_entries = [e for e in entries if (e.get("start") or 0.0) >= today_start_ts]
 
     if not today_entries:
         LOGGER.info("[%s] [Gating 4/4 Today Check] Today entry missing in DB; writing today's entry (%s kWh)", device.friendly_name, expected_today_sum)
@@ -1002,7 +1003,7 @@ async def _async_rebuild_from_api(
         if day < start_date or day > end_date:
             continue
         value = daily.get(key)
-        val_float = max(0.0, float(value))
+        val_float = max(0.0, float(value or 0.0))
         running_sum += val_float
         end_dt = _get_statistic_timestamp(day + timedelta(days=1))
         statistics.append(StatisticData(start=end_dt, sum=round(running_sum, 2), state=round(running_sum, 2)))

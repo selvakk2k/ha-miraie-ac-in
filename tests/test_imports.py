@@ -182,11 +182,12 @@ class TestModuleImports(unittest.TestCase):
                     return True
 
             class MockHass:
+                data = {}
                 config_entries = MockConfigEntries()
                 is_running = True
 
                 def async_create_task(self, target):
-                    pass
+                    return asyncio.create_task(target) if asyncio.iscoroutine(target) else target
 
             class MockConfigEntry:
                 data = {"username": "test@user.com", "password": "password", "device_id": "test_dev"}

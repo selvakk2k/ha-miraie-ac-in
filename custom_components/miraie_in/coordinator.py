@@ -11,7 +11,7 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 
 from .logger import LOGGER
 try:
-    from panasonic_ac_models import ACModelLookup, generate_ir_code
+    from panasonic_ac_models import ACModelLookup, generate_ir_code  # type: ignore[import-not-found, import-untyped]
 except ImportError:
     from .panasonic_ac_models import ACModelLookup, generate_ir_code
 
@@ -46,6 +46,7 @@ class MirAIeDeviceCoordinator:
         self.hybrid_submode = hybrid_submode
         self.blaster_entity_id = blaster_entity_id
         self.ir_format = ir_format
+        self.hub: Any = None
 
         # Resolve hardware capabilities
         self.lookup = lookup if lookup is not None else ACModelLookup()
@@ -257,13 +258,13 @@ class MirAIeDeviceCoordinator:
                 try:
                     from homeassistant.components.infrared.helpers import async_send_command
                     try:
-                        from infrared_protocols.commands import Command as BaseCommand
+                        from infrared_protocols.commands import Command as BaseCommand  # type: ignore[import-not-found, import-untyped]
                     except ImportError:
-                        class BaseCommand:
+                        class BaseCommand:  # type: ignore[no-redef]
                             def __init__(self, modulation=38000):
                                 self.modulation = modulation
 
-                    class MirAIeRawIRCommand(BaseCommand):
+                    class MirAIeRawIRCommand(BaseCommand):  # type: ignore[misc, valid-type]
                         def __init__(self, raw_timings: list[int], modulation: int = 38000) -> None:
                             if hasattr(super(), "__init__"):
                                 try:
@@ -322,7 +323,7 @@ class MirAIeDeviceCoordinator:
             except Exception as err:
                 LOGGER.error("Device %s: MQTT IR transmission failed: %s", self.device_id, err)
 
-        if target_domain == "remote":
+        elif target_domain == "remote":
             if self._working_ir_format:
                 format_map = {
                     "Broadlink b64:": [f"b64:{ir_data['broadlink_b64']}"],
@@ -371,6 +372,8 @@ class MirAIeDeviceCoordinator:
 
             LOGGER.error("Device %s: All IR transmission attempts failed for blaster entity %s", self.device_id, self.blaster_entity_id)
             return False
+
+        return success
 
     @callback
     def async_optimistic_update(

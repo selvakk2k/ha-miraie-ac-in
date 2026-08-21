@@ -11,20 +11,22 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from tests.ha_stub import setup_ha_stubs
 setup_ha_stubs()
 
+from typing import Any
 from enum import Enum
+import homeassistant.const
 import homeassistant.components.binary_sensor
 import homeassistant.helpers.entity
 class BinarySensorDeviceClass(Enum):
     PROBLEM = "problem"
     CONNECTIVITY = "connectivity"
     RUNNING = "running"
-homeassistant.components.binary_sensor.BinarySensorDeviceClass = BinarySensorDeviceClass
+setattr(homeassistant.components.binary_sensor, "BinarySensorDeviceClass", BinarySensorDeviceClass)
 
 class EntityCategory(Enum):
     CONFIG = "config"
     DIAGNOSTIC = "diagnostic"
-homeassistant.helpers.entity.EntityCategory = EntityCategory
-homeassistant.const.EntityCategory = EntityCategory
+setattr(homeassistant.helpers.entity, "EntityCategory", EntityCategory)
+setattr(homeassistant.const, "EntityCategory", EntityCategory)
 
 import homeassistant.components.sensor
 class SensorDeviceClass(Enum):
@@ -35,16 +37,17 @@ class SensorDeviceClass(Enum):
     VOLTAGE = "voltage"
     CURRENT = "current"
     SIGNAL_STRENGTH = "signal_strength"
-homeassistant.components.sensor.SensorDeviceClass = SensorDeviceClass
+setattr(homeassistant.components.sensor, "SensorDeviceClass", SensorDeviceClass)
 
 import homeassistant.helpers.event
-homeassistant.helpers.event.async_track_time_interval = lambda *args, **kwargs: (lambda: None)
+setattr(homeassistant.helpers.event, "async_track_time_interval", lambda *args, **kwargs: (lambda: None))
 
 from tests.fixtures import MockDevice
 
 
 class MockHass:
     def __init__(self):
+        self.data = {}
         self.config_entries = MagicMock()
         self.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
         self.services = MagicMock()
@@ -251,11 +254,11 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         """Verify _cleanup_cross_device_entities automatically removes orphaned cross-device duplicates."""
         from homeassistant.helpers import entity_registry as er
 
-        hass = MockHass()
+        hass: Any = MockHass()
         registry = er.async_get(hass)
 
         target_dev_id = "dev_living"
-        entry = MockEntry(
+        entry: Any = MockEntry(
             entry_id="entry_living",
             data={"device_id": target_dev_id},
         )
@@ -288,7 +291,7 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         from homeassistant.helpers import device_registry as dr
         from homeassistant.helpers import entity_registry as er
 
-        hass = MockHass()
+        hass: Any = MockHass()
         dev_reg = dr.async_get(hass)
         ent_reg = er.async_get(hass)
 
@@ -296,7 +299,7 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         # (All 13 entries linked to all 13 devices = 13 x 13 = 169 device links)
         for i in range(1, 14):
             entry_id = f"entry_dev_{i}"
-            entry = MockEntry(
+            entry: Any = MockEntry(
                 entry_id=entry_id,
                 data={"device_id": f"dev_{i}"},
             )
@@ -414,7 +417,7 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         hass = MockHass()
         hass.data = {}
         hass.is_running = True
-        hass.async_create_task = MagicMock()
+        hass.async_create_task = MagicMock(side_effect=lambda target: asyncio.create_task(target) if asyncio.iscoroutine(target) else target)
         hass.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
 
 
@@ -472,8 +475,8 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         from tests.ha_stub import MockHass
         from unittest.mock import AsyncMock, patch
 
-        hass = MockHass()
-        flow = ConfigFlow()
+        hass: Any = MockHass()
+        flow: Any = ConfigFlow()
         flow.hass = hass
 
         entry1 = MockEntry(
