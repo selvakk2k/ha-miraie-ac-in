@@ -2,6 +2,7 @@ import asyncio
 import re
 from abc import ABC, abstractmethod
 from typing import Any
+from collections.abc import Sequence, Mapping
 from datetime import date, datetime, timezone, timedelta
 
 from miraie_ac import Device as MirAIeDevice, MirAIeHub, ConsumptionPeriodType
@@ -210,7 +211,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
                 )
                 if last_stats and last_stats.get(statistic_id):
                     today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
-                    past_entries = [e for e in last_stats[statistic_id] if (e.get("start") or 0.0) <= today_start_ts and (e.get("sum") or 0.0) > 0.0]
+                    past_entries = [e for e in last_stats[statistic_id] if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
                     if past_entries:
                         baseline_sum = float(past_entries[-1].get("sum") or 0.0)
                         setattr(self.device, "backfilled_energy_sum", baseline_sum)
@@ -218,7 +219,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
             if baseline_sum <= 0.0:
                 return
 
-            expected_sum = round(baseline_sum + max(0.0, today_val), 2)
+            expected_sum = round(baseline_sum + max(0.0, float(today_val)), 2)
             now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
 
             # Check existing today statistic in DB to avoid unneeded imports
@@ -227,7 +228,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
             )
             today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
             if last_stats and last_stats.get(statistic_id):
-                today_entries = [e for e in last_stats[statistic_id] if (e.get("start") or 0.0) >= today_start_ts]
+                today_entries = [e for e in last_stats[statistic_id] if float(e.get("start") or 0.0) >= today_start_ts]
                 if today_entries:
                     latest_today_sum = float(today_entries[-1].get("sum") or 0.0)
                     if abs(latest_today_sum - expected_sum) < 0.02:
@@ -665,7 +666,7 @@ async def _async_clear_statistics_helper(hass: HomeAssistant, statistic_id: str)
         return False
 
 
-def _extract_recorded_range_sum(entries: list[Any], start_day: date, end_day: date) -> float | None:
+def _extract_recorded_range_sum(entries: Sequence[Mapping[str, Any]] | list[dict[str, Any]], start_day: date, end_day: date) -> float | None:
     """Calculate recorded statistics sum delta between local midnight of start_day and end_day + 1."""
     start_ts = _get_statistic_timestamp(start_day).timestamp()
     end_ts = _get_statistic_timestamp(end_day + timedelta(days=1)).timestamp()
@@ -911,14 +912,14 @@ async def async_backfill_energy_statistics(
 
     # All checks passed! Determine yesterday's baseline sum (ignoring any trailing 0.0 entries) and dispatch complete signal
     today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
-    past_entries = [e for e in entries if (e.get("start") or 0.0) <= today_start_ts and (e.get("sum") or 0.0) > 0.0]
-    valid_past_sums = [float(e.get("sum") or 0.0) for e in entries if (e.get("sum") or 0.0) > 0.0]
+    past_entries = [e for e in entries if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
+    valid_past_sums = [float(e.get("sum") or 0.0) for e in entries if float(e.get("sum") or 0.0) > 0.0]
     latest_entry_sum = float(past_entries[-1].get("sum") or 0.0) if past_entries else (valid_past_sums[-1] if valid_past_sums else float(entries[-1].get("sum") or 0.0))
 
     # Verify & update today's recorder statistics entry against today's API value
     expected_today_sum = round(latest_entry_sum + today_api_val, 2)
     now_dt = dt_util.as_utc(dt_util.now()).replace(minute=0, second=0, microsecond=0)
-    today_entries = [e for e in entries if (e.get("start") or 0.0) >= today_start_ts]
+    today_entries = [e for e in entries if float(e.get("start") or 0.0) >= today_start_ts]
 
     if not today_entries:
         LOGGER.info("[%s] [Gating 4/4 Today Check] Today entry missing in DB; writing today's entry (%s kWh)", device.friendly_name, expected_today_sum)
