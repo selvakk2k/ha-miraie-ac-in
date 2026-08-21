@@ -375,7 +375,7 @@ class MirAIeEnergyHistorySensor(MirAIeTodayEnergySensor, RestoreEntity):
         try:
             today_consumption = await super().get_energy_consumption()
             if today_consumption is not None:
-                today_val = max(0.0, today_consumption)
+                today_val = max(0.0, float(today_consumption))
         except Exception as e:
             LOGGER.debug("%s: Could not fetch today's consumption: %s", self.sensor_label, e)
 
