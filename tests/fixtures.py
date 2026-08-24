@@ -43,10 +43,12 @@ class MockDevice:
 class MockConfigEntry:
     """Mock ConfigEntry for unit tests."""
 
-    def __init__(self, entry_id="mock_entry_id", options=None, devices=None):
+    def __init__(self, entry_id="mock_entry_id", options=None, devices=None, data=None):
         self.entry_id = entry_id
         self.options = options or {}
+        self.data = data or {}
         if devices is None:
+
             devices = [MockDevice()]
         self.runtime_data = type(
             "Hub",

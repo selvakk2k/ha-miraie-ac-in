@@ -35,7 +35,7 @@ async def async_setup_entry(
     """Set up the MirAIe button platform."""
     hub: MirAIeHub = entry.runtime_data
 
-    entities = []
+    entities: list[ButtonEntity] = []
     devices = get_devices_for_entry(hub, entry)
 
 

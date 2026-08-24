@@ -11,7 +11,7 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 
 from .logger import LOGGER
 try:
-    from panasonic_ac_models import ACModelLookup, generate_ir_code
+    from panasonic_ac_models import ACModelLookup, generate_ir_code  # type: ignore[import-not-found, import-untyped]
 except ImportError:
     from .panasonic_ac_models import ACModelLookup, generate_ir_code
 
@@ -46,6 +46,7 @@ class MirAIeDeviceCoordinator:
         self.hybrid_submode = hybrid_submode
         self.blaster_entity_id = blaster_entity_id
         self.ir_format = ir_format
+        self.hub: Any = None
 
         # Resolve hardware capabilities
         self.lookup = lookup if lookup is not None else ACModelLookup()
@@ -62,6 +63,7 @@ class MirAIeDeviceCoordinator:
             "h_vane": "H0",
             "eco": False,
             "nanoe": False,
+            "display": "on",
             "last_controlled_by": "Cloud",
             "provisional": False,
         }
@@ -100,12 +102,25 @@ class MirAIeDeviceCoordinator:
         """
         LOGGER.debug("Device %s: Cloud state update received: %s", self.device_id, cloud_data)
 
-        now = asyncio.get_event_loop().time()
-        in_ir_grace_window = (now - getattr(self, "_last_ir_command_timestamp", 0.0)) < 8.0
+        try:
+            loop = getattr(self.hass, "loop", None) or asyncio.get_running_loop()
+            now = loop.time()
+            if not isinstance(now, (int, float)):
+                now = 0.0
+        except Exception:
+            now = 0.0
+        last_ir_ts = getattr(self, "_last_ir_command_timestamp", 0.0)
+        in_ir_grace_window = (last_ir_ts > 0.0) and ((now - last_ir_ts) < 8.0)
 
         # Map cloud payload keys
         if "pwr" in cloud_data:
-            self.state["power"] = "on" if str(cloud_data["pwr"]).lower() in ["on", "1", "true"] else "off"
+            new_power = "on" if str(cloud_data["pwr"]).lower() in ["on", "1", "true"] else "off"
+            if not in_ir_grace_window or new_power == self.state.get("power"):
+                self.state["power"] = new_power
+        if "acdc" in cloud_data:
+            new_disp = "on" if str(cloud_data["acdc"]).lower() in ["on", "1", "true"] else "off"
+            if not in_ir_grace_window or new_disp == self.state.get("display"):
+                self.state["display"] = new_disp
         if "md" in cloud_data:
             md_val = str(cloud_data["md"]).lower()
             if md_val not in ("powerful", "boost", "clean") and not md_val.startswith("converti_"):
@@ -169,6 +184,7 @@ class MirAIeDeviceCoordinator:
         h_vane: Optional[str] = None,
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
+        display: Optional[bool] = None,
         origin: str = "IR",
     ) -> bool:
         """Generate and transmit IR payload via configured blaster entity.
@@ -209,17 +225,28 @@ class MirAIeDeviceCoordinator:
         )
 
         # Optimistically update coordinator state IMMEDIATELY for zero-lag UI response
-        self._last_ir_command_timestamp = asyncio.get_event_loop().time()
-        self.async_optimistic_update(
-            mode=cmd_mode,
-            target_temp=cmd_temp,
-            fan=cmd_fan,
-            v_vane=cmd_v,
-            h_vane=cmd_h,
-            eco=cmd_eco,
-            nanoe=cmd_nanoe,
-            origin=origin,
-        )
+        try:
+            loop = getattr(self.hass, "loop", None) or asyncio.get_running_loop()
+            self._last_ir_command_timestamp = loop.time()
+        except Exception:
+            self._last_ir_command_timestamp = 0.0
+
+        if cmd_mode == "display":
+            self.async_optimistic_update(
+                display=display if display is not None else (self.state.get("display") != "on"),
+                origin=origin,
+            )
+        else:
+            self.async_optimistic_update(
+                mode=cmd_mode,
+                target_temp=cmd_temp,
+                fan=cmd_fan,
+                v_vane=cmd_v,
+                h_vane=cmd_h,
+                eco=cmd_eco,
+                nanoe=cmd_nanoe,
+                origin=origin,
+            )
 
         # Determine target domain & service call based on blaster_entity_id
         target_domain = self.blaster_entity_id.split(".")[0]
@@ -231,13 +258,13 @@ class MirAIeDeviceCoordinator:
                 try:
                     from homeassistant.components.infrared.helpers import async_send_command
                     try:
-                        from infrared_protocols.commands import Command as BaseCommand
+                        from infrared_protocols.commands import Command as BaseCommand  # type: ignore[import-not-found, import-untyped]
                     except ImportError:
-                        class BaseCommand:
+                        class BaseCommand:  # type: ignore[no-redef]
                             def __init__(self, modulation=38000):
                                 self.modulation = modulation
 
-                    class MirAIeRawIRCommand(BaseCommand):
+                    class MirAIeRawIRCommand(BaseCommand):  # type: ignore[misc, valid-type]
                         def __init__(self, raw_timings: list[int], modulation: int = 38000) -> None:
                             if hasattr(super(), "__init__"):
                                 try:
@@ -256,23 +283,13 @@ class MirAIeDeviceCoordinator:
                     await async_send_command(self.hass, self.blaster_entity_id, cmd_obj)
                     return True
                 except Exception as err:
-                    LOGGER.debug("Native infrared helper unavailable for %s: %s, using service calls", self.device_id, err)
-                    self._native_ir_helper_available = False
-
-            # Fallback service calls for infrared domain
-            infrared_service_attempts = [
-                {"entity_id": self.blaster_entity_id, "command": ir_data["raw"]},
-                {"entity_id": self.blaster_entity_id, "raw": ir_data["raw"]},
-                {"entity_id": self.blaster_entity_id, "command": [f"b64:{ir_data['broadlink_b64']}"]},
-            ]
-            for s_data in infrared_service_attempts:
-                try:
-                    await self.hass.services.async_call("infrared", "send_command", s_data, blocking=False)
-                    return True
-                except Exception as err2:
-                    LOGGER.debug("Infrared service attempt failed for %s: %s", self.device_id, err2)
+                    LOGGER.error("Native infrared transmission failed for %s: %s", self.device_id, err)
+                    return False
 
             return False
+
+
+
 
         elif target_domain == "esphome":
             # ESPHome transmit_raw service
@@ -306,7 +323,7 @@ class MirAIeDeviceCoordinator:
             except Exception as err:
                 LOGGER.error("Device %s: MQTT IR transmission failed: %s", self.device_id, err)
 
-        if target_domain == "remote":
+        elif target_domain == "remote":
             if self._working_ir_format:
                 format_map = {
                     "Broadlink b64:": [f"b64:{ir_data['broadlink_b64']}"],
@@ -356,6 +373,8 @@ class MirAIeDeviceCoordinator:
             LOGGER.error("Device %s: All IR transmission attempts failed for blaster entity %s", self.device_id, self.blaster_entity_id)
             return False
 
+        return success
+
     @callback
     def async_optimistic_update(
         self,
@@ -366,11 +385,14 @@ class MirAIeDeviceCoordinator:
         h_vane: Optional[str] = None,
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
+        display: Optional[bool] = None,
         origin: str = "Cloud",
     ) -> None:
         """Optimistically update coordinator state for instant UI response."""
         if mode is not None:
-            if mode in ("powerful", "boost"):
+            if mode == "display":
+                pass
+            elif mode in ("powerful", "boost"):
                 self.state["power"] = "on"
                 self.state["active_preset"] = "powerful"
                 self.state["eco"] = False
@@ -412,6 +434,8 @@ class MirAIeDeviceCoordinator:
                 self.state["converti"] = "cv_off"
         if nanoe is not None:
             self.state["nanoe"] = nanoe
+        if display is not None:
+            self.state["display"] = "on" if display else "off"
         self.state["last_controlled_by"] = origin
         self.state["provisional"] = True
 

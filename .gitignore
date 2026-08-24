@@ -47,10 +47,13 @@ july_2026_ac_analysis_report.md
 htmlcov/
 .nox/
 .tox/
+pytest.ini
 
 # IDE / Editor configuration
 .vscode/
 .idea/
+pyrightconfig.json
+pyrefly.toml
 *.swp
 *.swo
 .DS_Store
@@ -62,3 +65,4 @@ task.md
 walkthrough.md
 info.md
 scratch/
+AGENTS.md

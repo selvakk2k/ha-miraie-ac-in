@@ -100,16 +100,14 @@ class TestModuleImports(unittest.TestCase):
         # Mock config entry
         class MockConfigEntry:
             options = {}
-            runtime_data = type("Hub", (), {"home": type("Home", (), {"devices": [type("Dev", (), {"id": "dev1", "friendly_name": "Dev 1"})(), type("Dev", (), {"id": "dev2", "friendly_name": "Dev 2"})()]})()})()
+            data = {"device_id": "dev1"}
+            runtime_data = type("Hub", (), {"home": type("Home", (), {"devices": [type("Dev", (), {"id": "dev1", "friendly_name": "Dev 1"})()]})()})()
         handler.config_entry = MockConfigEntry()
 
-        # Step 1 manage_devices
-        result_step1 = asyncio.run(handler.async_step_manage_devices({"devices": ["dev1", "dev2"]}))
-
+        # Step 1 init -> device_settings
+        result_step1 = asyncio.run(handler.async_step_init())
         self.assertEqual(result_step1["type"], "form")
         self.assertEqual(result_step1["step_id"], "device_settings")
-        self.assertEqual(handler._selected_devices, ["dev1", "dev2"])
-
 
         # Step 2 device_settings submission
         result_step2 = asyncio.run(
@@ -121,6 +119,7 @@ class TestModuleImports(unittest.TestCase):
         options = result_step2["data"]
         self.assertIn("devices", options)
         self.assertEqual(options["devices"]["dev1"]["install_date"], "2026-01-01")
+
 
     def test_climate_precision(self):
         mod_climate = importlib.import_module("custom_components.miraie_in.climate")
@@ -183,11 +182,12 @@ class TestModuleImports(unittest.TestCase):
                     return True
 
             class MockHass:
+                data = {}
                 config_entries = MockConfigEntries()
                 is_running = True
 
                 def async_create_task(self, target):
-                    pass
+                    return asyncio.create_task(target) if asyncio.iscoroutine(target) else target
 
             class MockConfigEntry:
                 data = {"username": "test@user.com", "password": "password", "device_id": "test_dev"}

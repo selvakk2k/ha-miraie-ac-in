@@ -129,12 +129,17 @@ CONVERTI_GROUP_B_8IN1_THRESHOLD = "C"
 CONVERTI_8IN1_MODEL_EXCEPTIONS: set[str] = set()
 
 
+def _matches_series(model_number: str, series: str) -> bool:
+    """Check if model_number matches the series prefix followed by tonnage digits."""
+    return bool(re.search(rf"(?:CS-|CU-|CS-CU-|^){re.escape(series)}\d{{2}}", model_number))
+
+
 def _extract_generation_letter(model_number: str, series: str) -> str | None:
     """Pull the single generation-letter character that follows a
     known series prefix in a model number, e.g. "EU18CKY5XFM" with
     series "EU" -> "C" (the letter right after the tonnage digits).
     """
-    match = re.search(rf"{re.escape(series)}(\d+)([A-Z])", model_number)
+    match = re.search(rf"(?:CS-|CU-|CS-CU-|^){re.escape(series)}(\d+)([A-Z])", model_number)
     if match:
         return match.group(2)
     return None
@@ -156,11 +161,11 @@ HEAT_CAPABLE_SERIES = ("EZ", "KZ")
 
 def supports_heat_mode(model_number: str | None) -> bool:
     """Return whether a given model supports heat ("Hot & Cold") mode."""
-    if not model_number:
+    if not model_number or not isinstance(model_number, str):
         return False
 
     model_number = model_number.upper()
-    return any(series in model_number for series in HEAT_CAPABLE_SERIES)
+    return any(_matches_series(model_number, series) for series in HEAT_CAPABLE_SERIES)
 
 
 def get_converti_preset_modes(model_number: str | None) -> list[str]:
@@ -171,7 +176,7 @@ def get_converti_preset_modes(model_number: str | None) -> list[str]:
     stock behaviour) for anything unrecognised, so unknown or older
     models are never offered presets they can't actually use.
     """
-    if not model_number:
+    if not model_number or not isinstance(model_number, str):
         return CONVERTI_7IN1_PRESET_MODES
 
     model_number = model_number.upper()
@@ -184,7 +189,7 @@ def get_converti_preset_modes(model_number: str | None) -> list[str]:
         (CONVERTI_GROUP_B_SERIES, CONVERTI_GROUP_B_8IN1_THRESHOLD),
     ):
         for series in series_group:
-            if series not in model_number:
+            if not _matches_series(model_number, series):
                 continue
 
             letter = _extract_generation_letter(model_number, series)
@@ -208,8 +213,10 @@ NANOE_CAPABLE_SERIES = ("XU", "HU")
 
 def supports_nanoe(model_number: str | None) -> bool:
     """Return whether a given model supports nanoe air purification."""
-    if not model_number:
+    if not model_number or not isinstance(model_number, str):
         return False
 
     model_number = model_number.upper()
-    return any(series in model_number for series in NANOE_CAPABLE_SERIES)
+    return any(_matches_series(model_number, series) for series in NANOE_CAPABLE_SERIES)
+
+

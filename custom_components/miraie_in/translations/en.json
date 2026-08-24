@@ -121,6 +121,11 @@
     "climate": {
       "miraie_in": {
         "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "quiet": "Quiet"
+            }
+          },
           "preset_mode": {
             "state": {
               "none": "None",

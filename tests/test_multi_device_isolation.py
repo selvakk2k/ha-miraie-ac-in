@@ -11,20 +11,22 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from tests.ha_stub import setup_ha_stubs
 setup_ha_stubs()
 
+from typing import Any
 from enum import Enum
+import homeassistant.const
 import homeassistant.components.binary_sensor
 import homeassistant.helpers.entity
 class BinarySensorDeviceClass(Enum):
     PROBLEM = "problem"
     CONNECTIVITY = "connectivity"
     RUNNING = "running"
-homeassistant.components.binary_sensor.BinarySensorDeviceClass = BinarySensorDeviceClass
+setattr(homeassistant.components.binary_sensor, "BinarySensorDeviceClass", BinarySensorDeviceClass)
 
 class EntityCategory(Enum):
     CONFIG = "config"
     DIAGNOSTIC = "diagnostic"
-homeassistant.helpers.entity.EntityCategory = EntityCategory
-homeassistant.const.EntityCategory = EntityCategory
+setattr(homeassistant.helpers.entity, "EntityCategory", EntityCategory)
+setattr(homeassistant.const, "EntityCategory", EntityCategory)
 
 import homeassistant.components.sensor
 class SensorDeviceClass(Enum):
@@ -35,16 +37,17 @@ class SensorDeviceClass(Enum):
     VOLTAGE = "voltage"
     CURRENT = "current"
     SIGNAL_STRENGTH = "signal_strength"
-homeassistant.components.sensor.SensorDeviceClass = SensorDeviceClass
+setattr(homeassistant.components.sensor, "SensorDeviceClass", SensorDeviceClass)
 
 import homeassistant.helpers.event
-homeassistant.helpers.event.async_track_time_interval = lambda *args, **kwargs: (lambda: None)
+setattr(homeassistant.helpers.event, "async_track_time_interval", lambda *args, **kwargs: (lambda: None))
 
 from tests.fixtures import MockDevice
 
 
 class MockHass:
     def __init__(self):
+        self.data = {}
         self.config_entries = MagicMock()
         self.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
         self.services = MagicMock()
@@ -251,11 +254,11 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         """Verify _cleanup_cross_device_entities automatically removes orphaned cross-device duplicates."""
         from homeassistant.helpers import entity_registry as er
 
-        hass = MockHass()
+        hass: Any = MockHass()
         registry = er.async_get(hass)
 
         target_dev_id = "dev_living"
-        entry = MockEntry(
+        entry: Any = MockEntry(
             entry_id="entry_living",
             data={"device_id": target_dev_id},
         )
@@ -288,7 +291,7 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         from homeassistant.helpers import device_registry as dr
         from homeassistant.helpers import entity_registry as er
 
-        hass = MockHass()
+        hass: Any = MockHass()
         dev_reg = dr.async_get(hass)
         ent_reg = er.async_get(hass)
 
@@ -296,7 +299,7 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         # (All 13 entries linked to all 13 devices = 13 x 13 = 169 device links)
         for i in range(1, 14):
             entry_id = f"entry_dev_{i}"
-            entry = MockEntry(
+            entry: Any = MockEntry(
                 entry_id=entry_id,
                 data={"device_id": f"dev_{i}"},
             )
@@ -376,14 +379,162 @@ class TestMultiDeviceIsolation(unittest.IsolatedAsyncioTestCase):
         res = get_devices_for_entry(mock_hub, entry_mismatched)
         self.assertEqual(res, [], "Mismatched device_id must return empty list without falling back")
 
-        # 3. Missing target_id in entry.data -> returns hub.home.devices (for single-device or IR entries)
-        entry_no_id = MockEntry(entry_id="e_no_id", title="Legacy AC", data={})
-        res = get_devices_for_entry(mock_hub, entry_no_id)
-        self.assertEqual(len(res), 2)
+        # 3. Missing target_id on a multi-device account -> returns empty list (BLOCKS FAN-OUT)
+        entry_no_id_multi = MockEntry(entry_id="e_no_id", title="Legacy Multi AC", data={"username": "u@example.com"})
+        res = get_devices_for_entry(mock_hub, entry_no_id_multi)
+        self.assertEqual(res, [], "Multi-device cloud account missing device_id must return empty list (preventing fanout)")
 
-        # 4. Hub is None or invalid -> returns empty list safely
+        # 4. Missing target_id on a single-device account -> safely returns single device
+        single_hub = MagicMock()
+        single_home = MagicMock()
+        single_home.devices = [dev1]
+        single_hub.home = single_home
+        entry_no_id_single = MockEntry(entry_id="e_single", title="Legacy Single AC", data={"username": "u@example.com"})
+        res_single = get_devices_for_entry(single_hub, entry_no_id_single)
+        self.assertEqual(len(res_single), 1)
+        self.assertEqual(res_single[0].id, "dev_1")
+
+        # 5. Standalone IR entry (is_ir_only) -> returns dummy device safely
+        dummy_dev = MockDevice(device_id="manual_1", friendly_name="IR AC")
+        ir_hub = MagicMock()
+        ir_home = MagicMock()
+        ir_home.devices = [dummy_dev]
+        ir_hub.home = ir_home
+        entry_ir = MockEntry(entry_id="e_ir", title="IR AC", data={"is_ir_only": True})
+        res_ir = get_devices_for_entry(ir_hub, entry_ir)
+        self.assertEqual(len(res_ir), 1)
+        self.assertEqual(res_ir[0].id, "manual_1")
+
+        # 6. Hub is None or invalid -> returns empty list safely
         self.assertEqual(get_devices_for_entry(None, entry_dev1), [])
         self.assertEqual(get_devices_for_entry(object(), entry_dev1), [])
+
+    async def test_shared_session_pool_refcounting_and_unload(self):
+        """Verify that sibling entries share a hub/broker and unload ref-counts properly."""
+        from tests.ha_stub import MockHass
+        from unittest.mock import AsyncMock, patch
+
+        hass = MockHass()
+        hass.data = {}
+        hass.is_running = True
+        hass.async_create_task = MagicMock(side_effect=lambda target: asyncio.create_task(target) if asyncio.iscoroutine(target) else target)
+        hass.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
+
+
+        mock_dev1 = MockDevice("dev_1", "Living Room AC")
+
+        mock_dev2 = MockDevice("dev_2", "Bedroom AC")
+        devices = [mock_dev1, mock_dev2]
+
+        mock_hub = MagicMock()
+        mock_hub.home = MagicMock(devices=devices)
+        mock_hub.init = AsyncMock()
+        mock_hub.close = AsyncMock()
+        mock_hub.background_tasks = []
+
+        entry1 = MockEntry(
+            entry_id="entry_1",
+            title="Living Room AC",
+            data={"username": "user@example.com", "password": "pass", "device_id": "dev_1"},
+        )
+        entry2 = MockEntry(
+            entry_id="entry_2",
+            title="Bedroom AC",
+            data={"username": "user@example.com", "password": "pass", "device_id": "dev_2"},
+        )
+
+        with patch("custom_components.miraie_in.MirAIeHub", return_value=mock_hub), \
+             patch("custom_components.miraie_in.MirAIeBroker", return_value=MagicMock()):
+
+
+            # Setup entry 1
+            await self.mod_init.async_setup_entry(hass, entry1)
+            self.assertEqual(mock_hub.init.call_count, 1)
+            self.assertIn("user@example.com", hass.data["miraie_in"]["sessions"])
+            self.assertEqual(hass.data["miraie_in"]["sessions"]["user@example.com"]["entries"], {"entry_1"})
+
+            # Setup entry 2 - should reuse existing hub without calling hub.init again
+            await self.mod_init.async_setup_entry(hass, entry2)
+            self.assertEqual(mock_hub.init.call_count, 1, "hub.init must only be called once for shared account")
+            self.assertEqual(hass.data["miraie_in"]["sessions"]["user@example.com"]["entries"], {"entry_1", "entry_2"})
+
+            # Unload entry 1 - hub should NOT be closed
+            with patch.object(hass.config_entries, "async_unload_platforms", AsyncMock(return_value=True)):
+                await self.mod_init.async_unload_entry(hass, entry1)
+                self.assertEqual(mock_hub.close.call_count, 0, "hub.close must NOT be called while sibling entry is active")
+                self.assertEqual(hass.data["miraie_in"]["sessions"]["user@example.com"]["entries"], {"entry_2"})
+
+                # Unload entry 2 - last entry unloads, hub MUST be closed
+                await self.mod_init.async_unload_entry(hass, entry2)
+                self.assertEqual(mock_hub.close.call_count, 1, "hub.close MUST be called when last entry unloads")
+                self.assertNotIn("user@example.com", hass.data["miraie_in"]["sessions"])
+
+    async def test_reauth_sibling_propagation(self):
+        """Verify reauth updates all sibling config entries sharing the same username."""
+        from custom_components.miraie_in.config_flow import ConfigFlow
+        from tests.ha_stub import MockHass
+        from unittest.mock import AsyncMock, patch
+
+        hass: Any = MockHass()
+        flow: Any = ConfigFlow()
+        flow.hass = hass
+
+        entry1 = MockEntry(
+            entry_id="entry_1",
+            title="Living Room AC",
+            data={"username": "old_user@example.com", "password": "old_password", "device_id": "dev_1"},
+        )
+        entry2 = MockEntry(
+            entry_id="entry_2",
+            title="Bedroom AC",
+            data={"username": "old_user@example.com", "password": "old_password", "device_id": "dev_2"},
+        )
+
+        hass.config_entries.async_entries = MagicMock(return_value=[entry1, entry2])
+        hass.config_entries.async_update_entry = MagicMock()
+        hass.config_entries.async_reload = AsyncMock()
+
+        flow._reauth_entry = entry1
+
+        with patch("custom_components.miraie_in.config_flow.validate_input", AsyncMock(return_value=({}, []))):
+            res = await flow.async_step_reauth_confirm(
+                {"username": "new_user@example.com", "password": "new_password"}
+            )
+            self.assertEqual(res["type"], "abort")
+            self.assertEqual(res["reason"], "reauth_successful")
+            self.assertEqual(hass.config_entries.async_update_entry.call_count, 2, "Both sibling entries must be updated on reauth")
+            self.assertEqual(hass.config_entries.async_reload.call_count, 2, "Both sibling entries must be reloaded")
+
+    async def test_incremental_device_onboarding(self):
+        """Verify newly discovered AC on existing account can be onboarded."""
+        from custom_components.miraie_in.config_flow import ConfigFlow
+        from unittest.mock import AsyncMock, patch
+
+        flow = ConfigFlow()
+        flow.hass = MagicMock()
+
+        existing_entry = MockEntry(
+            entry_id="entry_1",
+            title="Living Room AC",
+            data={"username": "user@example.com", "device_id": "dev_1"},
+        )
+        flow._async_current_entries = MagicMock(return_value=[existing_entry])
+
+        discovered = [
+            {"id": "dev_1", "name": "Living Room AC", "model_code": "CS-CU-RU18CKY"},
+            {"id": "dev_2", "name": "New Guest AC", "model_code": "CS-CU-RU18CKY"},
+        ]
+
+        with patch("custom_components.miraie_in.config_flow.validate_input", AsyncMock(return_value=({}, discovered))):
+            res = await flow.async_step_cloud_account(
+                {"username": "user@example.com", "password": "password123"}
+            )
+            self.assertEqual(res["type"], "form")
+            self.assertEqual(res["step_id"], "cloud_devices")
+            self.assertEqual(len(flow._discovered_cloud_devices), 1)
+            self.assertEqual(flow._discovered_cloud_devices[0]["id"], "dev_2", "Only unconfigured dev_2 should be queued for setup")
+
+
 
 
 if __name__ == "__main__":

@@ -34,7 +34,8 @@ from .const import (
 )
 from .coordinator import MirAIeDeviceCoordinator
 from .sensor import async_backfill_energy_statistics
-from .utils import six_months_ago
+from .utils import six_months_ago, get_devices_for_entry
+
 
 
 
@@ -120,7 +121,7 @@ def _migrate_unique_ids(
         LOGGER.info("Migrated %d entity unique_id(s) to new format", migrated)
 
 
-def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, target_dev_id: str) -> None:
+def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, target_dev_id: str | None) -> None:
     """Clean up any entities and device entries registered under this entry_id that belong to a different device_id."""
     if not target_dev_id:
         return
@@ -237,17 +238,54 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         setattr(hub, "coordinators", {dev_id: coord})
     else:
-        try:
-            hub = MirAIeHub(session)
-        except TypeError:
-            hub = MirAIeHub()
-        broker = MirAIeBroker()
-        try:
-            await hub.init(entry.data["username"], entry.data["password"], broker)
-        except (aiohttp.ClientError, TimeoutError) as err:
-            raise ConfigEntryNotReady from err
-        except Exception as err:
-            raise ConfigEntryAuthFailed from err
+        sessions = hass.data.setdefault(DOMAIN, {}).setdefault("sessions", {})
+        username_key = entry.data["username"].lower()
+
+
+        if username_key in sessions:
+            account_session = sessions[username_key]
+            hub = account_session["hub"]
+            broker = account_session["broker"]
+            account_session["entries"].add(entry.entry_id)
+
+            # Ensure broker connection task is alive if a previous reload cancelled background tasks
+            bg_tasks = getattr(hub, "background_tasks", set())
+            has_running_broker = any(
+                not task.done() and not task.cancelled()
+                for task in bg_tasks
+            )
+            if not has_running_broker:
+                LOGGER.info("Restarting broker connection task for shared session %s", username_key)
+                try:
+                    topics = hub.get_device_topics()
+                    broker.set_topics(topics)
+                    loop = asyncio.get_running_loop()
+                    b_task = loop.create_task(
+                        broker.connect(hub.home.id, hub.user.access_token, hub.get_token)
+                    )
+                    hub.background_tasks.add(b_task)
+                    b_task.add_done_callback(hub.background_tasks.remove)
+                except Exception as err:
+                    LOGGER.warning("Could not restart broker task for %s: %s", username_key, err)
+        else:
+            try:
+                hub = MirAIeHub(session)
+            except TypeError:
+                hub = MirAIeHub()
+            broker = MirAIeBroker()
+            try:
+                await hub.init(entry.data["username"], entry.data["password"], broker)
+            except (aiohttp.ClientError, TimeoutError) as err:
+                raise ConfigEntryNotReady from err
+            except Exception as err:
+                raise ConfigEntryAuthFailed from err
+
+            sessions[username_key] = {
+                "hub": hub,
+                "broker": broker,
+                "entries": {entry.entry_id},
+            }
+
 
         # Auto-split legacy v1.x single-parent account entries into per-device config entries
         if "device_id" not in entry.data:
@@ -398,7 +436,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         try:
-            from panasonic_ac_models import ACModelLookup
+            from panasonic_ac_models import ACModelLookup  # type: ignore[import-not-found, import-untyped]
         except ImportError:
             from .panasonic_ac_models import ACModelLookup
         lookup = await hass.async_add_executor_job(ACModelLookup)
@@ -407,23 +445,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         lookup = None
 
     target_dev_id = entry.data.get("device_id")
-    if target_dev_id:
-        matched = [d for d in hub.home.devices if d.id == target_dev_id]
-        if not matched:
-            found_ids = [d.id for d in hub.home.devices]
-            LOGGER.error(
-                "ConfigEntry %s expects device_id '%s', but it was not found in MirAIe cloud account (available devices: %s). Postponing setup.",
-                entry.entry_id,
-                target_dev_id,
-                found_ids,
-            )
-            raise ConfigEntryNotReady(f"Device {target_dev_id} not found in MirAIe account")
-        target_devices = matched
-        hub.home.devices = matched
-    else:
-        target_devices = hub.home.devices
+    target_devices = get_devices_for_entry(hub, entry)
+    if not target_devices and target_dev_id:
+        found_ids = [getattr(d, "id", None) for d in getattr(getattr(hub, "home", None), "devices", [])]
+        LOGGER.error(
+            "ConfigEntry %s expects device_id '%s', but it was not found in MirAIe cloud account (available devices: %s). Postponing setup.",
+            entry.entry_id,
+            target_dev_id,
+            found_ids,
+        )
+        raise ConfigEntryNotReady(f"Device {target_dev_id} not found in MirAIe account")
 
     _cleanup_cross_device_entities(hass, entry, target_dev_id)
+
 
     for device in target_devices:
         dev_opt = devices_opt.get(device.id, {})
@@ -442,7 +476,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             blaster_entity_id=blaster_id,
             primary_backend=primary,
             hybrid_submode=submode,
-            ir_format=dev_opt.get("working_ir_format") or entry.options.get("working_ir_format"),
+            ir_format=dev_opt.get("working_ir_format") or entry.options.get("working_ir_format") or "auto",
             lookup=lookup,
         )
         coordinator.hub = hub
@@ -482,7 +516,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def _run_startup_backfill(hass: HomeAssistant) -> None:
         """Run the initial backfill only once HA has fully finished starting."""
-        for device in hub.home.devices:
+        for device in target_devices:
             start_date = _get_device_install_date(device.id)
             task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, start_date)
@@ -495,12 +529,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
 
     async def nightly_backfill(now=None):
-        for device in hub.home.devices:
+        for device in target_devices:
             backfill_start = _get_device_install_date(device.id)
             task = hass.async_create_task(
                 async_backfill_energy_statistics(hass, hub, device, backfill_start)
             )
             task.add_done_callback(_log_backfill_result)
+
 
     # Run nightly backfill at 02:05 AM IST to ensure Panasonic cloud servers have finalized yesterday's daily batch
     unsub = async_track_time_change(hass, nightly_backfill, hour=2, minute=5, second=0)
@@ -510,7 +545,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry automatically when options are updated."""
+    """Reload config entry automatically when options are updated from Options Flow."""
+    hub = getattr(entry, "runtime_data", None)
+    coordinators = getattr(hub, "coordinators", {}) if hub else {}
+    if any(getattr(c, "_suppress_reload", False) for c in coordinators.values()):
+        for c in coordinators.values():
+            c._suppress_reload = False
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -518,20 +559,40 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hub: MirAIeHub | None = getattr(entry, "runtime_data", None)
-        if hub:
-            try:
-                if hasattr(hub, "close"):
-                    await hub.close()
-                else:
-                    for task in list(getattr(hub, "background_tasks", [])):
-                        task.cancel()
-                    if hasattr(hub, "http") and hub.http and not getattr(hub.http, "closed", True):
-                        await hub.http.close()
-            except Exception as err:
-                LOGGER.debug("Error closing hub during unload of %s: %s", entry.title, err)
+        entry_data = getattr(entry, "data", {}) if isinstance(getattr(entry, "data", {}), dict) else {}
+        username = entry_data.get("username", "").lower() if "username" in entry_data else None
+        is_ir_only = entry_data.get("is_ir_only", False) or not username
+
+        if is_ir_only or not username:
+            hub: MirAIeHub | None = getattr(entry, "runtime_data", None)
+            if hub:
+                try:
+                    if hasattr(hub, "close"):
+                        await hub.close()
+                    else:
+                        for task in list(getattr(hub, "background_tasks", [])):
+                            task.cancel()
+                except Exception as err:
+                    LOGGER.debug("Error closing hub during unload of %s: %s", entry.title, err)
+        else:
+            sessions = hass.data.get(DOMAIN, {}).get("sessions", {})
+            account_session = sessions.get(username)
+            if account_session:
+                account_session["entries"].discard(entry.entry_id)
+                if not account_session["entries"]:
+                    hub = account_session["hub"]
+                    try:
+                        if hasattr(hub, "close"):
+                            await hub.close()
+                        else:
+                            for task in list(getattr(hub, "background_tasks", [])):
+                                task.cancel()
+                    except Exception as err:
+                        LOGGER.debug("Error closing shared hub for %s: %s", username, err)
+                    sessions.pop(username, None)
 
     return unload_ok
+
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -594,11 +655,18 @@ def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any
             preset_val = preset_obj.value if preset_obj and hasattr(preset_obj, "value") else str(preset_obj or "none")
             nanoe_val = getattr(status_obj, "nanoe_mode", "off")
 
+            power_obj = getattr(status_obj, "power_mode", None)
+            power_val = power_obj.value if power_obj and hasattr(power_obj, "value") else power_obj
+            hvac_obj = getattr(status_obj, "hvac_mode", None)
+            hvac_val = hvac_obj.value if hvac_obj and hasattr(hvac_obj, "value") else hvac_obj
+            fan_obj = getattr(status_obj, "fan_mode", None)
+            fan_val = fan_obj.value if fan_obj and hasattr(fan_obj, "value") else fan_obj
+
             cloud_data = {
-                "pwr": "on" if getattr(status_obj, "power_mode", None) and getattr(status_obj, "power_mode").value == "on" else "off",
-                "md": getattr(status_obj, "hvac_mode", None).value if getattr(status_obj, "hvac_mode", None) else None,
+                "pwr": "on" if power_val == "on" else "off",
+                "md": hvac_val,
                 "tset": getattr(status_obj, "temperature", None),
-                "acfs": getattr(status_obj, "fan_mode", None).value if getattr(status_obj, "fan_mode", None) else None,
+                "acfs": fan_val,
                 "acvs": SWING_V_MAP.get(v_val, V0) if v_val is not None else None,
                 "achs": SWING_H_MAP.get(h_val, H0) if h_val is not None else None,
                 "acec": "on" if preset_val == "eco" else "off",
