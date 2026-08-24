@@ -99,6 +99,12 @@ class TestBinarySensorPlatform(unittest.TestCase):
         online_sensor = MirAIeDeviceOnlineBinarySensor(self.mock_device, self.coordinator)
         self.assertTrue(online_sensor.is_on)
 
+    def test_mqtt_sensor_disconnected(self):
+        """Test MQTT connected sensor returns False when broker is not connected."""
+        self.mock_hub.broker.connected.is_set.return_value = False
+        mqtt_sensor = MirAIeCloudMQTTConnectedBinarySensor(self.mock_device, self.coordinator)
+        self.assertFalse(mqtt_sensor.is_on)
+
 
 if __name__ == "__main__":
     unittest.main()

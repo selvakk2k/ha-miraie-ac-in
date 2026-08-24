@@ -2,6 +2,7 @@ import asyncio
 import re
 from abc import ABC, abstractmethod
 from typing import Any
+from collections.abc import Sequence, Mapping
 from datetime import date, datetime, timezone, timedelta
 
 from miraie_ac import Device as MirAIeDevice, MirAIeHub, ConsumptionPeriodType
@@ -17,9 +18,9 @@ from homeassistant.components.recorder.statistics import (
 
 try:
     from homeassistant.components.recorder.statistics import StatisticMeanType
-    MEAN_TYPE_NONE = StatisticMeanType.NONE
+    MEAN_TYPE_NONE: Any = StatisticMeanType.NONE
 except ImportError:
-    MEAN_TYPE_NONE = 0
+    MEAN_TYPE_NONE: Any = 0
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy, UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 from homeassistant.core import HomeAssistant
@@ -45,7 +46,8 @@ class MirAIeEnergySensor(SensorEntity, ABC):
     @property
     @abstractmethod
     def period_type(self) -> ConsumptionPeriodType:
-        return None
+        """Return the consumption period type."""
+        ...
 
     @property
     def sensor_label(self) -> str:
@@ -193,7 +195,7 @@ class MirAIeTodayEnergySensor(MirAIeEnergySensor):
     async def async_update(self):
         """Update today's energy consumption sensor state and sync recorder statistic."""
         await super().async_update()
-        if self._attr_native_value is not None:
+        if self._attr_native_value is not None and isinstance(self._attr_native_value, (int, float, str)):
             await self._async_sync_today_statistic(float(self._attr_native_value))
 
     async def _async_sync_today_statistic(self, today_val: float) -> None:
@@ -395,14 +397,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     """Set up MirAIe energy and status sensors from a config entry."""
     hub: MirAIeHub = entry.runtime_data
     coordinators = getattr(hub, "coordinators", {})
-    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    entry_data = entry.data if hasattr(entry, "data") and isinstance(entry.data, dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
     
     devices = get_devices_for_entry(hub, entry)
 
 
     # 1. Setup Energy Sensors (which need active polling — Wi-Fi models only)
-    energy_sensors = []
+    energy_sensors: list[MirAIeEnergySensor] = []
     if not is_ir_entry:
         for device in devices:
             coord = coordinators.get(device.id)
@@ -451,7 +453,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         entry.async_on_unload(cancel_interval)
 
     # 2. Setup Non-Polling Sensors (updated via device callback pushed via MQTT)
-    pushed_sensors = []
+    pushed_sensors: list[SensorEntity] = []
     for device in devices:
         coordinator = coordinators.get(device.id)
         pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
@@ -664,7 +666,7 @@ async def _async_clear_statistics_helper(hass: HomeAssistant, statistic_id: str)
         return False
 
 
-def _extract_recorded_range_sum(entries: list[dict], start_day: date, end_day: date) -> float | None:
+def _extract_recorded_range_sum(entries: Sequence[Mapping[str, Any]] | list[dict[str, Any]], start_day: date, end_day: date) -> float | None:
     """Calculate recorded statistics sum delta between local midnight of start_day and end_day + 1."""
     start_ts = _get_statistic_timestamp(start_day).timestamp()
     end_ts = _get_statistic_timestamp(end_day + timedelta(days=1)).timestamp()
@@ -912,7 +914,7 @@ async def async_backfill_energy_statistics(
     today_start_ts = _get_statistic_timestamp(dt_util.now().date()).timestamp()
     past_entries = [e for e in entries if float(e.get("start") or 0.0) <= today_start_ts and float(e.get("sum") or 0.0) > 0.0]
     valid_past_sums = [float(e.get("sum") or 0.0) for e in entries if float(e.get("sum") or 0.0) > 0.0]
-    latest_entry_sum = float(past_entries[-1].get("sum")) if past_entries else (valid_past_sums[-1] if valid_past_sums else float(entries[-1].get("sum") or 0.0))
+    latest_entry_sum = float(past_entries[-1].get("sum") or 0.0) if past_entries else (valid_past_sums[-1] if valid_past_sums else float(entries[-1].get("sum") or 0.0))
 
     # Verify & update today's recorder statistics entry against today's API value
     expected_today_sum = round(latest_entry_sum + today_api_val, 2)
@@ -1002,7 +1004,7 @@ async def _async_rebuild_from_api(
         if day < start_date or day > end_date:
             continue
         value = daily.get(key)
-        val_float = max(0.0, float(value))
+        val_float = max(0.0, float(value or 0.0))
         running_sum += val_float
         end_dt = _get_statistic_timestamp(day + timedelta(days=1))
         statistics.append(StatisticData(start=end_dt, sum=round(running_sum, 2), state=round(running_sum, 2)))

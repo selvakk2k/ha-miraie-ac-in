@@ -23,6 +23,15 @@
               "h5": "mdi:arrow-right-thin"
             }
           },
+          "fan_mode": {
+            "state": {
+              "quiet": "mdi:volume-low",
+              "auto": "mdi:fan-auto",
+              "low": "mdi:fan-speed-1",
+              "medium": "mdi:fan-speed-2",
+              "high": "mdi:fan-speed-3"
+            }
+          },
           "preset_mode": {
             "state": {
               "none": "mdi:air-conditioner",

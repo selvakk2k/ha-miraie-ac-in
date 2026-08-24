@@ -28,8 +28,10 @@ TO_REDACT = {
     "phone",
     "token",
     "user_id",
-    "uid"
+    "uid",
+    "device_id"
 }
+
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry

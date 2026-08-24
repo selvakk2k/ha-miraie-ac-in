@@ -1,3 +1,5 @@
+# type: ignore
+# pyrefly: ignore-errors[all]
 """Dynamic Home Assistant module stub loader for standalone unit testing."""
 
 import sys
@@ -78,6 +80,7 @@ def setup_ha_stubs():
         class MockHass:
             def __init__(self):
                 self.data = {}
+                self.is_running: bool = True
                 self.config_entries = MagicMock()
                 self.services = MagicMock()
                 self.services.async_call = AsyncMock()
@@ -240,7 +243,7 @@ def setup_ha_stubs():
         TURN_ON = 32
         SWING_HORIZONTAL_MODE = 64
 
-    class HVACMode(Enum):
+    class HVACMode(str, Enum):
         AUTO = "auto"
         COOL = "cool"
         HEAT = "heat"
@@ -561,6 +564,7 @@ class MockEntry:
 class MockHass:
     def __init__(self):
         self.data = {}
+        self.is_running: bool = True
         self.config_entries = MagicMock()
         self.config_entries.async_entries = MagicMock(return_value=[])
         self.config_entries.async_get_entry = MagicMock(return_value=None)

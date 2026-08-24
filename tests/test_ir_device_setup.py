@@ -1,6 +1,7 @@
 """Test setup of IR-only standalone entries in __init__.py."""
 import unittest
 import asyncio
+from typing import Any
 from unittest.mock import MagicMock, AsyncMock, patch
 
 
@@ -10,6 +11,7 @@ setup_ha_stubs()
 
 class MockHass:
     def __init__(self):
+        self.data = {}
         self.config_entries = MagicMock()
         self.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
         self.services = MagicMock()
@@ -18,7 +20,7 @@ class MockHass:
 
 
     def async_create_task(self, target):
-        pass
+        return asyncio.create_task(target) if asyncio.iscoroutine(target) else target
 
 
 class TestIRDeviceSetup(unittest.IsolatedAsyncioTestCase):
@@ -40,10 +42,11 @@ class TestIRDeviceSetup(unittest.IsolatedAsyncioTestCase):
         mock_entry.unique_id = "ir_standalone_living_room_ac"
         mock_entry.title = "Living Room AC (IR Only)"
 
-        hass = MockHass()
+        hass: Any = MockHass()
+        mock_entry_typed: Any = mock_entry
 
         with patch("custom_components.miraie_in._migrate_unique_ids"):
-            res = await mod_init.async_setup_entry(hass, mock_entry)
+            res = await mod_init.async_setup_entry(hass, mock_entry_typed)
 
         self.assertTrue(res)
         hub = mock_entry.runtime_data
@@ -75,7 +78,8 @@ class TestIRDeviceSetup(unittest.IsolatedAsyncioTestCase):
         mock_entry.unique_id = "ir_standalone_living_room_ac_2"
         mock_entry.title = "Living Room AC (IR Only)"
 
-        hass = MockHass()
+        hass: Any = MockHass()
+        mock_entry_typed: Any = mock_entry
         service_calls = []
 
         async def mock_async_call(domain, service, service_data, blocking=True):
@@ -84,7 +88,7 @@ class TestIRDeviceSetup(unittest.IsolatedAsyncioTestCase):
         hass.services.async_call = mock_async_call
 
         with patch("custom_components.miraie_in._migrate_unique_ids"):
-            await mod_init.async_setup_entry(hass, mock_entry)
+            await mod_init.async_setup_entry(hass, mock_entry_typed)
 
         hub = mock_entry.runtime_data
         device = hub.home.devices[0]

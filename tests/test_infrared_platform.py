@@ -37,8 +37,8 @@ class TestInfraredPlatformTransmission(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(res)
 
-        # Test fallback service call path when helper raises Exception
-        with patch("homeassistant.components.infrared.helpers.async_send_command", side_effect=RuntimeError("Helper missing")):
+        # Test failure path when helper raises Exception
+        with patch("homeassistant.components.infrared.helpers.async_send_command", side_effect=RuntimeError("Blaster unreachable")):
             res2 = await coord.async_dispatch_ir_command(
                 mode="cool",
                 target_temp=22,
@@ -46,15 +46,9 @@ class TestInfraredPlatformTransmission(unittest.IsolatedAsyncioTestCase):
                 v_vane="V1",
             )
 
-        self.assertTrue(res2)
-        self.assertTrue(len(service_calls) > 0)
-        domain, service, data = service_calls[0]
-        self.assertEqual(domain, "infrared")
-        self.assertEqual(service, "send_command")
-        self.assertEqual(data["entity_id"], "infrared.living_room_blaster")
-        # Verify pulse signs were preserved (spaces are negative)
-        raw = data["command"]
-        self.assertTrue(any(t < 0 for t in raw))
+        self.assertFalse(res2)
+        self.assertEqual(len(service_calls), 0)
+
 
 
 

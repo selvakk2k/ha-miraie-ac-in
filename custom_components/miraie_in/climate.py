@@ -34,6 +34,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
+    PRESET_CLEAN,
     V0,
     V1,
     V2,
@@ -169,6 +170,17 @@ class MirAIeClimate(ClimateEntity):
     ) -> None:
         """Route command through Hybrid Coordinator based on active primary_backend and failover rules."""
         coord = getattr(self, "coordinator", None)
+        hub = getattr(coord, "hub", None) if coord else None
+        broker = getattr(hub, "broker", None) if hub else None
+        broker_connected = broker.connected.is_set() if (broker and hasattr(broker, "connected")) else True
+        is_cloud_offline = (not getattr(getattr(self.device, "status", None), "is_online", True)) or (not broker_connected)
+        use_ir_first = (
+            coord and (
+                getattr(coord, "primary_backend", "cloud") == "ir"
+                or (is_cloud_offline and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None))
+            )
+        )
+
         if coord:
             coord.async_optimistic_update(
                 mode=mode,
@@ -178,7 +190,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
+                origin="IR" if use_ir_first else "Cloud",
             )
             if hasattr(self, "async_write_ha_state"):
                 try:
@@ -186,7 +198,7 @@ class MirAIeClimate(ClimateEntity):
                 except Exception:
                     pass
 
-        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
+        if use_ir_first and coord:
             success = await coord.async_dispatch_ir_command(
                 mode=mode,
                 target_temp=temp,
@@ -195,7 +207,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
-                origin="IR",
+                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
                 if cloud_coro and hasattr(cloud_coro, "close"):
@@ -274,10 +286,14 @@ class MirAIeClimate(ClimateEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
+        coord = getattr(self, "coordinator", None)
+        if coord:
+            if not coord.has_wifi or getattr(coord, "primary_backend", "cloud") == "ir" or getattr(coord, "blaster_entity_id", None):
+                return True
         return self.device.status.is_online
 
     @property
-    def hvac_mode(self) -> HVACMode | str | None:
+    def hvac_mode(self) -> HVACMode | None:
         coord = getattr(self, "coordinator", None)
         if coord and coord.state:
             power_mode = coord.state.get("power", "off")
@@ -288,7 +304,10 @@ class MirAIeClimate(ClimateEntity):
                 mode = "cool"
             if mode == "fan":
                 return HVACMode.FAN_ONLY
-            return mode
+            try:
+                return HVACMode(mode)
+            except ValueError:
+                return HVACMode.COOL
 
         power_mode = self.device.status.power_mode
         if power_mode.value == "off":
@@ -299,7 +318,10 @@ class MirAIeClimate(ClimateEntity):
         if mode == "fan":
             return HVACMode.FAN_ONLY
 
-        return mode
+        try:
+            return HVACMode(mode)
+        except ValueError:
+            return HVACMode.COOL
 
     @property
     def current_temperature(self) -> float | None:
@@ -495,16 +517,16 @@ class MirAIeClimate(ClimateEntity):
 
         await self._send_command_via_hybrid(v_vane=swing_mode, cloud_coro=self.device.set_v_swing_mode(SwingMode(swing_num)))
 
-    async def async_set_swing_horizontal_mode(self, swing_mode: str) -> None:
-        LOGGER.debug(f"Set swing horizontal mode to {swing_mode}")
+    async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
+        LOGGER.debug(f"Set swing horizontal mode to {swing_horizontal_mode}")
         swing_num = 0
-        if swing_mode == H1: swing_num = 1
-        elif swing_mode == H2: swing_num = 2
-        elif swing_mode == H3: swing_num = 3
-        elif swing_mode == H4: swing_num = 4
-        elif swing_mode == H5: swing_num = 5
+        if swing_horizontal_mode == H1: swing_num = 1
+        elif swing_horizontal_mode == H2: swing_num = 2
+        elif swing_horizontal_mode == H3: swing_num = 3
+        elif swing_horizontal_mode == H4: swing_num = 4
+        elif swing_horizontal_mode == H5: swing_num = 5
 
-        await self._send_command_via_hybrid(h_vane=swing_mode, cloud_coro=self.device.set_h_swing_mode(SwingMode(swing_num)))
+        await self._send_command_via_hybrid(h_vane=swing_horizontal_mode, cloud_coro=self.device.set_h_swing_mode(SwingMode(swing_num)))
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
 
@@ -516,7 +538,7 @@ class MirAIeClimate(ClimateEntity):
 
         if preset_mode in (PRESET_NONE, "none", "None", None):
             eco_val = False
-            mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if self.hvac_mode else "cool")
+            mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if isinstance(self.hvac_mode, HVACMode) else "cool")
 
             def _clear_converti_and_preset():
                 return asyncio.gather(
@@ -541,7 +563,7 @@ class MirAIeClimate(ClimateEntity):
                 perc_str = match.group(0)
                 if perc_str == "0":
                     eco_val = False
-                    mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if self.hvac_mode else "cool")
+                    mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if isinstance(self.hvac_mode, HVACMode) else "cool")
 
                     def _clear_converti_and_preset():
                         return asyncio.gather(

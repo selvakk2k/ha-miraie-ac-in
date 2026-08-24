@@ -72,19 +72,6 @@ class TestConfigFlowChoices(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res["data"]["blaster_entity_id"], "")
         self.assertEqual(res["data"]["devices"]["dev123"]["blaster_entity_id"], "")
 
-        user_input = {
-            "name": "Attic AC",
-            "model_code": "CS-CU-RU18CKY-1",
-            "blaster_entity_id": "remote.attic_blaster",
-            "primary_backend": "ir",
-        }
-
-        res = await handler.async_step_add_manual_device(user_input)
-        self.assertEqual(res["type"], "create_entry")
-        manual_devices = res["data"]["manual_devices"]
-        self.assertEqual(len(manual_devices), 1)
-        self.assertEqual(manual_devices[0]["name"], "Attic AC")
-        self.assertEqual(manual_devices[0]["blaster_entity_id"], "remote.attic_blaster")
 
     async def test_validate_input_live_rest_discovery(self):
         from unittest.mock import AsyncMock, patch

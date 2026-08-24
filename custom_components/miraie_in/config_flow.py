@@ -233,10 +233,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Step 1 (Cloud): MirAIe Cloud Login."""
-        cloud_entries = [e for e in self._async_current_entries() if not e.data.get("is_ir_only")]
-        if cloud_entries:
-            return self.async_abort(reason="already_configured")
-
         if user_input is None:
             return self.async_show_form(
                 step_id="cloud_account", data_schema=build_login_schema()
@@ -256,13 +252,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not discovered_devices:
                 return self.async_abort(reason="no_devices_found")
 
-            await self.async_set_unique_id(user_input["username"].lower())
-            self._abort_if_unique_id_configured()
+            # Filter out devices that already have configured entries
+            existing_dev_ids = {e.data.get("device_id") for e in self._async_current_entries() if e.data.get("device_id")}
+            new_devices = [d for d in discovered_devices if d["id"] not in existing_dev_ids]
+
+            if not new_devices:
+                return self.async_abort(reason="already_configured")
+
             self._cloud_credentials = user_input
-            self._discovered_cloud_devices = discovered_devices
+            self._discovered_cloud_devices = new_devices
             self._current_device_index = 0
             self._per_device_options = {}
             return await self.async_step_cloud_devices()
+
 
         return self.async_show_form(
             step_id="cloud_account",
@@ -432,7 +434,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Step 2: Display database capabilities, select Control Mode (restricted by has_wifi), & allow feature overrides."""
         dev_data = getattr(self, "_device_data", {})
-        model_code = dev_data.get("model_code")
+        model_code = str(dev_data.get("model_code") or "")
 
         if not model_code:
             caps = {
@@ -446,7 +448,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             try:
                 try:
-                    from panasonic_ac_models import ACModelLookup
+                    from panasonic_ac_models import ACModelLookup  # type: ignore[import-not-found, import-untyped]
                 except ImportError:
                     from .panasonic_ac_models import ACModelLookup
                 lookup = await self.hass.async_add_executor_job(ACModelLookup)
@@ -614,9 +616,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Confirm re-authentication with new credentials."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            session = async_get_clientsession(self.hass)
             try:
-                await validate_input(self.hass, user_input, session)
+                await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -625,16 +626,31 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 if getattr(self, "_reauth_entry", None):
-                    self.hass.config_entries.async_update_entry(
-                        self._reauth_entry,
-                        data={
-                            **self._reauth_entry.data,
-                            "username": user_input["username"],
-                            "password": user_input["password"],
-                        },
-                    )
-                    await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
+                    old_username = self._reauth_entry.data.get("username", "").lower()
+                    new_username = user_input["username"]
+                    new_password = user_input["password"]
+
+                    entries_to_update = [
+                        entry for entry in self.hass.config_entries.async_entries(DOMAIN)
+                        if hasattr(entry, "data") and entry.data.get("username", "").lower() == old_username
+                    ]
+                    if not entries_to_update:
+                        entries_to_update = [self._reauth_entry]
+
+                    for entry in entries_to_update:
+                        self.hass.config_entries.async_update_entry(
+                            entry,
+                            data={
+                                **entry.data,
+                                "username": new_username,
+                                "password": new_password,
+                            },
+                        )
+                        if hasattr(self.hass.config_entries, "async_reload"):
+                            await self.hass.config_entries.async_reload(entry.entry_id)
                     return self.async_abort(reason="reauth_successful")
+
+
 
         reauth_entry = getattr(self, "_reauth_entry", None)
         default_user = reauth_entry.data.get("username", "") if reauth_entry else ""
@@ -687,79 +703,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Go directly to settings for this AC unit."""
         return await self.async_step_device_settings(user_input)
 
-    async def async_step_add_manual_device(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Add a new manual AC device in options flow."""
-        if user_input is None:
-            schema = vol.Schema(
-                {
-                    vol.Required("name", default="Bedroom AC"): str,
-                    vol.Required("model_code", default="CS-CU-KN18YKY"): str,
-                    vol.Required(CONF_BLASTER_ENTITY_ID): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain=["infrared", "remote"])
-                    ),
-                    vol.Optional(CONF_PRIMARY_BACKEND, default="ir"): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=[
-                                selector.SelectOptionDict(value="cloud", label="Cloud (Primary)"),
-                                selector.SelectOptionDict(value="ir", label="Infrared (Primary)"),
-                            ],
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
-                }
-            )
-            return self.async_show_form(step_id="add_manual_device", data_schema=schema)
-
-        entry = self._get_config_entry()
-        current_options = dict(getattr(entry, "options", {})) if entry else {}
-        manual_devices = list(current_options.get("manual_devices", []))
-        manual_devices.append({
-            "id": f"ir_custom_{int(time.time())}",
-            "name": user_input.get("name", "Manual AC"),
-            "model_code": user_input.get("model_code", "CS-CU-KN18YKY").strip().upper(),
-            CONF_BLASTER_ENTITY_ID: user_input.get(CONF_BLASTER_ENTITY_ID, "").strip(),
-            CONF_PRIMARY_BACKEND: user_input.get(CONF_PRIMARY_BACKEND, "ir"),
-        })
-        current_options["manual_devices"] = manual_devices
-        return self.async_create_entry(title="", data=current_options)
-
-    async def async_step_manage_devices(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Select AC unit(s) to configure."""
-        entry = self._get_config_entry()
-        hub = getattr(entry, "runtime_data", None) if entry else None
-        devices = getattr(getattr(hub, "home", None), "devices", []) if hub else []
-
-        options = [
-            selector.SelectOptionDict(value="__all__", label="All AC Units (Global Default)")
-        ]
-        for dev in devices:
-            d_id = getattr(dev, "id", "")
-            d_name = getattr(dev, "friendly_name", d_id)
-            if d_id:
-                options.append(selector.SelectOptionDict(value=d_id, label=d_name))
-
-        if user_input is None:
-            schema = vol.Schema(
-                {
-                    vol.Required("devices", default=["__all__"]): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=options,
-                            multiple=True,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    )
-                }
-            )
-            return self.async_show_form(step_id="manage_devices", data_schema=schema)
-
-        self._selected_devices = user_input.get("devices", ["__all__"])
-        return await self.async_step_device_settings()
-
     def _build_device_settings_schema(self) -> vol.Schema:
+
         return vol.Schema(
             {
                 vol.Optional(CONF_INSTALL_DATE): selector.DateSelector(),
@@ -896,23 +841,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         new_options[CONF_PRIMARY_BACKEND] = backend_val
         new_options[CONF_HYBRID_SUBMODE] = submode_val
 
-        selected = getattr(self, "_selected_devices", None)
-        if selected:
-            new_devices = dict(new_options.get("devices", {}))
-            if "__all__" in selected:
-                new_devices.clear()
-            else:
-                for d_id in selected:
-                    dev_entry = dict(new_devices.get(d_id, {}))
-                    dev_entry[CONF_INSTALL_DATE] = install_date_str
-                    dev_entry[CONF_BLASTER_ENTITY_ID] = blaster_val
-                    if model_code_val:
-                        dev_entry["model_code"] = model_code_val
-                    dev_entry[CONF_PRIMARY_BACKEND] = backend_val
-                    dev_entry[CONF_HYBRID_SUBMODE] = submode_val
-                    new_devices[d_id] = dev_entry
-            new_options["devices"] = new_devices
-        elif target_id:
+        if target_id:
             new_devices = dict(new_options.get("devices", {}))
             dev_entry = dict(new_devices.get(target_id, {}))
             dev_entry[CONF_INSTALL_DATE] = install_date_str
@@ -925,3 +854,4 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             new_options["devices"] = new_devices
 
         return self.async_create_entry(title="", data=new_options)
+

@@ -66,6 +66,38 @@ class TestCoordinatorIRDispatch(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call["service"], "send_command")
         self.assertEqual(call["service_data"]["entity_id"], "remote.living_room_blaster")
 
+    async def test_cloud_update_grace_window_power_and_display(self):
+        import asyncio
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_123",
+            device_id="dev_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            primary_backend="ir",
+            blaster_entity_id="remote.living_room_blaster",
+        )
+
+        # Optimistically turn power ON and display ON
+        coord.async_optimistic_update(mode="cool", target_temp=24, display=True, origin="IR")
+        coord._last_ir_command_timestamp = asyncio.get_event_loop().time()
+        self.assertEqual(coord.state["power"], "on")
+        self.assertEqual(coord.state["display"], "on")
+
+        # Stale cloud update arriving within grace window reflecting old "off" states
+        await coord.async_handle_cloud_update({"pwr": "off", "acdc": "off", "tset": 26})
+
+        # Grace window must protect power and display and temp from being overwritten by stale payload
+        self.assertEqual(coord.state["power"], "on")
+        self.assertEqual(coord.state["display"], "on")
+        self.assertEqual(coord.state["temperature"], 24)
+
+        # Simulate expiration of grace window (> 8.0s ago)
+        coord._last_ir_command_timestamp = asyncio.get_event_loop().time() - 10.0
+        await coord.async_handle_cloud_update({"pwr": "off", "acdc": "off"})
+        self.assertEqual(coord.state["power"], "off")
+        self.assertEqual(coord.state["display"], "off")
 
 
 if __name__ == "__main__":

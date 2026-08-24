@@ -34,8 +34,8 @@ async def async_setup_entry(
     coordinators = getattr(hub, "coordinators", {})
     ent_reg = er.async_get(hass)
 
-    entities = []
-    entry_data = getattr(entry, "data", entry) if isinstance(getattr(entry, "data", entry), dict) else {}
+    entities: list[BinarySensorEntity] = []
+    entry_data = entry.data if hasattr(entry, "data") and isinstance(entry.data, dict) else {}
     is_ir_entry = entry_data.get("is_ir_only", False)
     devices = get_devices_for_entry(hub, entry)
 
@@ -229,11 +229,13 @@ class MirAIeCloudMQTTConnectedBinarySensor(BinarySensorEntity):
         hub = getattr(self.coordinator, "hub", None)
         if hub and hasattr(hub, "broker"):
             broker = hub.broker
+            if broker and hasattr(broker, "connected"):
+                return broker.connected.is_set()
             client = getattr(broker, "client", None)
             if client is not None:
                 is_connected = getattr(client, "is_connected", None)
                 if callable(is_connected):
-                    return is_connected()
+                    return bool(is_connected())
                 return not getattr(client, "_closed", False)
         return False
 
