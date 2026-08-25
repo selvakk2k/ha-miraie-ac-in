@@ -561,9 +561,8 @@ class MirAIeDeviceCoordinator:
                     LOGGER.info("Device %s: Home Assistant startup completed — retrying native IR receiver subscription", self.device_id)
                     _try_native_subscribe()
 
-                if not self.hass.is_running:
-                    unsub_start = async_at_started(self.hass, _async_on_ha_started)
-                    self._unsub_event_bus.append(unsub_start)
+                unsub_start = async_at_started(self.hass, _async_on_ha_started)
+                self._unsub_event_bus.append(unsub_start)
 
                 @callback
                 def _periodic_native_sub_retry(_: Any) -> None:
@@ -572,7 +571,7 @@ class MirAIeDeviceCoordinator:
                         self._unsub_retry = None
 
                 self._unsub_retry = async_track_time_interval(
-                    self.hass, _periodic_native_sub_retry, timedelta(seconds=5)
+                    self.hass, _periodic_native_sub_retry, timedelta(seconds=2)
                 )
 
         # 2. Event bus listener for ESPHome / IR hardware event broadcasts
