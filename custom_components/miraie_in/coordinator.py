@@ -544,7 +544,10 @@ class MirAIeDeviceCoordinator:
                 LOGGER.info("Device %s: Successfully registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
                 return True
             except Exception as err:
-                LOGGER.warning("Device %s: Native infrared subscription failed for %s: %s — will retry on entity availability", self.device_id, self.receiver_entity_id, err)
+                if not self.hass.is_running:
+                    LOGGER.debug("Device %s: Infrared receiver entity %s not ready during HA startup — deferred until boot completes", self.device_id, self.receiver_entity_id)
+                else:
+                    LOGGER.warning("Device %s: Native infrared subscription failed for %s: %s — will retry on entity availability", self.device_id, self.receiver_entity_id, err)
                 return False
 
         if self.receiver_entity_id.startswith("infrared."):
