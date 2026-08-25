@@ -304,24 +304,6 @@ class MirAIeDeviceCoordinator:
 
 
 
-        elif target_domain == "esphome":
-            # ESPHome transmit_raw service
-            device_name = self.blaster_entity_id.replace("esphome.", "").strip()
-            service_name = f"{device_name}_transmit_raw" if not device_name.endswith("_transmit_raw") else device_name
-            # ESPHome transmit_raw expects marks as positive, spaces as negative
-            raw_timings = list(ir_data["raw"])
-            try:
-                LOGGER.info("Device %s: Transmitting IR via esphome.%s", self.device_id, service_name)
-                await self.hass.services.async_call(
-                    "esphome",
-                    service_name,
-                    {"command": raw_timings},
-                    blocking=False,
-                )
-                success = True
-            except Exception as err:
-                LOGGER.error("Device %s: ESPHome IR transmission failed: %s", self.device_id, err)
-
         elif target_domain == "mqtt":
             # MQTT / Tasmota transmitter topic
             try:

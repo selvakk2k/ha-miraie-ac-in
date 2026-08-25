@@ -131,10 +131,12 @@ def pulses_to_pronto_hex(pulses: List[int], frequency: int = 38000) -> str:
         pronto.append(s)
     return " ".join([f"{x:04X}" for x in pronto])
 
-def bytes_to_ahea_hex(bytes_list: List[int]) -> str:
-    """Formats byte list to Panasonic AHEA Hex string (e.g. 0x02201000...)."""
+def bytes_to_aeha_hex(bytes_list: List[int]) -> str:
+    """Formats byte list to Panasonic AEHA Hex string (e.g. 0x02201000...)."""
     hex_str = "".join([f"{x:02X}" for x in bytes_list])
     return f"0x{hex_str}"
+
+bytes_to_ahea_hex = bytes_to_aeha_hex  # Backward-compatible alias
 
 def bytes_to_short_frame_pulses(b: List[int]) -> List[int]:
     """Encodes a 16-byte Panasonic short-frame byte list to raw microsecond pulses."""
@@ -172,11 +174,12 @@ def generate_ir_code(
         checksum = sum(header2) & 0xFF
         b = [0x02, 0x20, 0xE0, 0x04, 0x00, 0x00, 0x00, 0x06, 0x02, 0x20, 0xE0, 0x04, 0x80, b13, b14, checksum]
         pulses = bytes_to_short_frame_pulses(b)
-        ahea = bytes_to_ahea_hex(b)
+        aeha = bytes_to_aeha_hex(b)
         return {
             "raw": pulses,
-            "ahea_hex": ahea,
-            "tasmota_json": f'{{"Protocol":"PANASONIC_AC","Bits":128,"Data":"{ahea}"}}',
+            "aeha_hex": aeha,
+            "ahea_hex": aeha,  # Backward-compatible alias
+            "tasmota_json": f'{{"Protocol":"PANASONIC_AC","Bits":128,"Data":"{aeha}"}}',
             "broadlink_b64": pulses_to_broadlink_b64(pulses),
             "tuya_b64": pulses_to_tuya_b64(pulses),
             "pronto_hex": pulses_to_pronto_hex(pulses),
@@ -285,14 +288,15 @@ def generate_ir_code(
     set_frame2_byte(16, b[24])
     set_frame2_byte(18, b[26])
 
-    ahea = bytes_to_ahea_hex(b)
+    aeha = bytes_to_aeha_hex(b)
     actual_temp = 26 if eco else target_temp
     desc = f"{series_label} | {mode_key.upper()} {actual_temp}°C (Fan: {fan}, V-Vane: {v_vane}, H-Vane: {h_vane or 'Mirrored'} [{louver_type}], ECO: {'ON' if eco else 'OFF'}, NANOE: {'ON' if nanoe else 'OFF'})"
 
     return {
         "raw": new_pulses,
-        "ahea_hex": ahea,
-        "tasmota_json": f'{{"Protocol":"PANASONIC_AC","Bits":216,"Data":"{ahea}"}}',
+        "aeha_hex": aeha,
+        "ahea_hex": aeha,  # Backward-compatible alias
+        "tasmota_json": f'{{"Protocol":"PANASONIC_AC","Bits":216,"Data":"{aeha}"}}',
         "broadlink_b64": pulses_to_broadlink_b64(new_pulses),
         "tuya_b64": pulses_to_tuya_b64(new_pulses),
         "pronto_hex": pulses_to_pronto_hex(new_pulses),

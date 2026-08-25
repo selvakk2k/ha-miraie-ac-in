@@ -589,7 +589,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (b64:...)"),
                             selector.SelectOptionDict(value="tuya", label="Tuya Base64"),
                             selector.SelectOptionDict(value="raw", label="Raw Microsecond Pulses (ESPHome)"),
-                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AHEA Hex (MQTT)"),
+                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (MQTT)"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
