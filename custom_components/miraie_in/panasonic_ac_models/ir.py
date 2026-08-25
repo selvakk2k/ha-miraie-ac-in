@@ -66,17 +66,24 @@ def _pulses_to_bytes(pulses: List[int]) -> List[int]:
     current_byte = 0
     bit_count = 0
     idx = 0
+
+    # 1. Skip any leading noise until Panasonic header mark (~3500us mark, ~1750us space) is found
+    while idx < len(pulses) - 1:
+        if abs(pulses[idx]) > 2500 and 1200 < abs(pulses[idx+1]) < 2500:
+            break
+        idx += 1
+
     while idx < len(pulses) - 1:
         m, s = abs(pulses[idx]), abs(pulses[idx+1])
-        if (3000 < m < 4200 and 1400 < s < 2100) or s > 8000:
+        if (2500 < m < 4500 and 1200 < s < 2500) or s > 7000:
             if bit_count > 0:
                 bytes_list.append(current_byte)
                 current_byte = 0
                 bit_count = 0
             idx += 2
             continue
-        if 200 < m < 800:
-            bit = 1 if s > 800 else 0
+        if 150 < m < 900:
+            bit = 1 if s > 750 else 0
             current_byte |= (bit << bit_count)
             bit_count += 1
             if bit_count == 8:
@@ -356,171 +363,213 @@ def decode_ir_code(payload: Union[str, List[int], Dict[str, Any], bytes, bytearr
     else:
         return None
 
-    if len(bytes_list) < 16:
+    if len(bytes_list) < 8:
         return None
 
-    # Verify Panasonic Frame 1 Preamble: 0x02, 0x20, 0xE0, 0x04
+    # Verify Panasonic Preamble: 0x02, 0x20, 0xE0, 0x04
     if bytes_list[0:4] != [0x02, 0x20, 0xE0, 0x04]:
         return None
 
-    # ── 1. Decode 16-Byte Dedicated Short Frame (128 bits) ──
+    # ── 1. Decode 8-Byte Split Short Frame 2 ──
+    if len(bytes_list) == 8 and bytes_list[4] == 0x80:
+        checksum = sum(bytes_list[0:7]) & 0xFF
+        if bytes_list[7] != checksum:
+            return None
+        b13, b14 = bytes_list[5], bytes_list[6]
+        return _decode_short_frame_action(bytes_list, b13, b14)
+
+    # ── 2. Decode 16-Byte Dedicated Short Frame (Unified) ──
     if len(bytes_list) == 16:
         if bytes_list[8:13] != [0x02, 0x20, 0xE0, 0x04, 0x80]:
             return None
         checksum = sum(bytes_list[8:15]) & 0xFF
         if bytes_list[15] != checksum:
             return None
-
         b13, b14 = bytes_list[13], bytes_list[14]
-        res: Dict[str, Any] = {
-            "packet_type": "short_frame",
-            "hex": bytes_to_aeha_hex(bytes_list),
-            "power": "on",
-            "mode": None,
-            "temperature": None,
-            "fan_speed": None,
-            "v_vane": None,
-            "h_vane": None,
-            "eco": False,
-            "powerful": False,
-            "clean": False,
-            "display": False,
-            "converti": "cv_off",
-            "nanoe": False,
-            "action": None,
-        }
+        return _decode_short_frame_action(bytes_list, b13, b14)
 
-        for cmd_name, (cmd_b13, cmd_b14, _) in SHORT_FRAME_COMMANDS.items():
-            if b13 == cmd_b13 and b14 == cmd_b14:
-                res["action"] = cmd_name
-                if cmd_name == "powerful":
-                    res["powerful"] = True
-                    res["mode"] = "powerful"
-                elif cmd_name == "display":
-                    res["display"] = True
-                elif cmd_name == "clean":
-                    res["clean"] = True
-                    res["mode"] = "clean"
-                elif cmd_name.startswith("converti_"):
-                    res["converti"] = f"cv_{cmd_name.split('_')[1]}"
-                return res
+    # ── 3. Decode 19-Byte Split Frame 2 (Full State) ──
+    if len(bytes_list) == 19:
+        checksum = sum(bytes_list[0:18]) & 0xFF
+        if bytes_list[18] != checksum:
+            return None
+        return _decode_full_state(
+            bytes_list,
+            b13=bytes_list[5],
+            b14=bytes_list[6],
+            b16=bytes_list[8],
+            b17=bytes_list[9],
+            b21=bytes_list[13],
+            b22=bytes_list[14],
+            b24=bytes_list[16],
+        )
 
-        return res
-
-    # ── 2. Decode 27-Byte Full State Packet (216 bits) ──
+    # ── 4. Decode 27-Byte Full State Packet (Unified) ──
     if len(bytes_list) >= 27:
         bytes_list = bytes_list[:27]
         checksum = sum(bytes_list[8:26]) & 0xFF
         if bytes_list[26] != checksum:
             return None
-
-        b13 = bytes_list[13]
-        b14 = bytes_list[14]
-        b16 = bytes_list[16]
-        b17 = bytes_list[17]
-        b21 = bytes_list[21]
-        b22 = bytes_list[22]
-        b24 = bytes_list[24]
-
-        # Power & Mode
-        is_on = bool(b13 & 0x01)
-        mode_nibble = (b13 >> 4) & 0x0F
-
-        mode_map = {
-            0x0: "auto",
-            0x2: "dry",
-            0x3: "cool",
-            0x4: "heat",
-            0x6: "fan_only"
-        }
-        mode = mode_map.get(mode_nibble, "cool")
-        power = "on" if is_on else "off"
-        if not is_on:
-            mode = "off"
-
-        # Temperature
-        temp = ((b14 - 0x20) // 2) + 16
-        temp = max(16, min(30, temp))
-
-        # Fan speed
-        fan_nibble = (b16 >> 4) & 0x0F
-        fan_map = {
-            0x3: "low",
-            0x4: "low",
-            0x5: "medium",
-            0x6: "high",
-            0x7: "high",
-            0xA: "auto"
-        }
-        fan_speed = fan_map.get(fan_nibble, "auto")
-
-        # Vertical Vane
-        v_nibble = b16 & 0x0F
-        v_map = {
-            0x1: "V1",
-            0x2: "V2",
-            0x3: "V3",
-            0x4: "V4",
-            0x5: "V5",
-            0xF: "AUTO"
-        }
-        v_vane = v_map.get(v_nibble, "AUTO")
-
-        # Horizontal Vane
-        h_map = {
-            0x06: "H1",
-            0x09: "H2",
-            0x0A: "H3",
-            0x0B: "H4",
-            0x0C: "H5",
-            0x0D: "AUTO"
-        }
-        h_vane = h_map.get(b17, "AUTO")
-
-        # Preset / Convertible / Quiet
-        converti = "cv_off"
-        powerful = False
-        if b21 == 0x20:
-            fan_speed = "quiet"
-        elif b21 == 0x01:
-            powerful = True
-        elif b21 == 0x03:
-            converti = "cv_110"
-        elif b21 == 0x04:
-            converti = "cv_90"
-        elif b21 == 0x05:
-            converti = "cv_80"
-        elif b21 == 0x06:
-            converti = "cv_70"
-        elif b21 == 0x07:
-            converti = "cv_50"
-        elif b21 == 0x08:
-            converti = "cv_40"
-
-        # Eco mode
-        eco = bool(b22 & 0x08)
-        if eco:
-            temp = 26
-
-        # Nanoe-G
-        nanoe = bool(b24 & 0x01)
-
-        return {
-            "packet_type": "full_frame",
-            "hex": bytes_to_aeha_hex(bytes_list),
-            "power": power,
-            "mode": mode,
-            "temperature": temp,
-            "fan_speed": fan_speed,
-            "v_vane": v_vane,
-            "h_vane": h_vane,
-            "eco": eco,
-            "powerful": powerful,
-            "clean": False,
-            "display": False,
-            "converti": converti,
-            "nanoe": nanoe,
-            "action": None
-        }
+        return _decode_full_state(
+            bytes_list,
+            b13=bytes_list[13],
+            b14=bytes_list[14],
+            b16=bytes_list[16],
+            b17=bytes_list[17],
+            b21=bytes_list[21],
+            b22=bytes_list[22],
+            b24=bytes_list[24],
+        )
 
     return None
+
+
+def _decode_short_frame_action(bytes_list: List[int], b13: int, b14: int) -> Dict[str, Any]:
+    """Helper to parse a 16-byte unified or 8-byte split dedicated action short frame."""
+    res: Dict[str, Any] = {
+        "packet_type": "short_frame",
+        "hex": bytes_to_aeha_hex(bytes_list),
+        "power": "on",
+        "mode": None,
+        "temperature": None,
+        "fan_speed": None,
+        "v_vane": None,
+        "h_vane": None,
+        "eco": False,
+        "powerful": False,
+        "clean": False,
+        "display": False,
+        "converti": "cv_off",
+        "nanoe": False,
+        "action": None,
+    }
+
+    for cmd_name, (cmd_b13, cmd_b14, _) in SHORT_FRAME_COMMANDS.items():
+        if b13 == cmd_b13 and b14 == cmd_b14:
+            res["action"] = cmd_name
+            if cmd_name == "powerful":
+                res["powerful"] = True
+                res["mode"] = "powerful"
+            elif cmd_name == "display":
+                res["display"] = True
+            elif cmd_name == "clean":
+                res["clean"] = True
+                res["mode"] = "clean"
+            elif cmd_name.startswith("converti_"):
+                res["converti"] = f"cv_{cmd_name.split('_')[1]}"
+            return res
+
+    return res
+
+
+def _decode_full_state(
+    bytes_list: List[int],
+    b13: int,
+    b14: int,
+    b16: int,
+    b17: int,
+    b21: int,
+    b22: int,
+    b24: int,
+) -> Dict[str, Any]:
+    """Helper to parse state values from full frame bytes."""
+    # Power & Mode
+    is_on = bool(b13 & 0x01)
+    mode_nibble = (b13 >> 4) & 0x0F
+
+    mode_map = {
+        0x0: "auto",
+        0x2: "dry",
+        0x3: "cool",
+        0x4: "heat",
+        0x6: "fan_only"
+    }
+    mode = mode_map.get(mode_nibble, "cool")
+    power = "on" if is_on else "off"
+    if not is_on:
+        mode = "off"
+
+    # Temperature
+    temp = ((b14 - 0x20) // 2) + 16
+    temp = max(16, min(30, temp))
+
+    # Fan speed
+    fan_nibble = (b16 >> 4) & 0x0F
+    fan_map = {
+        0x3: "low",
+        0x4: "low",
+        0x5: "medium",
+        0x6: "high",
+        0x7: "high",
+        0xA: "auto"
+    }
+    fan_speed = fan_map.get(fan_nibble, "auto")
+
+    # Vertical Vane
+    v_nibble = b16 & 0x0F
+    v_map = {
+        0x1: "V1",
+        0x2: "V2",
+        0x3: "V3",
+        0x4: "V4",
+        0x5: "V5",
+        0xF: "AUTO"
+    }
+    v_vane = v_map.get(v_nibble, "AUTO")
+
+    # Horizontal Vane
+    h_map = {
+        0x06: "H1",
+        0x09: "H2",
+        0x0A: "H3",
+        0x0B: "H4",
+        0x0C: "H5",
+        0x0D: "AUTO"
+    }
+    h_vane = h_map.get(b17, "AUTO")
+
+    # Preset / Convertible / Quiet
+    converti = "cv_off"
+    powerful = False
+    if b21 == 0x20:
+        fan_speed = "quiet"
+    elif b21 == 0x01:
+        powerful = True
+    elif b21 == 0x03:
+        converti = "cv_110"
+    elif b21 == 0x04:
+        converti = "cv_90"
+    elif b21 == 0x05:
+        converti = "cv_80"
+    elif b21 == 0x06:
+        converti = "cv_70"
+    elif b21 == 0x07:
+        converti = "cv_50"
+    elif b21 == 0x08:
+        converti = "cv_40"
+
+    # Eco mode
+    eco = bool(b22 & 0x08)
+    if eco:
+        temp = 26
+
+    # Nanoe-G
+    nanoe = bool(b24 & 0x01)
+
+    return {
+        "packet_type": "full_frame",
+        "hex": bytes_to_aeha_hex(bytes_list),
+        "power": power,
+        "mode": mode,
+        "temperature": temp,
+        "fan_speed": fan_speed,
+        "v_vane": v_vane,
+        "h_vane": h_vane,
+        "eco": eco,
+        "powerful": powerful,
+        "clean": False,
+        "display": False,
+        "converti": converti,
+        "nanoe": nanoe,
+        "action": None,
+    }

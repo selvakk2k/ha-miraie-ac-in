@@ -186,15 +186,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     has_username = "username" in entry.data
     is_ir_only = entry.data.get("is_ir_only", False) or not has_username
 
+    async def _dummy_async_coro(*args: Any, **kwargs: Any) -> None:
+        return None
+
     if is_ir_only or not has_username:
         hub = MirAIeHub()
         hub.home = type("Home", (), {"devices": []})()
         dev_id = entry.unique_id or f"manual_{entry.entry_id}"
         model_code = entry.data.get("model_code", "CS-CU-RU18CKY-1")
         name = entry.data.get("name", entry.title)
-
-        async def _dummy_async_coro(*args, **kwargs):
-            return None
 
         dummy_dev = type("Device", (), {
             "id": dev_id,

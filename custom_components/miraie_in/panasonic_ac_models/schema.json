@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Panasonic AC Model Masterlist Schema",
+  "type": "object",
+  "required": ["version", "summary", "families"],
+  "properties": {
+    "version": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": ["total_wifi_models", "total_wifi_families", "updated_at"],
+      "properties": {
+        "total_wifi_models": { "type": "integer", "minimum": 1 },
+        "total_wifi_families": { "type": "integer", "minimum": 1 },
+        "updated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      }
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "family_key",
+          "series",
+          "generation",
+          "capacity_class",
+          "speed_type",
+          "has_wifi",
+          "has_heat_mode",
+          "has_nanoe",
+          "converti_type",
+          "indoor_units"
+        ],
+        "properties": {
+          "family_key": { "type": "string", "pattern": "^[A-Z]{2}-\\d{2}-[A-Z0-9]+$" },
+          "series": { "type": "string" },
+          "generation": { "type": "string" },
+          "capacity_class": { "type": "string" },
+          "speed_type": { "type": "string", "enum": ["variable", "fixed"] },
+          "model_count": { "type": "integer" },
+          "iseer_min": { "type": ["number", "null"], "minimum": 3.0, "maximum": 7.0 },
+          "iseer_max": { "type": ["number", "null"], "minimum": 3.0, "maximum": 7.0 },
+          "star_rating_min": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
+          "star_rating_max": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
+          "has_wifi": { "type": "integer", "enum": [0, 1] },
+          "has_heat_mode": { "type": "integer", "enum": [0, 1] },
+          "has_nanoe": { "type": "integer", "enum": [0, 1] },
+          "converti_type": { "type": "string", "enum": ["8-in-1", "7-in-1", "none"] },
+          "variants": { "type": "array", "items": { "type": "string" } },
+          "indoor_units": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^(CS|CW|S)-[A-Z0-9-]+$" }
+          },
+          "ac_types": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
