@@ -29,12 +29,14 @@
           "hybrid_submode": "Hybrid Failover",
           "blaster_entity_id": "IR Transmitter Entity (Optional)",
           "receiver_entity_id": "IR Receiver Entity (Optional)",
+          "room_temp_sensor": "Room Temperature Sensor (Optional)",
           "ir_format": "IR Protocol / Format",
           "install_date": "Energy History Start Date"
         },
         "data_description": {
           "blaster_entity_id": "Optional IR blaster entity used to transmit commands locally.",
           "receiver_entity_id": "Optional entity used to listen for physical remote button presses.",
+          "room_temp_sensor": "Optional external temperature sensor entity to report current room temperature for this AC.",
           "primary_backend": "Default transport used to dispatch commands in Hybrid mode.",
           "ir_format": "Encoding format expected by your IR transmitter."
         }

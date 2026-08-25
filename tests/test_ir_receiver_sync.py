@@ -123,7 +123,7 @@ class TestIRReceiverSync(unittest.TestCase):
         self.assertIn("infrared.ir_rx", self.listeners)
 
         # Generate a Cool 24°C, Mid Fan IR frame
-        ir = generate_ir_code(mode="cool", target_temp=24, fan="mid", series="EU")
+        ir = generate_ir_code(mode="cool", target_temp=24, fan="medium", series="EU")
 
         # Simulate state being a timestamp and code stored in attributes["data"]
         event = MagicMock()
@@ -191,6 +191,66 @@ class TestIRReceiverSync(unittest.TestCase):
 
         coordinator.async_unload()
         self.assertNotIn("sensor.ir_rx", self.listeners)
+
+    def test_rapid_successive_physical_presses_not_dropped(self):
+        """Verify that two genuine physical remote presses in rapid succession (< 1.5s) are both applied."""
+        coordinator = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="test_entry",
+            device_id="ac_living_room",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            receiver_entity_id="sensor.ir_rx",
+        )
+        coordinator.async_setup_receiver()
+
+        # 1. First physical remote press: Cool 24°C
+        ir1 = generate_ir_code(mode="cool", target_temp=24, fan="low", series="EU")
+        event1 = MagicMock()
+        event1.data = {"new_state": MagicMock(state=ir1["aeha_hex"], attributes={})}
+        self.listeners["sensor.ir_rx"](event1)
+        self.assertEqual(coordinator.state["temperature"], 24)
+        self.assertEqual(coordinator.state["last_controlled_by"], "IR Remote")
+
+        # 2. Second physical remote press 0.5s later: Cool 25°C (no transmission occurred in between)
+        ir2 = generate_ir_code(mode="cool", target_temp=25, fan="low", series="EU")
+        event2 = MagicMock()
+        event2.data = {"new_state": MagicMock(state=ir2["aeha_hex"], attributes={})}
+        self.listeners["sensor.ir_rx"](event2)
+
+        # Must NOT be dropped by echo suppression
+        self.assertEqual(coordinator.state["temperature"], 25)
+        self.assertEqual(coordinator.state["last_controlled_by"], "IR Remote")
+
+    def test_native_infrared_receiver_subscription(self):
+        """Verify native infrared.helpers.async_subscribe_receiver callback processes raw timings."""
+        native_sub_callback = None
+
+        def mock_subscribe(hass, entity_id, cb):
+            nonlocal native_sub_callback
+            native_sub_callback = cb
+            return lambda: None
+
+        with patch("homeassistant.components.infrared.helpers.async_subscribe_receiver", side_effect=mock_subscribe):
+            coordinator = MirAIeDeviceCoordinator(
+                hass=self.hass,
+                entry_id="test_entry",
+                device_id="ac_living_room",
+                model_code="CS-CU-RU18CKY-1",
+                has_wifi=True,
+                receiver_entity_id="infrared.living_room_receiver",
+            )
+            coordinator.async_setup_receiver()
+            self.assertIsNotNone(native_sub_callback)
+
+            # Generate raw pulses for Cool 23°C
+            ir = generate_ir_code(mode="cool", target_temp=23, fan="low", series="EU")
+            signal_mock = MagicMock()
+            signal_mock.timings = ir["raw"]
+
+            native_sub_callback(signal_mock)
+            self.assertEqual(coordinator.state["temperature"], 23)
+            self.assertEqual(coordinator.state["last_controlled_by"], "IR Remote")
 
 
 if __name__ == "__main__":
