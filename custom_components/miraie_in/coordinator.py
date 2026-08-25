@@ -124,37 +124,37 @@ class MirAIeDeviceCoordinator:
         if "md" in cloud_data:
             md_val = str(cloud_data["md"]).lower()
             if md_val not in ("powerful", "boost", "clean") and not md_val.startswith("converti_"):
-                self.state["mode"] = md_val
-                if md_val != "cool":
-                    self.state["active_preset"] = "none"
-                    self.state["converti"] = "cv_off"
-                    self.state["eco"] = False
+                if not in_ir_grace_window or md_val == self.state.get("mode"):
+                    self.state["mode"] = md_val
+                    if md_val != "cool":
+                        self.state["active_preset"] = "none"
+                        self.state["converti"] = "cv_off"
+                        self.state["eco"] = False
 
         conv_val = cloud_data.get("converti")
         preset_val = str(cloud_data.get("preset", "")).lower()
         eco_val = str(cloud_data.get("acec", "")).lower() in ["on", "1", "true"]
 
-        if eco_val:
-            self.state["eco"] = True
-            self.state["active_preset"] = "eco"
-            self.state["converti"] = "cv_off"
-            if not in_ir_grace_window:
+        if not in_ir_grace_window:
+            if eco_val:
+                self.state["eco"] = True
+                self.state["active_preset"] = "eco"
+                self.state["converti"] = "cv_off"
                 self.state["temperature"] = 26
-        elif conv_val and int(conv_val) > 0:
-            self.state["eco"] = False
-            self.state["converti"] = f"cv_{conv_val}"
-            self.state["active_preset"] = f"cv_{conv_val}"
-        elif preset_val in ("boost", "powerful"):
-            self.state["eco"] = False
-            self.state["active_preset"] = "powerful"
-            self.state["converti"] = "cv_off"
-        elif preset_val == "clean":
-            self.state["eco"] = False
-            self.state["active_preset"] = "clean"
-            self.state["converti"] = "cv_off"
-        else:
-            self.state["eco"] = False
-            if not in_ir_grace_window:
+            elif conv_val and int(conv_val) > 0:
+                self.state["eco"] = False
+                self.state["converti"] = f"cv_{conv_val}"
+                self.state["active_preset"] = f"cv_{conv_val}"
+            elif preset_val in ("boost", "powerful"):
+                self.state["eco"] = False
+                self.state["active_preset"] = "powerful"
+                self.state["converti"] = "cv_off"
+            elif preset_val == "clean":
+                self.state["eco"] = False
+                self.state["active_preset"] = "clean"
+                self.state["converti"] = "cv_off"
+            else:
+                self.state["eco"] = False
                 if self.primary_backend != "ir" or not self.state.get("provisional"):
                     self.state["active_preset"] = "none"
                     self.state["converti"] = "cv_off"

@@ -47,6 +47,7 @@ from .const import (
     H3,
     H4,
     H5,
+    SWING_AUTO,
     SWING_V_LIST,
     SWING_H_LIST,
     SWING_V_TO_CODE,
@@ -348,16 +349,14 @@ class MirAIeClimate(ClimateEntity):
     def target_temperature(self) -> float | int | None:
         coord = getattr(self, "coordinator", None)
         if coord and coord.state and "temperature" in coord.state:
-            return int(round(coord.state["temperature"]))
+            return round(coord.state["temperature"])
         temp = self.device.status.temperature
         if temp is None:
             return None
-        return int(round(temp))
+        return round(temp)
 
     @property
     def preset_modes(self) -> list[str]:
-        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF):
-            return [PRESET_NONE]
         return self._base_preset_modes
 
     @property
@@ -524,14 +523,14 @@ class MirAIeClimate(ClimateEntity):
 
         LOGGER.debug(f"Set preset mode to {preset_mode}")
 
-        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF) and preset_mode not in (PRESET_NONE, "none", "None", None):
-            LOGGER.warning("Preset '%s' is not available in %s mode (Cool mode only)", preset_mode, self.hvac_mode)
-            return
-
         eco_val = None
         mode_val = None
         target_temp_val = None
         cloud_coro = None
+
+        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF) and preset_mode not in (PRESET_NONE, "none", "None", None):
+            LOGGER.info("Preset '%s' requested while in %s mode; auto-switching to Cool mode", preset_mode, self.hvac_mode)
+            mode_val = "cool"
 
         if preset_mode in (PRESET_NONE, "none", "None", None):
             eco_val = False
@@ -550,7 +549,7 @@ class MirAIeClimate(ClimateEntity):
             eco_val = True
             target_temp_val = 26
             cloud_coro = self.device.set_preset_mode(PresetMode.ECO)
-        elif preset_mode == PRESET_BOOST:
+        elif preset_mode in (PRESET_BOOST, "boost", "powerful", "Powerful"):
             eco_val = False
             mode_val = "powerful"
             cloud_coro = self.device.set_preset_mode(PresetMode.BOOST)

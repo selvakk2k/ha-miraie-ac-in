@@ -263,15 +263,21 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.climate.min_temp, 16.0)
         self.assertEqual(self.climate.max_temp, 30.0)
 
-    async def test_preset_modes_gated_by_hvac_mode(self):
-        """Test that non-Cool modes restrict preset_modes to [none]."""
+    async def test_preset_modes_and_dry_mode_auto_switch(self):
+        """Test that preset_modes preserves full capability list and auto-switches Dry mode to Cool."""
         from homeassistant.components.climate import PRESET_NONE, PRESET_ECO, PRESET_BOOST
         self.coordinator.state["mode"] = "cool"
         self.assertIn(PRESET_ECO, self.climate.preset_modes)
         self.assertIn(PRESET_BOOST, self.climate.preset_modes)
 
+        # In dry mode, preset_modes capability is preserved for card rendering
         self.coordinator.state["mode"] = "dry"
-        self.assertEqual(self.climate.preset_modes, [PRESET_NONE])
+        self.assertIn(PRESET_ECO, self.climate.preset_modes)
+
+        # Requesting eco preset in dry mode auto-switches to cool
+        await self.climate.async_set_preset_mode(PRESET_ECO)
+        self.assertEqual(self.coordinator.state["mode"], "cool")
+        self.assertEqual(self.coordinator.state["eco"], True)
 
     async def test_friendly_swing_modes(self):
         """Test friendly swing mode mapping and bidirectional code compatibility."""
