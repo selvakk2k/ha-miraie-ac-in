@@ -97,8 +97,8 @@ class TestSensorPlatform(unittest.IsolatedAsyncioTestCase):
         source_sensor = MirAIeControlSourceSensor(self.mock_device, self.coordinator)
         self.assertEqual(source_sensor.native_value, "Cloud")
 
-        self.coordinator.state["last_controlled_by"] = "IR"
-        self.assertEqual(source_sensor.native_value, "IR")
+        self.coordinator.state["last_controlled_by"] = "IR Blaster"
+        self.assertEqual(source_sensor.native_value, "IR Blaster")
 
     def test_energy_sensors_initial_state(self):
         """Test yesterday, weekly, and monthly energy sensors initial values."""

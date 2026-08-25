@@ -190,8 +190,8 @@ class MirAIeDeviceCoordinator:
         if "acngs" in cloud_data:
             self.state["nanoe"] = str(cloud_data["acngs"]).lower() in ["on", "1", "true"]
 
-        # Origin tracking: preserve "IR" origin during active IR control
-        if not in_ir_grace_window and self.state.get("last_controlled_by") != "IR":
+        # Origin tracking: preserve "IR" origins during active IR control
+        if not in_ir_grace_window and self.state.get("last_controlled_by") not in ("IR Blaster", "IR Remote", "IR Failover", "IR Failover (Offline)"):
             self.state["last_controlled_by"] = "Cloud"
 
         self.state["provisional"] = False
@@ -209,7 +209,7 @@ class MirAIeDeviceCoordinator:
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
         display: Optional[bool] = None,
-        origin: str = "IR",
+        origin: str = "IR Blaster",
     ) -> bool:
         """Generate and transmit IR payload via configured blaster entity.
 
