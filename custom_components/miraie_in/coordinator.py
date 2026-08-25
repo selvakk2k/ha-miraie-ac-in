@@ -489,7 +489,17 @@ class MirAIeDeviceCoordinator:
             from .panasonic_ac_models import decode_ir_code
 
         # 1. Native Home Assistant Infrared platform receiver subscription
-        if self.receiver_entity_id.startswith("infrared."):
+        # The infrared entity may not be loaded yet during integration startup, so we try
+        # immediately and also retry from the state change listener on first availability.
+        _native_subscribe_attempted = False
+
+        def _try_native_subscribe() -> bool:
+            """Attempt to subscribe to the native IR receiver. Returns True on success."""
+            nonlocal _native_subscribe_attempted
+            if _native_subscribe_attempted or self._unsub_native_receiver:
+                return bool(self._unsub_native_receiver)
+            if not self.receiver_entity_id.startswith("infrared."):
+                return False
             try:
                 from homeassistant.components.infrared.helpers import async_subscribe_receiver
 
@@ -523,9 +533,16 @@ class MirAIeDeviceCoordinator:
                 self._unsub_native_receiver = async_subscribe_receiver(
                     self.hass, self.receiver_entity_id, _on_native_ir_signal
                 )
+                _native_subscribe_attempted = True
                 LOGGER.info("Device %s: Successfully registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
+                return True
             except Exception as err:
-                LOGGER.warning("Device %s: Native infrared subscription helper failed for %s: %s", self.device_id, self.receiver_entity_id, err)
+                _native_subscribe_attempted = True
+                LOGGER.warning("Device %s: Native infrared subscription failed for %s: %s — will retry on entity availability", self.device_id, self.receiver_entity_id, err)
+                return False
+
+        if self.receiver_entity_id.startswith("infrared."):
+            _try_native_subscribe()
 
         # 2. Event bus listener for ESPHome / IR hardware event broadcasts
         @callback
@@ -572,6 +589,17 @@ class MirAIeDeviceCoordinator:
             attributes = getattr(new_state, "attributes", {}) if hasattr(new_state, "attributes") else (new_state.get("attributes", {}) if isinstance(new_state, dict) else {})
             LOGGER.info("Device %s: [IR State Change] Entity %s state=%s, attributes=%r", self.device_id, self.receiver_entity_id, raw_state, attributes)
 
+            # For infrared.* entities: the state is just a timestamp of last signal received.
+            # No IR payload is carried in the state or attributes — the signal data is ONLY
+            # available via async_subscribe_receiver callback. Retry the subscription here
+            # if it failed at startup (entity not yet available at that point).
+            if self.receiver_entity_id.startswith("infrared."):
+                if not self._unsub_native_receiver and raw_state not in ("unavailable", "unknown", None, ""):
+                    LOGGER.info("Device %s: [IR State Change] infrared entity now available — retrying native subscription", self.device_id)
+                    _try_native_subscribe()
+                # infrared.* state carries no decodable payload; nothing more to do here
+                return
+
             # Echo suppression: Ignore signals received within 1.5s of our own TRANSMISSION
             now = time.monotonic()
             last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
@@ -581,7 +609,7 @@ class MirAIeDeviceCoordinator:
 
             event_data = getattr(event, "data", {}) if hasattr(event, "data") else (event.get("data", {}) if isinstance(event, dict) else {})
 
-            # Candidate payload sources across Home Assistant infrared, event, and sensor platforms
+            # Candidate payload sources for non-infrared receiver entities (remote.*, event.*, sensor.*)
             candidates = [
                 attributes.get("data"),
                 attributes.get("command"),
@@ -590,7 +618,6 @@ class MirAIeDeviceCoordinator:
                 attributes.get("pulses"),
                 attributes.get("payload"),
                 attributes.get("event_data"),
-                attributes.get("event_type"),
                 event_data.get("data"),
                 event_data.get("command"),
                 event_data.get("code"),

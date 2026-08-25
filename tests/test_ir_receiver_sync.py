@@ -109,8 +109,11 @@ class TestIRReceiverSync(unittest.TestCase):
         # Now it is accepted and state updates to 18°C
         self.assertEqual(coordinator.state["temperature"], 18)
 
-    def test_ir_receiver_state_sync_from_attributes(self):
-        """Verify receiving code in attributes when state is an ISO timestamp (like native infrared entities)."""
+    def test_ir_receiver_infrared_entity_state_only_retries_subscription(self):
+        """Verify that for infrared.* entities, the state change listener does NOT try to
+        decode IR payload from state/attributes (there is none on the real infrared platform).
+        Instead, on first non-unavailable state it should retry native subscription.
+        Payload decoding only happens via the native async_subscribe_receiver callback."""
         coordinator = MirAIeDeviceCoordinator(
             hass=self.hass,
             entry_id="test_entry",
@@ -122,22 +125,22 @@ class TestIRReceiverSync(unittest.TestCase):
         coordinator.async_setup_receiver()
         self.assertIn("infrared.ir_rx", self.listeners)
 
-        # Generate a Cool 24°C, Mid Fan IR frame
-        ir = generate_ir_code(mode="cool", target_temp=24, fan="medium", series="EU")
+        initial_temp = coordinator.state["temperature"]
 
-        # Simulate state being a timestamp and code stored in attributes["data"]
+        # Simulate a typical infrared entity state change: timestamp only, no payload in attributes
         event = MagicMock()
         event.data = {
             "new_state": MagicMock(
                 state="2026-08-26T02:05:00+00:00",
-                attributes={"data": ir["aeha_hex"]}
+                attributes={"device_class": "receiver", "friendly_name": "IR Receiver"}
             )
         }
 
         self.listeners["infrared.ir_rx"](event)
-        self.assertEqual(coordinator.state["temperature"], 24)
-        self.assertEqual(coordinator.state["fan_speed"], "medium")
-        self.assertEqual(coordinator.state["last_controlled_by"], "IR Remote")
+
+        # State must NOT be decoded/updated from a timestamp-only state change event
+        self.assertEqual(coordinator.state["temperature"], initial_temp)
+        self.assertEqual(coordinator.state["last_controlled_by"], "Cloud")
 
     def test_ir_receiver_short_frame_actions(self):
         """Verify dedicated 16-byte short-frame actions update presets and display."""
