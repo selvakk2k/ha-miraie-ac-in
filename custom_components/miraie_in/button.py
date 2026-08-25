@@ -39,17 +39,27 @@ async def async_setup_entry(
     is_ir_entry = entry_data.get("is_ir_only", False) or "username" not in entry_data
     coordinators = getattr(hub, "coordinators", {})
 
-    entities: list[ButtonEntity] = []
     devices = get_devices_for_entry(hub, entry)
+    LOGGER.debug(
+        "[button.setup] entry_id=%s is_ir_entry=%s device_count=%d entry_data_keys=%s",
+        entry.entry_id,
+        is_ir_entry,
+        len(devices),
+        list(entry_data.keys()),
+    )
+
+    entities: list[ButtonEntity] = []
 
     for device in devices:
         entities.append(MirAIeCoilCleanButton(device))
         # Energy stats buttons are only available for cloud (username) accounts.
         # For IR-only entries there is no cloud API to fetch or rebuild energy history.
+        LOGGER.debug("[button.setup] device=%s is_ir_entry=%s → adding coil clean; energy=%s", device.id, is_ir_entry, not is_ir_entry)
         if not is_ir_entry:
             entities.append(MirAIeRebuildEnergyStatsButton(hub, device))
             entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
 
+    LOGGER.debug("[button.setup] total entities registered: %d", len(entities))
     async_add_entities(entities)
 
 
