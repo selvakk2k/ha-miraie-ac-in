@@ -34,6 +34,95 @@ def eight_months_ago(today: date) -> date:
     return months_ago(today, 8)
 
 
+NON_AC_CATEGORIES = {
+    "PLUG",
+    "SMART_PLUG",
+    "SWITCH",
+    "SMART_SWITCH",
+    "FAN",
+    "SMART_FAN",
+    "WATER_HEATER",
+    "WH",
+    "GEYSER",
+    "REFRIGERATOR",
+    "REF",
+    "WASHING_MACHINE",
+    "WM",
+    "LIGHT",
+    "BULB",
+}
+
+AC_CATEGORIES = {
+    "RAC",
+    "PAC",
+    "AC",
+    "SAC",
+    "CAC",
+    "AIR_CONDITIONER",
+    "SPLIT_AC",
+    "WINDOW_AC",
+    "CASSETTE_AC",
+}
+
+
+def is_ac_device(dev_or_dict: Any, details: Any = None) -> bool:
+    """Return True if a MirAIe device is an Air Conditioner, False for other appliances."""
+    if not dev_or_dict:
+        return False
+
+    cat = ""
+    model = ""
+
+    if isinstance(dev_or_dict, dict):
+        cat = str(
+            dev_or_dict.get("category")
+            or dev_or_dict.get("deviceType")
+            or dev_or_dict.get("applianceType")
+            or ""
+        ).upper().strip()
+        model = str(
+            dev_or_dict.get("modelNumber")
+            or dev_or_dict.get("modelName")
+            or dev_or_dict.get("model")
+            or ""
+        ).upper().strip()
+    else:
+        if hasattr(dev_or_dict, "details") and dev_or_dict.details:
+            cat = str(getattr(dev_or_dict.details, "category", "") or "").upper().strip()
+            model = str(
+                getattr(dev_or_dict.details, "model_number", "")
+                or getattr(dev_or_dict.details, "model_name", "")
+                or ""
+            ).upper().strip()
+
+    if details:
+        if isinstance(details, dict):
+            cat = str(details.get("category") or details.get("deviceType") or cat).upper().strip()
+            model = str(details.get("modelNumber") or details.get("modelName") or model).upper().strip()
+        else:
+            cat = str(getattr(details, "category", "") or cat).upper().strip()
+            model = str(
+                getattr(details, "model_number", "")
+                or getattr(details, "model_name", "")
+                or model
+            ).upper().strip()
+
+    # 1. Direct positive match on AC category
+    if cat in AC_CATEGORIES:
+        return True
+
+    # 2. Direct negative match on known non-AC appliances
+    if cat in NON_AC_CATEGORIES:
+        return False
+
+    # 3. Model number heuristics (Panasonic AC models start with CS, CU, CW, S-, U-, etc.)
+    if model.startswith(("CS", "CU", "CW", "S-", "U-", "KN", "RU", "EU", "NU", "SU", "HU", "XU", "EZ", "KZ")):
+        return True
+
+    # 4. Safe fallback: assume True unless explicitly non-AC category
+    return True
+
+
 def get_devices_for_entry(hub: Any, entry: Any) -> list[Any]:
     """Resolve the devices belonging to a given ConfigEntry.
 

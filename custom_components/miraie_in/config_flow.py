@@ -25,7 +25,7 @@ from .const import (
     CONF_HYBRID_SUBMODE,
     DOMAIN,
 )
-from .utils import six_months_ago, eight_months_ago
+from .utils import six_months_ago, eight_months_ago, is_ac_device
 
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -132,8 +132,10 @@ async def validate_input(
                                         "id": dev_id,
                                         "name": dev.get("deviceName", "MirAIe Cloud AC"),
                                         "model_code": direct_model,
+                                        "raw_dev": dev,
                                     })
 
+                        details_map: dict[str, Any] = {}
                         if raw_devices:
                             device_ids = ",".join([d["id"] for d in raw_devices])
                             try:
@@ -152,17 +154,30 @@ async def validate_input(
 
                                 if isinstance(details_list, list):
                                     details_map = {
-                                        dd.get("deviceId"): dd.get("modelNumber") or dd.get("modelName") or ""
+                                        dd.get("deviceId"): dd
                                         for dd in details_list
                                         if isinstance(dd, dict) and dd.get("deviceId")
                                     }
-                                    for rd in raw_devices:
-                                        if rd["id"] in details_map and details_map[rd["id"]]:
-                                            rd["model_code"] = details_map[rd["id"]]
                             except Exception as exc:
                                 _LOGGER.debug("Could not fetch batched device details: %s", exc)
 
-                        discovered_devices = raw_devices
+                        filtered_devices = []
+                        for rd in raw_devices:
+                            dt = details_map.get(rd["id"], {})
+                            if dt:
+                                rd["model_code"] = dt.get("modelNumber") or dt.get("modelName") or rd["model_code"]
+
+                            if is_ac_device(rd.get("raw_dev"), dt):
+                                rd.pop("raw_dev", None)
+                                filtered_devices.append(rd)
+                            else:
+                                _LOGGER.info(
+                                    "Ignoring non-AC MirAIe device '%s' (ID: %s)",
+                                    rd.get("name"),
+                                    rd.get("id"),
+                                )
+
+                        discovered_devices = filtered_devices
                 except Exception as exc:
                     _LOGGER.debug("REST homes fetch did not return device list: %s", exc)
 
@@ -173,6 +188,9 @@ async def validate_input(
                         await hub._get_home_details()
                 if hasattr(hub, "home") and hub.home and hasattr(hub.home, "devices"):
                     for dev in hub.home.devices:
+                        if not is_ac_device(dev):
+                            _LOGGER.info("Ignoring non-AC MirAIe device from hub: %s", getattr(dev, "friendly_name", dev))
+                            continue
                         dev_id = getattr(dev, "id", None)
                         if dev_id:
                             model_number = None
