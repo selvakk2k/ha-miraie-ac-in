@@ -335,23 +335,40 @@ class MirAIeDeviceCoordinator:
                     LOGGER.warning("Cached IR format %s failed for %s: %s, re-detecting format", self._working_ir_format, self.device_id, err)
                     self._working_ir_format = None
 
-            # First time format detection — test candidates synchronously (blocking=True) to find the valid format
-            transmission_attempts = [
-                ("Broadlink b64:", [f"b64:{ir_data['broadlink_b64']}"]),
-                ("Broadlink raw b64:", [ir_data["broadlink_b64"]]),
-                ("Tuya b64:", [ir_data["tuya_b64"]]),
-                ("Raw pulse array:", [ir_data["raw"]]),
-                ("Raw positive pulse array:", [[abs(p) for p in ir_data["raw"]]]),
-            ]
+            # Format detection / candidate list based on user configuration
+            fmt = str(self.ir_format or "auto").lower()
+            if fmt == "raw":
+                transmission_attempts = [
+                    ("Raw pulse array:", [ir_data["raw"]]),
+                    ("Raw positive pulse array:", [[abs(p) for p in ir_data["raw"]]]),
+                ]
+            elif fmt == "broadlink":
+                transmission_attempts = [
+                    ("Broadlink b64:", [f"b64:{ir_data['broadlink_b64']}"]),
+                    ("Broadlink raw b64:", [ir_data["broadlink_b64"]]),
+                ]
+            elif fmt == "tuya":
+                transmission_attempts = [
+                    ("Tuya b64:", [ir_data["tuya_b64"]]),
+                ]
+            else:
+                # Auto-detect: prioritize standard Raw microsecond pulses (ESPHome / HA), then Broadlink, then Tuya
+                transmission_attempts = [
+                    ("Raw pulse array:", [ir_data["raw"]]),
+                    ("Raw positive pulse array:", [[abs(p) for p in ir_data["raw"]]]),
+                    ("Broadlink b64:", [f"b64:{ir_data['broadlink_b64']}"]),
+                    ("Broadlink raw b64:", [ir_data["broadlink_b64"]]),
+                    ("Tuya b64:", [ir_data["tuya_b64"]]),
+                ]
 
             for label, cmd_payload in transmission_attempts:
                 try:
-                    LOGGER.info("Device %s: Testing IR payload format (%s) via remote.send_command -> %s", self.device_id, label, self.blaster_entity_id)
+                    LOGGER.info("Device %s: Transmitting IR payload (%s) via remote.send_command -> %s", self.device_id, label, self.blaster_entity_id)
                     await self.hass.services.async_call(
                         "remote",
                         "send_command",
                         {"entity_id": self.blaster_entity_id, "command": cmd_payload},
-                        blocking=True,
+                        blocking=False,
                     )
                     self._working_ir_format = label
                     LOGGER.info("Device %s: Locked in working IR format: %s", self.device_id, label)
