@@ -182,38 +182,6 @@
               "cv_40": "Converti 40%",
               "cv_0": "Converti Min (0%)"
             }
-          },
-          "swing_mode": {
-            "state": {
-              "Auto Swing": "Auto Swing",
-              "Top": "Top",
-              "High-Mid": "High-Mid",
-              "Mid": "Mid",
-              "Low-Mid": "Low-Mid",
-              "Bottom": "Bottom",
-              "V0": "Auto Swing",
-              "V1": "Top",
-              "V2": "High-Mid",
-              "V3": "Mid",
-              "V4": "Low-Mid",
-              "V5": "Bottom"
-            }
-          },
-          "swing_horizontal_mode": {
-            "state": {
-              "Auto Swing": "Auto Swing",
-              "Left": "Left",
-              "Left-Center": "Left-Center",
-              "Center": "Center",
-              "Right-Center": "Right-Center",
-              "Right": "Right",
-              "H0": "Auto Swing",
-              "H1": "Left",
-              "H2": "Left-Center",
-              "H3": "Center",
-              "H4": "Right-Center",
-              "H5": "Right"
-            }
           }
         }
       }
