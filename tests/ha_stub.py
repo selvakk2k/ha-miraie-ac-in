@@ -561,6 +561,11 @@ class MockEntry:
         return lambda: None
 
 
+class MockStates(dict):
+    def get(self, key, default=None):
+        return super().get(key, default)
+
+
 class MockHass:
     def __init__(self):
         self.data = {}
@@ -571,7 +576,7 @@ class MockHass:
         self.config_entries.async_update_entry = MagicMock()
         self.services = MagicMock()
         self.services.async_call = AsyncMock()
-        self.states = MagicMock()
+        self.states = MockStates()
         self.bus = MagicMock()
         self.bus.async_listen_once = MagicMock()
 

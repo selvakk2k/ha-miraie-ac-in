@@ -71,11 +71,13 @@
         "data": {
           "blaster_entity_id": "IR Transmitter Entity",
           "receiver_entity_id": "IR Receiver Entity (Optional)",
+          "room_temp_sensor": "Room Temperature Sensor (Optional)",
           "ir_format": "IR Protocol / Format"
         },
         "data_description": {
           "blaster_entity_id": "Entity used to transmit infrared commands to the AC unit.",
           "receiver_entity_id": "Optional entity used to listen for physical remote control button presses to synchronize state.",
+          "room_temp_sensor": "Optional external temperature sensor entity to report current room temperature for this AC.",
           "ir_format": "Encoding format expected by your IR blaster (e.g. Home Assistant Infrared, Tasmota MQTT, Broadlink Base64)."
         }
       },
@@ -112,6 +114,7 @@
           "install_date": "Energy History Start Date",
           "blaster_entity_id": "IR Transmitter Entity",
           "receiver_entity_id": "IR Receiver Entity (Optional)",
+          "room_temp_sensor": "Room Temperature Sensor (Optional)",
           "ir_format": "IR Protocol / Format",
           "primary_backend": "Primary Control",
           "hybrid_submode": "Hybrid Control Mode"
@@ -119,6 +122,7 @@
         "data_description": {
           "blaster_entity_id": "Entity used to transmit infrared commands to the AC unit.",
           "receiver_entity_id": "Optional entity used to listen for physical remote control button presses to synchronize state.",
+          "room_temp_sensor": "Optional external temperature sensor entity to report current room temperature for this AC.",
           "primary_backend": "Default transport used to dispatch commands in Hybrid mode.",
           "ir_format": "Encoding format expected by your IR transmitter (e.g. Hardware-Tested Native Infrared, Capture-Verified Tasmota MQTT, Broadlink/Tuya Base64)."
         }
@@ -130,6 +134,7 @@
           "install_date": "Energy History Start Date",
           "blaster_entity_id": "IR Transmitter Entity",
           "receiver_entity_id": "IR Receiver Entity (Optional)",
+          "room_temp_sensor": "Room Temperature Sensor (Optional)",
           "ir_format": "IR Protocol / Format",
           "primary_backend": "Primary Control",
           "hybrid_submode": "Hybrid Control Mode"
@@ -137,6 +142,7 @@
         "data_description": {
           "blaster_entity_id": "Entity used to transmit infrared commands to the AC unit.",
           "receiver_entity_id": "Optional entity used to listen for physical remote control button presses to synchronize state.",
+          "room_temp_sensor": "Optional external temperature sensor entity to report current room temperature for this AC.",
           "primary_backend": "Default transport used to dispatch commands in Hybrid mode.",
           "ir_format": "Encoding format expected by your IR transmitter (e.g. Hardware-Tested Native Infrared, Capture-Verified Tasmota MQTT, Broadlink/Tuya Base64)."
         }

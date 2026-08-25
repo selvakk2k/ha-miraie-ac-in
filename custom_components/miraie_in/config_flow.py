@@ -20,6 +20,7 @@ from .const import (
     CONF_INSTALL_DATE,
     CONF_BLASTER_ENTITY_ID,
     CONF_RECEIVER_ENTITY_ID,
+    CONF_ROOM_TEMP_SENSOR,
     CONF_IR_FORMAT,
     CONF_PRIMARY_BACKEND,
     CONF_HYBRID_SUBMODE,
@@ -82,6 +83,9 @@ def build_cloud_devices_schema(default_install_date: str) -> vol.Schema:
             ),
             vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["infrared", "remote", "event"])
+            ),
+            vol.Optional(CONF_ROOM_TEMP_SENSOR): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
             ),
             vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -592,6 +596,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             blaster_id = user_input.get(CONF_BLASTER_ENTITY_ID, "").strip()
             receiver_raw = user_input.get(CONF_RECEIVER_ENTITY_ID)
             receiver_id = "" if (receiver_raw is None or str(receiver_raw).lower() in ("none", "null", "")) else str(receiver_raw).strip()
+            temp_sensor_raw = user_input.get(CONF_ROOM_TEMP_SENSOR)
+            temp_sensor_id = "" if (temp_sensor_raw is None or str(temp_sensor_raw).lower() in ("none", "null", "")) else str(temp_sensor_raw).strip()
             ir_fmt = user_input.get(CONF_IR_FORMAT, "auto")
             if not blaster_id:
                 errors[CONF_BLASTER_ENTITY_ID] = "blaster_required"
@@ -608,6 +614,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_HYBRID_SUBMODE: "auto" if ctrl_mode == "hybrid" else "manual",
                     CONF_BLASTER_ENTITY_ID: blaster_id,
                     CONF_RECEIVER_ENTITY_ID: receiver_id,
+                    CONF_ROOM_TEMP_SENSOR: temp_sensor_id,
                     CONF_IR_FORMAT: ir_fmt,
                     "model_code": model_code,
                 }
@@ -621,6 +628,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["infrared", "remote", "event"])
+                ),
+                vol.Optional(CONF_ROOM_TEMP_SENSOR): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
                 ),
                 vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -753,6 +763,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["infrared", "remote", "event"])
+                ),
+                vol.Optional(CONF_ROOM_TEMP_SENSOR): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
                 ),
                 vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
                     selector.SelectSelectorConfig(

@@ -293,6 +293,47 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.coordinator.state["h_vane"], H2)
         self.assertEqual(self.climate.swing_horizontal_mode, SWING_H_LEFT_CENTER)
 
+    async def test_current_temperature_ir_only_without_sensor_returns_none(self):
+        """Test that IR-only AC without external temperature sensor returns None (no fake sensor)."""
+        ir_coord = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="ir_entry",
+            device_id="ir_dev",
+            model_code="CS-CU-KN18YKY",
+            has_wifi=False,
+            blaster_entity_id="infrared.blaster",
+        )
+        ir_device = MagicMock()
+        ir_device.id = "ir_dev"
+        ir_device.status = MagicMock()
+        ir_device.status.room_temperature = None
+        ir_climate = MirAIeClimate(ir_device, self.mock_entry, ir_coord)
+
+        self.assertIsNone(ir_climate.current_temperature)
+
+    async def test_current_temperature_with_optional_external_sensor(self):
+        """Test that configuring an external temperature sensor dynamically updates current_temperature."""
+        ir_coord = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="ir_entry",
+            device_id="ir_dev",
+            model_code="CS-CU-KN18YKY",
+            has_wifi=False,
+            blaster_entity_id="infrared.blaster",
+            temperature_sensor_entity_id="sensor.room_temp",
+        )
+        self.hass.states["sensor.room_temp"] = MagicMock(state="27.5")
+        ir_coord.async_setup_receiver()
+
+        ir_device = MagicMock()
+        ir_device.id = "ir_dev"
+        ir_device.status = MagicMock()
+        ir_device.status.room_temperature = None
+        ir_climate = MirAIeClimate(ir_device, self.mock_entry, ir_coord)
+        ir_climate.hass = self.hass
+
+        self.assertEqual(ir_climate.current_temperature, 27.5)
+
 
 if __name__ == "__main__":
     unittest.main()
