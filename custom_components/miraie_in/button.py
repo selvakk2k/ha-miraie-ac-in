@@ -52,10 +52,13 @@ async def async_setup_entry(
 
     for device in devices:
         entities.append(MirAIeCoilCleanButton(device))
-        # Energy stats buttons are only available for cloud (username) accounts.
-        # For IR-only entries there is no cloud API to fetch or rebuild energy history.
-        LOGGER.debug("[button.setup] device=%s is_ir_entry=%s → adding coil clean; energy=%s", device.id, is_ir_entry, not is_ir_entry)
-        if not is_ir_entry:
+        coordinator = coordinators.get(device.id)
+        has_wifi = getattr(coordinator, "has_wifi", True) if coordinator else getattr(getattr(device, "details", None), "has_wifi", True)
+
+        # Energy stats buttons are only available for cloud accounts with Wi-Fi connectivity.
+        # For IR-only devices there is no cloud API to fetch or rebuild energy history.
+        LOGGER.debug("[button.setup] device=%s is_ir_entry=%s has_wifi=%s → adding coil clean; energy=%s", device.id, is_ir_entry, has_wifi, not is_ir_entry and has_wifi)
+        if not is_ir_entry and has_wifi:
             entities.append(MirAIeRebuildEnergyStatsButton(hub, device))
             entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
 
