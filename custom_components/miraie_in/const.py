@@ -29,7 +29,7 @@ HYBRID_SUBMODE_AUTO = "auto"
 HYBRID_SUBMODE_MANUAL = "manual"
 
 
-# Possible swing state
+# Possible swing state codes
 H0 = "H0"
 H1 = "H1"
 H2 = "H2"
@@ -46,6 +46,84 @@ V5 = "V5"
 
 SWING_V_MAP = {0: V0, 1: V1, 2: V2, 3: V3, 4: V4, 5: V5}
 SWING_H_MAP = {0: H0, 1: H1, 2: H2, 3: H3, 4: H4, 5: H5}
+
+# Friendly Vane Position Constants
+SWING_AUTO = "Auto Swing"
+
+SWING_V_TOP = "Top"
+SWING_V_HIGH_MID = "High-Mid"
+SWING_V_MID = "Mid"
+SWING_V_LOW_MID = "Low-Mid"
+SWING_V_BOTTOM = "Bottom"
+
+SWING_H_LEFT = "Left"
+SWING_H_LEFT_CENTER = "Left-Center"
+SWING_H_CENTER = "Center"
+SWING_H_RIGHT_CENTER = "Right-Center"
+SWING_H_RIGHT = "Right"
+
+SWING_V_LIST = [SWING_AUTO, SWING_V_TOP, SWING_V_HIGH_MID, SWING_V_MID, SWING_V_LOW_MID, SWING_V_BOTTOM]
+SWING_H_LIST = [SWING_AUTO, SWING_H_LEFT, SWING_H_LEFT_CENTER, SWING_H_CENTER, SWING_H_RIGHT_CENTER, SWING_H_RIGHT]
+
+SWING_V_TO_CODE = {
+    SWING_AUTO: V0,
+    SWING_V_TOP: V1,
+    SWING_V_HIGH_MID: V2,
+    SWING_V_MID: V3,
+    SWING_V_LOW_MID: V4,
+    SWING_V_BOTTOM: V5,
+    V0: V0,
+    V1: V1,
+    V2: V2,
+    V3: V3,
+    V4: V4,
+    V5: V5,
+}
+
+SWING_CODE_TO_V_FRIENDLY = {
+    V0: SWING_AUTO,
+    V1: SWING_V_TOP,
+    V2: SWING_V_HIGH_MID,
+    V3: SWING_V_MID,
+    V4: SWING_V_LOW_MID,
+    V5: SWING_V_BOTTOM,
+    0: SWING_AUTO,
+    1: SWING_V_TOP,
+    2: SWING_V_HIGH_MID,
+    3: SWING_V_MID,
+    4: SWING_V_LOW_MID,
+    5: SWING_V_BOTTOM,
+}
+
+SWING_H_TO_CODE = {
+    SWING_AUTO: H0,
+    SWING_H_LEFT: H1,
+    SWING_H_LEFT_CENTER: H2,
+    SWING_H_CENTER: H3,
+    SWING_H_RIGHT_CENTER: H4,
+    SWING_H_RIGHT: H5,
+    H0: H0,
+    H1: H1,
+    H2: H2,
+    H3: H3,
+    H4: H4,
+    H5: H5,
+}
+
+SWING_CODE_TO_H_FRIENDLY = {
+    H0: SWING_AUTO,
+    H1: SWING_H_LEFT,
+    H2: SWING_H_LEFT_CENTER,
+    H3: SWING_H_CENTER,
+    H4: SWING_H_RIGHT_CENTER,
+    H5: SWING_H_RIGHT,
+    0: SWING_AUTO,
+    1: SWING_H_LEFT,
+    2: SWING_H_LEFT_CENTER,
+    3: SWING_H_CENTER,
+    4: SWING_H_RIGHT_CENTER,
+    5: SWING_H_RIGHT,
+}
 
 # Preset for Clean
 PRESET_CLEAN = "clean"
