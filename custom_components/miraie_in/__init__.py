@@ -465,7 +465,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry_id=entry.entry_id,
             device_id=device.id,
             model_code=model_code,
-            has_wifi=getattr(getattr(device, "details", None), "has_wifi", True) if not is_ir_only else False,
+            has_wifi=not is_ir_only,
             blaster_entity_id=blaster_id,
             receiver_entity_id=receiver_id,
             temperature_sensor_entity_id=temp_sensor_id,
@@ -478,7 +478,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator.async_setup_receiver()
         coordinators[device.id] = coordinator
 
-        if not is_ir_only and getattr(getattr(device, "details", None), "has_wifi", True):
+        if not is_ir_only:
             device.register_callback(_make_cloud_cb(hass, coordinator, device))
 
     setattr(hub, "coordinators", coordinators)

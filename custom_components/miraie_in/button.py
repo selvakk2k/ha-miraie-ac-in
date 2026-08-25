@@ -44,9 +44,9 @@ async def async_setup_entry(
 
     for device in devices:
         entities.append(MirAIeCoilCleanButton(device))
-        coord = coordinators.get(device.id)
-        has_wifi = getattr(coord, "has_wifi", True) if coord else (not is_ir_entry)
-        if not is_ir_entry and has_wifi:
+        # Energy stats buttons are only available for cloud (username) accounts.
+        # For IR-only entries there is no cloud API to fetch or rebuild energy history.
+        if not is_ir_entry:
             entities.append(MirAIeRebuildEnergyStatsButton(hub, device))
             entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
 

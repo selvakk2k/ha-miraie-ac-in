@@ -63,6 +63,8 @@ class MirAIeDeviceCoordinator:
         self.capabilities = self.lookup.get_capabilities(model_code)
 
         # State storage
+        # For cloud-capable Wi-Fi devices, always start as Cloud even if an IR blaster is also configured.
+        # "IR Blaster" / "IR Remote" are set at runtime when a command or physical press is detected.
         init_origin = "Cloud" if self.has_wifi else "IR Blaster"
         self.state: Dict[str, Any] = {
             "power": "off",
