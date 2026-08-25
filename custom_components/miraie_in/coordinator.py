@@ -491,13 +491,10 @@ class MirAIeDeviceCoordinator:
         # 1. Native Home Assistant Infrared platform receiver subscription
         # The infrared entity may not be loaded yet during integration startup, so we try
         # immediately and also retry from the state change listener on first availability.
-        _native_subscribe_attempted = False
-
         def _try_native_subscribe() -> bool:
             """Attempt to subscribe to the native IR receiver. Returns True on success."""
-            nonlocal _native_subscribe_attempted
-            if _native_subscribe_attempted or self._unsub_native_receiver:
-                return bool(self._unsub_native_receiver)
+            if self._unsub_native_receiver:
+                return True
             if not self.receiver_entity_id.startswith("infrared."):
                 return False
             try:
@@ -540,11 +537,9 @@ class MirAIeDeviceCoordinator:
                 self._unsub_native_receiver = async_subscribe_receiver(
                     self.hass, self.receiver_entity_id, _on_native_ir_signal
                 )
-                _native_subscribe_attempted = True
                 LOGGER.info("Device %s: Successfully registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
                 return True
             except Exception as err:
-                _native_subscribe_attempted = True
                 LOGGER.warning("Device %s: Native infrared subscription failed for %s: %s — will retry on entity availability", self.device_id, self.receiver_entity_id, err)
                 return False
 

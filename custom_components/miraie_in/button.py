@@ -36,7 +36,7 @@ async def async_setup_entry(
     hub: MirAIeHub = entry.runtime_data
 
     entry_data = getattr(entry, "data", {}) if isinstance(getattr(entry, "data", {}), dict) else {}
-    is_ir_entry = entry_data.get("is_ir_only", False) or "username" not in entry_data
+    is_ir_entry = entry_data.get("is_ir_only", False)
     coordinators = getattr(hub, "coordinators", {})
 
     devices = get_devices_for_entry(hub, entry)
