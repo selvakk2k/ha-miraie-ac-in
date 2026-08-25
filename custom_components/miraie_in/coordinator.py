@@ -54,6 +54,7 @@ class MirAIeDeviceCoordinator:
         self.hub: Any = None
         self._unsub_receiver: Optional[Callable[[], None]] = None
         self._unsub_native_receiver: Optional[Callable[[], None]] = None
+        self._unsub_retry: Optional[Callable[[], None]] = None
         self._unsub_event_bus: list[Callable[[], None]] = []
         self._unsub_temp: Optional[Callable[[], None]] = None
         self._last_physical_rx_timestamp: float = 0.0
@@ -537,6 +538,9 @@ class MirAIeDeviceCoordinator:
                 self._unsub_native_receiver = async_subscribe_receiver(
                     self.hass, self.receiver_entity_id, _on_native_ir_signal
                 )
+                if self._unsub_retry:
+                    self._unsub_retry()
+                    self._unsub_retry = None
                 LOGGER.info("Device %s: Successfully registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
                 return True
             except Exception as err:
@@ -544,7 +548,29 @@ class MirAIeDeviceCoordinator:
                 return False
 
         if self.receiver_entity_id.startswith("infrared."):
-            _try_native_subscribe()
+            if not _try_native_subscribe():
+                from homeassistant.helpers.start import async_at_started
+                from homeassistant.helpers.event import async_track_time_interval
+                from datetime import timedelta
+
+                @callback
+                def _async_on_ha_started(_: Any) -> None:
+                    LOGGER.info("Device %s: Home Assistant startup completed — retrying native IR receiver subscription", self.device_id)
+                    _try_native_subscribe()
+
+                if not self.hass.is_running:
+                    unsub_start = async_at_started(self.hass, _async_on_ha_started)
+                    self._unsub_event_bus.append(unsub_start)
+
+                @callback
+                def _periodic_native_sub_retry(_: Any) -> None:
+                    if _try_native_subscribe() and self._unsub_retry:
+                        self._unsub_retry()
+                        self._unsub_retry = None
+
+                self._unsub_retry = async_track_time_interval(
+                    self.hass, _periodic_native_sub_retry, timedelta(seconds=5)
+                )
 
         # 2. Event bus listener for ESPHome / IR hardware event broadcasts
         @callback
@@ -742,6 +768,9 @@ class MirAIeDeviceCoordinator:
         if self._unsub_native_receiver:
             self._unsub_native_receiver()
             self._unsub_native_receiver = None
+        if self._unsub_retry:
+            self._unsub_retry()
+            self._unsub_retry = None
         for unsub in self._unsub_event_bus:
             unsub()
         self._unsub_event_bus.clear()
