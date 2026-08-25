@@ -524,7 +524,14 @@ class MirAIeDeviceCoordinator:
                         len(raw_timings) if raw_timings else 0,
                     )
                     if raw_timings:
-                        decoded = decode_ir_code(raw_timings)
+                        LOGGER.info(
+                            "Device %s: [Native IR Callback] raw_timings type=%s len=%d first3=%r",
+                            self.device_id,
+                            type(raw_timings).__name__,
+                            len(raw_timings),
+                            list(raw_timings)[:3],
+                        )
+                        decoded = decode_ir_code(list(raw_timings))
                         LOGGER.info("Device %s: [Native IR Callback] decode_ir_code result: %r", self.device_id, decoded)
                         if decoded:
                             LOGGER.info("Device %s: Successfully applied physical remote state via native IR subscription: %s", self.device_id, decoded)
