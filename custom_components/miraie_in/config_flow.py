@@ -19,6 +19,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_INSTALL_DATE,
     CONF_BLASTER_ENTITY_ID,
+    CONF_RECEIVER_ENTITY_ID,
     CONF_IR_FORMAT,
     CONF_PRIMARY_BACKEND,
     CONF_HYBRID_SUBMODE,
@@ -556,6 +557,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             blaster_id = user_input.get(CONF_BLASTER_ENTITY_ID, "").strip()
+            receiver_raw = user_input.get(CONF_RECEIVER_ENTITY_ID)
+            receiver_id = "" if (receiver_raw is None or str(receiver_raw).lower() in ("none", "null", "")) else str(receiver_raw).strip()
             ir_fmt = user_input.get(CONF_IR_FORMAT, "auto")
             if not blaster_id:
                 errors[CONF_BLASTER_ENTITY_ID] = "blaster_required"
@@ -571,6 +574,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PRIMARY_BACKEND: "ir" if ctrl_mode == "ir" else "cloud",
                     CONF_HYBRID_SUBMODE: "auto" if ctrl_mode == "hybrid" else "manual",
                     CONF_BLASTER_ENTITY_ID: blaster_id,
+                    CONF_RECEIVER_ENTITY_ID: receiver_id,
                     CONF_IR_FORMAT: ir_fmt,
                     "model_code": model_code,
                 }
@@ -582,14 +586,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_BLASTER_ENTITY_ID): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["infrared", "remote"])
                 ),
+                vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=["sensor", "event", "remote", "infrared"])
+                ),
                 vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
                             selector.SelectOptionDict(value="auto", label="Auto-Detect (Recommended)"),
+                            selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome"),
+                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (MQTT)"),
                             selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (b64:...)"),
                             selector.SelectOptionDict(value="tuya", label="Tuya Base64"),
-                            selector.SelectOptionDict(value="raw", label="Raw Microsecond Pulses (ESPHome)"),
-                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (MQTT)"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -711,11 +718,26 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(CONF_BLASTER_ENTITY_ID): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["infrared", "remote"])
                 ),
+                vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=["sensor", "event", "remote", "infrared"])
+                ),
+                vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value="auto", label="Auto-Detect (Recommended)"),
+                            selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome"),
+                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (MQTT)"),
+                            selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (b64:...)"),
+                            selector.SelectOptionDict(value="tuya", label="Tuya Base64"),
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(CONF_PRIMARY_BACKEND): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            selector.SelectOptionDict(value="cloud", label="Cloud (Primary)"),
-                            selector.SelectOptionDict(value="ir", label="Infrared (Primary)"),
+                            selector.SelectOptionDict(value="cloud", label="Cloud"),
+                            selector.SelectOptionDict(value="ir", label="Infrared"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -761,6 +783,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         current_install = target_opt.get(CONF_INSTALL_DATE, current_options.get(CONF_INSTALL_DATE, default_install))
         current_blaster = target_opt.get(CONF_BLASTER_ENTITY_ID, current_options.get(CONF_BLASTER_ENTITY_ID, ""))
+        current_receiver = target_opt.get(CONF_RECEIVER_ENTITY_ID, current_options.get(CONF_RECEIVER_ENTITY_ID, ""))
+        current_ir_fmt = target_opt.get(CONF_IR_FORMAT, current_options.get(CONF_IR_FORMAT, "auto"))
         current_backend = target_opt.get(CONF_PRIMARY_BACKEND, current_options.get(CONF_PRIMARY_BACKEND, "cloud"))
         current_submode = target_opt.get(CONF_HYBRID_SUBMODE, current_options.get(CONF_HYBRID_SUBMODE, "auto"))
 
@@ -779,6 +803,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             suggested = {
                 CONF_INSTALL_DATE: current_install,
                 CONF_BLASTER_ENTITY_ID: current_blaster,
+                CONF_RECEIVER_ENTITY_ID: current_receiver,
+                CONF_IR_FORMAT: current_ir_fmt,
                 CONF_PRIMARY_BACKEND: current_backend,
                 CONF_HYBRID_SUBMODE: current_submode,
             }
@@ -822,6 +848,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         install_date_str = install_date.isoformat()
         blaster_raw = user_input.get(CONF_BLASTER_ENTITY_ID)
         blaster_val = "" if (blaster_raw is None or str(blaster_raw).lower() in ("none", "null", "")) else str(blaster_raw).strip()
+        receiver_raw = user_input.get(CONF_RECEIVER_ENTITY_ID)
+        receiver_val = "" if (receiver_raw is None or str(receiver_raw).lower() in ("none", "null", "")) else str(receiver_raw).strip()
+        ir_fmt_val = user_input.get(CONF_IR_FORMAT, "auto")
         backend_val = user_input.get(CONF_PRIMARY_BACKEND, "cloud")
 
         # If adding/re-adding an IR blaster (was empty, now set), default Hybrid Automatic Control to ON ("auto")
@@ -836,6 +865,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         new_options[CONF_INSTALL_DATE] = install_date_str
         new_options[CONF_BLASTER_ENTITY_ID] = blaster_val
+        new_options[CONF_RECEIVER_ENTITY_ID] = receiver_val
+        new_options[CONF_IR_FORMAT] = ir_fmt_val
         if model_code_val:
             new_options["model_code"] = model_code_val
         new_options[CONF_PRIMARY_BACKEND] = backend_val
@@ -846,6 +877,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             dev_entry = dict(new_devices.get(target_id, {}))
             dev_entry[CONF_INSTALL_DATE] = install_date_str
             dev_entry[CONF_BLASTER_ENTITY_ID] = blaster_val
+            dev_entry[CONF_RECEIVER_ENTITY_ID] = receiver_val
+            dev_entry[CONF_IR_FORMAT] = ir_fmt_val
             if model_code_val:
                 dev_entry["model_code"] = model_code_val
             dev_entry[CONF_PRIMARY_BACKEND] = backend_val

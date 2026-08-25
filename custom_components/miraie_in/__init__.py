@@ -24,6 +24,8 @@ import asyncio
 from .const import (
     CONF_INSTALL_DATE,
     CONF_BLASTER_ENTITY_ID,
+    CONF_RECEIVER_ENTITY_ID,
+    CONF_IR_FORMAT,
     CONF_PRIMARY_BACKEND,
     CONF_HYBRID_SUBMODE,
     DOMAIN,
@@ -462,8 +464,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     for device in target_devices:
         dev_opt = devices_opt.get(device.id, {})
         blaster_id = dev_opt.get(CONF_BLASTER_ENTITY_ID) or entry.options.get(CONF_BLASTER_ENTITY_ID)
+        receiver_id = dev_opt.get(CONF_RECEIVER_ENTITY_ID) or entry.options.get(CONF_RECEIVER_ENTITY_ID)
         primary = dev_opt.get(CONF_PRIMARY_BACKEND) or entry.options.get(CONF_PRIMARY_BACKEND, "cloud" if not is_ir_only else "ir")
         submode = dev_opt.get(CONF_HYBRID_SUBMODE) or entry.options.get(CONF_HYBRID_SUBMODE, "auto" if not is_ir_only else "manual")
+        ir_fmt = dev_opt.get(CONF_IR_FORMAT) or entry.options.get(CONF_IR_FORMAT) or dev_opt.get("working_ir_format") or entry.options.get("working_ir_format") or "auto"
 
         model_code = dev_opt.get("model_code") or entry.options.get("model_code") or getattr(getattr(device, "details", None), "model_number", "") or ""
 
@@ -474,12 +478,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             model_code=model_code,
             has_wifi=getattr(getattr(device, "details", None), "has_wifi", True) if not is_ir_only else False,
             blaster_entity_id=blaster_id,
+            receiver_entity_id=receiver_id,
             primary_backend=primary,
             hybrid_submode=submode,
-            ir_format=dev_opt.get("working_ir_format") or entry.options.get("working_ir_format") or "auto",
+            ir_format=ir_fmt,
             lookup=lookup,
         )
         coordinator.hub = hub
+        coordinator.async_setup_receiver()
         coordinators[device.id] = coordinator
 
         device.register_callback(_make_cloud_cb(hass, coordinator, device))
@@ -562,6 +568,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_data = getattr(entry, "data", {}) if isinstance(getattr(entry, "data", {}), dict) else {}
         username = entry_data.get("username", "").lower() if "username" in entry_data else None
         is_ir_only = entry_data.get("is_ir_only", False) or not username
+
+        hub_inst = getattr(entry, "runtime_data", None)
+        if hub_inst and hasattr(hub_inst, "coordinators"):
+            for c in getattr(hub_inst, "coordinators", {}).values():
+                if hasattr(c, "async_unload"):
+                    c.async_unload()
 
         if is_ir_only or not username:
             hub: MirAIeHub | None = getattr(entry, "runtime_data", None)
