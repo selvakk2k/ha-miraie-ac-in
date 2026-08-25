@@ -35,14 +35,20 @@ async def async_setup_entry(
     """Set up the MirAIe button platform."""
     hub: MirAIeHub = entry.runtime_data
 
+    entry_data = getattr(entry, "data", {}) if isinstance(getattr(entry, "data", {}), dict) else {}
+    is_ir_entry = entry_data.get("is_ir_only", False) or "username" not in entry_data
+    coordinators = getattr(hub, "coordinators", {})
+
     entities: list[ButtonEntity] = []
     devices = get_devices_for_entry(hub, entry)
 
-
     for device in devices:
         entities.append(MirAIeCoilCleanButton(device))
-        entities.append(MirAIeRebuildEnergyStatsButton(hub, device))
-        entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
+        coord = coordinators.get(device.id)
+        has_wifi = getattr(coord, "has_wifi", True) if coord else (not is_ir_entry)
+        if not is_ir_entry and has_wifi:
+            entities.append(MirAIeRebuildEnergyStatsButton(hub, device))
+            entities.append(MirAIeVerifyEnergyStatsButton(hub, device))
 
     async_add_entities(entities)
 

@@ -67,16 +67,16 @@ def _pulses_to_bytes(pulses: List[int]) -> List[int]:
     bit_count = 0
     idx = 0
     while idx < len(pulses) - 1:
-        m, s = pulses[idx], pulses[idx+1]
-        if (m > 3000 and -2000 < s < -1500) or s < -8000:
+        m, s = abs(pulses[idx]), abs(pulses[idx+1])
+        if (3000 < m < 4200 and 1400 < s < 2100) or s > 8000:
             if bit_count > 0:
                 bytes_list.append(current_byte)
                 current_byte = 0
                 bit_count = 0
             idx += 2
             continue
-        if m > 0 and s < 0:
-            bit = 1 if abs(s) > 800 else 0
+        if 200 < m < 800:
+            bit = 1 if s > 800 else 0
             current_byte |= (bit << bit_count)
             bit_count += 1
             if bit_count == 8:
@@ -349,7 +349,7 @@ def decode_ir_code(payload: Union[str, List[int], Dict[str, Any], bytes, bytearr
     elif isinstance(payload, (bytes, bytearray)):
         bytes_list = list(payload)
     elif isinstance(payload, (list, tuple)):
-        if len(payload) > 0 and isinstance(payload[0], int) and (payload[0] > 255 or (len(payload) > 1 and payload[1] < 0)):
+        if len(payload) > 0 and isinstance(payload[0], int) and (any(x > 255 or x < 0 for x in payload) or len(payload) > 32):
             bytes_list = _pulses_to_bytes(list(payload))
         else:
             bytes_list = [int(x) for x in payload]

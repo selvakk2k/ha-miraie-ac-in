@@ -227,19 +227,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "set_nanoe": _dummy_async_coro,
         })()
         hub.home.devices = [dummy_dev]
-        has_wifi = not entry.data.get("is_ir_only", False)
-        coord = MirAIeDeviceCoordinator(
-            hass,
-            entry_id=entry.entry_id,
-            device_id=dev_id,
-            model_code=model_code,
-            has_wifi=has_wifi,
-            control_mode="ir" if not has_wifi else "hybrid",
-            primary_backend=entry.options.get(CONF_PRIMARY_BACKEND, "ir"),
-            hybrid_submode="manual",
-            blaster_entity_id=entry.options.get(CONF_BLASTER_ENTITY_ID, ""),
-        )
-        setattr(hub, "coordinators", {dev_id: coord})
     else:
         sessions = hass.data.setdefault(DOMAIN, {}).setdefault("sessions", {})
         username_key = entry.data["username"].lower()
@@ -533,23 +520,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             task.add_done_callback(_log_backfill_result)
 
-    if hass.is_running:
-        hass.async_create_task(_run_startup_backfill(hass))
-    else:
-        entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
+    # Run nightly and startup backfill only for Wi-Fi / Cloud accounts
+    if not is_ir_only and has_username:
+        if hass.is_running:
+            hass.async_create_task(_run_startup_backfill(hass))
+        else:
+            entry.async_on_unload(async_at_started(hass, _run_startup_backfill))
 
-    async def nightly_backfill(now=None):
-        for device in target_devices:
-            backfill_start = _get_device_install_date(device.id)
-            task = hass.async_create_task(
-                async_backfill_energy_statistics(hass, hub, device, backfill_start)
-            )
-            task.add_done_callback(_log_backfill_result)
+        async def nightly_backfill(now=None):
+            for device in target_devices:
+                backfill_start = _get_device_install_date(device.id)
+                task = hass.async_create_task(
+                    async_backfill_energy_statistics(hass, hub, device, backfill_start)
+                )
+                task.add_done_callback(_log_backfill_result)
 
-
-    # Run nightly backfill at 02:05 AM IST to ensure Panasonic cloud servers have finalized yesterday's daily batch
-    unsub = async_track_time_change(hass, nightly_backfill, hour=2, minute=5, second=0)
-    entry.async_on_unload(unsub)
+        # Run nightly backfill at 02:05 AM IST to ensure Panasonic cloud servers have finalized yesterday's daily batch
+        unsub = async_track_time_change(hass, nightly_backfill, hour=2, minute=5, second=0)
+        entry.async_on_unload(unsub)
 
     return True
 

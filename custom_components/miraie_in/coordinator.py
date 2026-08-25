@@ -62,6 +62,7 @@ class MirAIeDeviceCoordinator:
         self.capabilities = self.lookup.get_capabilities(model_code)
 
         # State storage
+        init_origin = "Cloud" if self.has_wifi else "IR Blaster"
         self.state: Dict[str, Any] = {
             "power": "off",
             "mode": "cool",
@@ -73,7 +74,7 @@ class MirAIeDeviceCoordinator:
             "eco": False,
             "nanoe": False,
             "display": "on",
-            "last_controlled_by": "Cloud",
+            "last_controlled_by": init_origin,
             "provisional": False,
         }
 

@@ -39,6 +39,7 @@ custom_components/miraie_in/miraie.log
 appdaemon/
 ac_july_2026_analysis.db
 july_2026_ac_analysis_report.md
+test_config/
 
 # Testing & Coverage
 .pytest_cache/
