@@ -239,5 +239,54 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         )
 
 
+    async def test_eco_mode_snaps_temp_and_preserves_hardware_range(self):
+        """Test that activating Eco snaps temp to 26C while preserving full hardware min_temp/max_temp for service callers."""
+        from homeassistant.components.climate import PRESET_ECO
+        await self.climate.async_set_preset_mode(PRESET_ECO)
+        self.assertEqual(self.climate.preset_mode, PRESET_ECO)
+        self.assertEqual(self.coordinator.state["eco"], True)
+        self.assertEqual(self.coordinator.state["temperature"], 26)
+        self.assertEqual(self.climate.min_temp, 16.0)
+        self.assertEqual(self.climate.max_temp, 30.0)
+
+    async def test_adjusting_temperature_exits_eco_mode(self):
+        """Test that changing temperature automatically cancels Eco mode and restores temp range."""
+        from homeassistant.components.climate import PRESET_ECO
+        await self.climate.async_set_preset_mode(PRESET_ECO)
+        self.assertEqual(self.climate.preset_mode, PRESET_ECO)
+
+        # Now adjust temperature to 24C
+        await self.climate.async_set_temperature(temperature=24.0)
+        self.assertEqual(self.coordinator.state["eco"], False)
+        self.assertEqual(self.coordinator.state["active_preset"], "none")
+        self.assertEqual(self.climate.target_temperature, 24)
+        self.assertEqual(self.climate.min_temp, 16.0)
+        self.assertEqual(self.climate.max_temp, 30.0)
+
+    async def test_preset_modes_gated_by_hvac_mode(self):
+        """Test that non-Cool modes restrict preset_modes to [none]."""
+        from homeassistant.components.climate import PRESET_NONE, PRESET_ECO, PRESET_BOOST
+        self.coordinator.state["mode"] = "cool"
+        self.assertIn(PRESET_ECO, self.climate.preset_modes)
+        self.assertIn(PRESET_BOOST, self.climate.preset_modes)
+
+        self.coordinator.state["mode"] = "dry"
+        self.assertEqual(self.climate.preset_modes, [PRESET_NONE])
+
+    async def test_friendly_swing_modes(self):
+        """Test friendly swing mode mapping and bidirectional code compatibility."""
+        from custom_components.miraie_in.const import V1, H2, SWING_AUTO, SWING_V_TOP, SWING_H_LEFT_CENTER
+
+        # Set by friendly name
+        await self.climate.async_set_swing_mode(SWING_V_TOP)
+        self.assertEqual(self.coordinator.state["v_vane"], V1)
+        self.assertEqual(self.climate.swing_mode, SWING_V_TOP)
+
+        # Set by raw code (backward compatibility)
+        await self.climate.async_set_swing_horizontal_mode(H2)
+        self.assertEqual(self.coordinator.state["h_vane"], H2)
+        self.assertEqual(self.climate.swing_horizontal_mode, SWING_H_LEFT_CENTER)
+
+
 if __name__ == "__main__":
     unittest.main()

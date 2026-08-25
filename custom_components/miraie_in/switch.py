@@ -123,10 +123,11 @@ class MirAIeDisplaySwitch(SwitchEntity):
         broker = getattr(hub, "broker", None) if hub else None
         broker_connected = broker.connected.is_set() if (broker and hasattr(broker, "connected")) else True
         is_cloud_offline = (not getattr(getattr(self.device, "status", None), "is_online", True)) or (not broker_connected)
+        has_wifi = getattr(coord, "has_wifi", True) if coord else True
         use_ir_first = (
             coord and (
-                getattr(coord, "primary_backend", "cloud") == "ir"
-                or (is_cloud_offline and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None))
+                (not has_wifi)
+                or (is_cloud_offline and getattr(coord, "blaster_entity_id", None))
             )
         )
 

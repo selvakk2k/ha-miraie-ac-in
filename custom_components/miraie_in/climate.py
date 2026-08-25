@@ -47,6 +47,12 @@ from .const import (
     H3,
     H4,
     H5,
+    SWING_V_LIST,
+    SWING_H_LIST,
+    SWING_V_TO_CODE,
+    SWING_CODE_TO_V_FRIENDLY,
+    SWING_H_TO_CODE,
+    SWING_CODE_TO_H_FRIENDLY,
     CONVERTI_8IN1_PRESET_MODES,
     CONVERTI_7IN1_PRESET_MODES,
     get_converti_preset_modes,
@@ -117,7 +123,7 @@ class MirAIeClimate(ClimateEntity):
             HVACMode.FAN_ONLY,
         ]
 
-        self._attr_preset_modes = [
+        self._base_preset_modes = [
             PRESET_NONE,
             PRESET_ECO,
             PRESET_BOOST,
@@ -131,7 +137,7 @@ class MirAIeClimate(ClimateEntity):
             FAN_HIGH,
             "quiet",
         ]
-        self._attr_swing_modes = [V0, V1, V2, V3, V4, V5]
+        self._attr_swing_modes = list(SWING_V_LIST)
 
         features = (
             ClimateEntityFeature.TARGET_TEMPERATURE
@@ -143,7 +149,7 @@ class MirAIeClimate(ClimateEntity):
         )
 
         if has_h_vane:
-            self._attr_swing_horizontal_modes = [H0, H1, H2, H3, H4, H5]
+            self._attr_swing_horizontal_modes = list(SWING_H_LIST)
             features |= ClimateEntityFeature.SWING_HORIZONTAL_MODE
         else:
             self._attr_swing_horizontal_modes = []
@@ -324,6 +330,14 @@ class MirAIeClimate(ClimateEntity):
             return HVACMode.COOL
 
     @property
+    def min_temp(self) -> float:
+        return self._attr_min_temp
+
+    @property
+    def max_temp(self) -> float:
+        return self._attr_max_temp
+
+    @property
     def current_temperature(self) -> float | None:
         coord = getattr(self, "coordinator", None)
         if coord and coord.state and "room_temperature" in coord.state:
@@ -339,6 +353,12 @@ class MirAIeClimate(ClimateEntity):
         if temp is None:
             return None
         return int(round(temp))
+
+    @property
+    def preset_modes(self) -> list[str]:
+        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF):
+            return [PRESET_NONE]
+        return self._base_preset_modes
 
     @property
     def preset_mode(self) -> str | None:
@@ -395,56 +415,20 @@ class MirAIeClimate(ClimateEntity):
         coord = getattr(self, "coordinator", None)
         if coord and coord.state and "v_vane" in coord.state:
             v_val = coord.state["v_vane"]
-            if v_val == "V1": return V1
-            elif v_val == "V2": return V2
-            elif v_val == "V3": return V3
-            elif v_val == "V4": return V4
-            elif v_val == "V5": return V5
-            elif v_val in ("AUTO", "V0"): return V0
-            return str(v_val)
+            return SWING_CODE_TO_V_FRIENDLY.get(v_val, str(v_val))
 
         mode = self.device.status.v_swing_mode.value
-
-        if mode == 1:
-            return V1
-        elif mode == 2:
-            return V2
-        elif mode == 3:
-            return V3
-        elif mode == 4:
-            return V4
-        elif mode == 5:
-            return V5
-        else:
-            return V0
+        return SWING_CODE_TO_V_FRIENDLY.get(mode, SWING_CODE_TO_V_FRIENDLY.get(V0, SWING_AUTO))
 
     @property
     def swing_horizontal_mode(self) -> str | None:
         coord = getattr(self, "coordinator", None)
         if coord and coord.state and "h_vane" in coord.state:
             h_val = coord.state["h_vane"]
-            if h_val == "H1": return H1
-            elif h_val == "H2": return H2
-            elif h_val == "H3": return H3
-            elif h_val == "H4": return H4
-            elif h_val == "H5": return H5
-            elif h_val in ("AUTO", "H0"): return H0
-            return str(h_val)
+            return SWING_CODE_TO_H_FRIENDLY.get(h_val, str(h_val))
 
         mode = self.device.status.h_swing_mode.value
-
-        if mode == 1:
-            return H1
-        elif mode == 2:
-            return H2
-        elif mode == 3:
-            return H3
-        elif mode == 4:
-            return H4
-        elif mode == 5:
-            return H5
-        else:
-            return H0
+        return SWING_CODE_TO_H_FRIENDLY.get(mode, SWING_CODE_TO_H_FRIENDLY.get(H0, SWING_AUTO))
 
 
     async def async_turn_off(self) -> None:
@@ -461,11 +445,15 @@ class MirAIeClimate(ClimateEntity):
         target_temp = int(round(raw_temp))
         LOGGER.debug(f"Set temperature to {target_temp}")
 
+        # If Eco mode is active, adjusting temperature automatically exits Eco mode
+        is_eco_active = (self.preset_mode == PRESET_ECO) or bool(getattr(getattr(self, "coordinator", None), "state", {}).get("eco"))
+
         # Update optimistic UI state immediately for instant response
         coord = getattr(self, "coordinator", None)
         if coord:
             coord.async_optimistic_update(
                 target_temp=target_temp,
+                eco=False if is_eco_active else None,
                 origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "Cloud",
             )
             if hasattr(self, "async_write_ha_state"):
@@ -476,7 +464,9 @@ class MirAIeClimate(ClimateEntity):
 
         # Dispatch command immediately to physical AC / Cloud with zero artificial delay
         await self._send_command_via_hybrid(
-            temp=target_temp, cloud_coro=self.device.set_temperature(target_temp)
+            temp=target_temp,
+            eco=False if is_eco_active else None,
+            cloud_coro=self.device.set_temperature(target_temp),
         )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -508,32 +498,39 @@ class MirAIeClimate(ClimateEntity):
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         LOGGER.debug(f"Set swing vertical mode to {swing_mode}")
+        v_code = SWING_V_TO_CODE.get(swing_mode, V0)
         swing_num = 0
-        if swing_mode == V1: swing_num = 1
-        elif swing_mode == V2: swing_num = 2
-        elif swing_mode == V3: swing_num = 3
-        elif swing_mode == V4: swing_num = 4
-        elif swing_mode == V5: swing_num = 5
+        if v_code == V1: swing_num = 1
+        elif v_code == V2: swing_num = 2
+        elif v_code == V3: swing_num = 3
+        elif v_code == V4: swing_num = 4
+        elif v_code == V5: swing_num = 5
 
-        await self._send_command_via_hybrid(v_vane=swing_mode, cloud_coro=self.device.set_v_swing_mode(SwingMode(swing_num)))
+        await self._send_command_via_hybrid(v_vane=v_code, cloud_coro=self.device.set_v_swing_mode(SwingMode(swing_num)))
 
     async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
         LOGGER.debug(f"Set swing horizontal mode to {swing_horizontal_mode}")
+        h_code = SWING_H_TO_CODE.get(swing_horizontal_mode, H0)
         swing_num = 0
-        if swing_horizontal_mode == H1: swing_num = 1
-        elif swing_horizontal_mode == H2: swing_num = 2
-        elif swing_horizontal_mode == H3: swing_num = 3
-        elif swing_horizontal_mode == H4: swing_num = 4
-        elif swing_horizontal_mode == H5: swing_num = 5
+        if h_code == H1: swing_num = 1
+        elif h_code == H2: swing_num = 2
+        elif h_code == H3: swing_num = 3
+        elif h_code == H4: swing_num = 4
+        elif h_code == H5: swing_num = 5
 
-        await self._send_command_via_hybrid(h_vane=swing_horizontal_mode, cloud_coro=self.device.set_h_swing_mode(SwingMode(swing_num)))
+        await self._send_command_via_hybrid(h_vane=h_code, cloud_coro=self.device.set_h_swing_mode(SwingMode(swing_num)))
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
 
         LOGGER.debug(f"Set preset mode to {preset_mode}")
 
+        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF) and preset_mode not in (PRESET_NONE, "none", "None", None):
+            LOGGER.warning("Preset '%s' is not available in %s mode (Cool mode only)", preset_mode, self.hvac_mode)
+            return
+
         eco_val = None
         mode_val = None
+        target_temp_val = None
         cloud_coro = None
 
         if preset_mode in (PRESET_NONE, "none", "None", None):
@@ -551,6 +548,7 @@ class MirAIeClimate(ClimateEntity):
 
         elif preset_mode == PRESET_ECO:
             eco_val = True
+            target_temp_val = 26
             cloud_coro = self.device.set_preset_mode(PresetMode.ECO)
         elif preset_mode == PRESET_BOOST:
             eco_val = False
@@ -574,6 +572,7 @@ class MirAIeClimate(ClimateEntity):
 
                     cloud_coro = _clear_converti_and_preset()
                 else:
+                    eco_val = False
                     try:
                         c_enum = ConvertiMode(int(perc_str))
                         cloud_coro = self.device.set_converti_mode(c_enum)
@@ -592,6 +591,7 @@ class MirAIeClimate(ClimateEntity):
         await self._send_command_via_hybrid(
             eco=eco_val,
             mode=mode_val,
+            temp=target_temp_val,
             cloud_coro=cloud_coro,
         )
 

@@ -203,7 +203,7 @@ def generate_ir_code(
     b[13] = mode_map.get(mode_key, 0x39)
 
     if mode_key not in ["fan_only", "fan"]:
-        t_val = max(16, min(30, int(target_temp)))
+        t_val = 26 if eco else max(16, min(30, int(target_temp)))
         b[14] = (t_val - 16) * 2 + 0x20
 
     if mode_key == "dry":
@@ -233,8 +233,6 @@ def generate_ir_code(
         preset_byte = 0x20
     elif mode_key in ("powerful", "boost"):
         preset_byte = 0x01
-    elif eco:
-        preset_byte = 0x02
     elif mode_key.startswith("converti_"):
         perc = mode_key.split("_")[1]
         perc_map = {
@@ -288,7 +286,8 @@ def generate_ir_code(
     set_frame2_byte(18, b[26])
 
     ahea = bytes_to_ahea_hex(b)
-    desc = f"{series_label} | {mode_key.upper()} {target_temp}°C (Fan: {fan}, V-Vane: {v_vane}, H-Vane: {h_vane or 'Mirrored'} [{louver_type}], ECO: {'ON' if eco else 'OFF'}, NANOE: {'ON' if nanoe else 'OFF'})"
+    actual_temp = 26 if eco else target_temp
+    desc = f"{series_label} | {mode_key.upper()} {actual_temp}°C (Fan: {fan}, V-Vane: {v_vane}, H-Vane: {h_vane or 'Mirrored'} [{louver_type}], ECO: {'ON' if eco else 'OFF'}, NANOE: {'ON' if nanoe else 'OFF'})"
 
     return {
         "raw": new_pulses,

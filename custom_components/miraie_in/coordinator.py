@@ -125,20 +125,35 @@ class MirAIeDeviceCoordinator:
             md_val = str(cloud_data["md"]).lower()
             if md_val not in ("powerful", "boost", "clean") and not md_val.startswith("converti_"):
                 self.state["mode"] = md_val
+                if md_val != "cool":
+                    self.state["active_preset"] = "none"
+                    self.state["converti"] = "cv_off"
+                    self.state["eco"] = False
 
         conv_val = cloud_data.get("converti")
         preset_val = str(cloud_data.get("preset", "")).lower()
+        eco_val = str(cloud_data.get("acec", "")).lower() in ["on", "1", "true"]
 
-        if conv_val and int(conv_val) > 0:
+        if eco_val:
+            self.state["eco"] = True
+            self.state["active_preset"] = "eco"
+            self.state["converti"] = "cv_off"
+            if not in_ir_grace_window:
+                self.state["temperature"] = 26
+        elif conv_val and int(conv_val) > 0:
+            self.state["eco"] = False
             self.state["converti"] = f"cv_{conv_val}"
             self.state["active_preset"] = f"cv_{conv_val}"
         elif preset_val in ("boost", "powerful"):
+            self.state["eco"] = False
             self.state["active_preset"] = "powerful"
+            self.state["converti"] = "cv_off"
         elif preset_val == "clean":
+            self.state["eco"] = False
             self.state["active_preset"] = "clean"
-        elif preset_val == "eco":
-            self.state["active_preset"] = "eco"
+            self.state["converti"] = "cv_off"
         else:
+            self.state["eco"] = False
             if not in_ir_grace_window:
                 if self.primary_backend != "ir" or not self.state.get("provisional"):
                     self.state["active_preset"] = "none"
@@ -161,8 +176,6 @@ class MirAIeDeviceCoordinator:
         if "achs" in cloud_data:
             if not in_ir_grace_window or str(cloud_data["achs"]).upper() == self.state.get("h_vane"):
                 self.state["h_vane"] = str(cloud_data["achs"]).upper()
-        if "acec" in cloud_data:
-            self.state["eco"] = str(cloud_data["acec"]).lower() in ["on", "1", "true"]
         if "acngs" in cloud_data:
             self.state["nanoe"] = str(cloud_data["acngs"]).lower() in ["on", "1", "true"]
 
@@ -396,10 +409,12 @@ class MirAIeDeviceCoordinator:
                 self.state["power"] = "on"
                 self.state["active_preset"] = "powerful"
                 self.state["eco"] = False
+                self.state["converti"] = "cv_off"
             elif mode == "clean":
                 self.state["power"] = "on"
                 self.state["active_preset"] = "clean"
                 self.state["eco"] = False
+                self.state["converti"] = "cv_off"
             elif mode.startswith("converti_"):
                 self.state["power"] = "on"
                 step = mode.split("_")[1]
@@ -418,9 +433,19 @@ class MirAIeDeviceCoordinator:
             else:
                 self.state["power"] = "on"
                 self.state["mode"] = mode
-                # Preserve active convertible or boost preset unless turned off or reset via eco
+                if mode != "cool":
+                    self.state["active_preset"] = "none"
+                    self.state["converti"] = "cv_off"
+                    self.state["eco"] = False
+
         if target_temp is not None:
             self.state["temperature"] = target_temp
+            # Adjusting temperature cancels Eco mode if eco was not explicitly set
+            if eco is None and self.state.get("eco"):
+                self.state["eco"] = False
+                if self.state.get("active_preset") == "eco":
+                    self.state["active_preset"] = "none"
+
         if fan is not None:
             self.state["fan_speed"] = fan
         if v_vane is not None:
@@ -430,8 +455,12 @@ class MirAIeDeviceCoordinator:
         if eco is not None:
             self.state["eco"] = eco
             if eco:
-                self.state["active_preset"] = "none"
+                self.state["active_preset"] = "eco"
                 self.state["converti"] = "cv_off"
+                self.state["temperature"] = 26
+            else:
+                if self.state.get("active_preset") == "eco":
+                    self.state["active_preset"] = "none"
         if nanoe is not None:
             self.state["nanoe"] = nanoe
         if display is not None:
