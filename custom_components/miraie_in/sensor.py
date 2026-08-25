@@ -560,11 +560,8 @@ class MirAIeControlSourceSensor(SensorEntity):
     @property
     def native_value(self) -> str:
         if self.coordinator and self.coordinator.state:
-            last_by = self.coordinator.state.get("last_controlled_by", "Cloud")
-            if last_by in ["Cloud", "IR"]:
-                return last_by
-            return "External"
-        return "External"
+            return str(self.coordinator.state.get("last_controlled_by", "Cloud"))
+        return "Cloud"
 
     @property
     def extra_state_attributes(self) -> dict[str, str]:
