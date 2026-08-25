@@ -87,7 +87,7 @@ class TestIRReceiverSync(unittest.TestCase):
         coordinator.async_setup_receiver()
 
         # Simulate transmission happened 0.5s ago
-        coordinator._last_ir_command_timestamp = time.time()
+        coordinator._last_ir_command_timestamp = time.monotonic()
         initial_temp = coordinator.state["temperature"]
 
         # Receiver hears a command with a different temperature (e.g. 18°C)
@@ -103,11 +103,41 @@ class TestIRReceiverSync(unittest.TestCase):
         self.assertEqual(coordinator.state["temperature"], initial_temp)
 
         # Simulate 2.0s passed
-        coordinator._last_ir_command_timestamp = time.time() - 2.0
+        coordinator._last_ir_command_timestamp = time.monotonic() - 2.0
         self.listeners["sensor.ir_rx"](event)
 
         # Now it is accepted and state updates to 18°C
         self.assertEqual(coordinator.state["temperature"], 18)
+
+    def test_ir_receiver_state_sync_from_attributes(self):
+        """Verify receiving code in attributes when state is an ISO timestamp (like native infrared entities)."""
+        coordinator = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="test_entry",
+            device_id="ac_living_room",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            receiver_entity_id="infrared.ir_rx",
+        )
+        coordinator.async_setup_receiver()
+        self.assertIn("infrared.ir_rx", self.listeners)
+
+        # Generate a Cool 24°C, Mid Fan IR frame
+        ir = generate_ir_code(mode="cool", target_temp=24, fan="mid", series="EU")
+
+        # Simulate state being a timestamp and code stored in attributes["data"]
+        event = MagicMock()
+        event.data = {
+            "new_state": MagicMock(
+                state="2026-08-26T02:05:00+00:00",
+                attributes={"data": ir["aeha_hex"]}
+            )
+        }
+
+        self.listeners["infrared.ir_rx"](event)
+        self.assertEqual(coordinator.state["temperature"], 24)
+        self.assertEqual(coordinator.state["fan_speed"], "medium")
+        self.assertEqual(coordinator.state["last_controlled_by"], "IR Remote")
 
     def test_ir_receiver_short_frame_actions(self):
         """Verify dedicated 16-byte short-frame actions update presets and display."""
