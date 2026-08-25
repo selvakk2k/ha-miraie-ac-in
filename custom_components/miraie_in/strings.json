@@ -2,15 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select Integration Setup Mode",
+        "title": "Select Setup Mode",
         "description": "Choose how you want to configure your Panasonic AC units.",
         "menu_options": {
-          "cloud_account": "Auto Detect",
-          "ir_device": "Manual Setup"
+          "cloud_account": "MirAIe Cloud (Wi-Fi Models)",
+          "ir_device": "Infrared Remote (Non-Wi-Fi Models)"
         },
         "menu_option_descriptions": {
-          "cloud_account": "For Wi-Fi models — requires MirAIe Cloud login",
-          "ir_device": "For standalone IR-only or non-Wi-Fi models — no account needed"
+          "cloud_account": "Connect all Wi-Fi enabled Panasonic AC units via your MirAIe account.",
+          "ir_device": "Configure a standalone AC unit using an IR blaster without a cloud account."
         }
       },
       "cloud_account": {
@@ -23,37 +23,46 @@
       },
       "cloud_devices": {
         "title": "Configure {device_name}",
-        "description": "Configuring control transport and options for **{device_name}** ({model_display}). Leaving IR Blaster empty selects Cloud-Only mode.",
+        "description": "Configuring control transport and options for **{device_name}** ({model_display}). Leaving IR Transmitter empty selects Cloud-Only mode.",
         "data": {
-          "primary_backend": "Primary Transport Backend",
-          "hybrid_submode": "Hybrid Failover Strategy",
-          "blaster_entity_id": "IR Blaster / Transmitter Entity",
+          "primary_backend": "Primary Control",
+          "hybrid_submode": "Hybrid Failover",
+          "blaster_entity_id": "IR Transmitter Entity (Optional)",
+          "receiver_entity_id": "IR Receiver Entity (Optional)",
+          "ir_format": "IR Protocol / Format",
           "install_date": "Energy History Start Date"
+        },
+        "data_description": {
+          "blaster_entity_id": "Optional IR blaster entity used to transmit commands locally.",
+          "receiver_entity_id": "Optional entity used to listen for physical remote button presses.",
+          "primary_backend": "Default transport used to dispatch commands in Hybrid mode.",
+          "ir_format": "Encoding format expected by your IR transmitter."
         }
       },
       "ir_device": {
         "title": "Step 1: Model Details",
-        "description": "Enter a name and Panasonic model code for your AC unit.",
+        "description": "Enter a friendly name and the model code from your indoor unit's side label (e.g. CS-CU-RU18CKY-1, CS-KN12AKY).",
         "data": {
           "name": "AC Unit Name (e.g. Living Room AC)",
-          "model_code": "Panasonic AC Model Code (e.g. CS-CU-RU18CKY-1)"
+          "model_code": "Panasonic AC Model Code"
         }
       },
       "feature_confirmation": {
         "title": "Step 2: Capabilities",
         "description": "Auto-detected hardware capabilities for model **{model_code}** ({resolved_via}). Adjust feature overrides if needed:",
         "data": {
-          "control_mode": "Control Mode Selection",
+          "control_mode": "Control Mode",
           "has_heat_mode": "Heat Mode Support (Hot & Cold)",
-          "has_nanoe": "Nanoe Air Purifier Feature",
-          "converti_type": "Converti Mode Tier",
-          "h_vane_enabled": "Horizontal Louver / Swing Support"
+          "has_nanoe": "Nanoe Air Purifier",
+          "converti_type": "Convertible Capacity Modes",
+          "h_vane_enabled": "Horizontal Swing (Left / Right)"
         },
         "data_description": {
+          "control_mode": "Choose whether to control via IR only or combine with MirAIe Cloud in Hybrid mode.",
           "has_heat_mode": "Enable if your Panasonic AC is a Hot & Cold model capable of heating.",
           "has_nanoe": "Enable if your AC unit features nanoe-G or nanoe-X air purification.",
           "converti_type": "Select your AC's convertible capacity tier (8-in-1, 7-in-1, or None).",
-          "h_vane_enabled": "Enable if your AC unit has motorized horizontal swing louvers."
+          "h_vane_enabled": "Enable if your AC unit has motorized left-to-right horizontal swing vanes."
         }
       },
       "attach_blaster": {
@@ -110,7 +119,7 @@
           "blaster_entity_id": "Entity used to transmit infrared commands to the AC unit.",
           "receiver_entity_id": "Optional entity used to listen for physical remote control button presses to synchronize state.",
           "primary_backend": "Default transport used to dispatch commands in Hybrid mode.",
-          "ir_format": "Encoding format expected by your IR transmitter."
+          "ir_format": "Encoding format expected by your IR transmitter (e.g. Hardware-Tested Native Infrared, Capture-Verified Tasmota MQTT, Broadlink/Tuya Base64)."
         }
       },
       "device_settings": {
@@ -128,7 +137,7 @@
           "blaster_entity_id": "Entity used to transmit infrared commands to the AC unit.",
           "receiver_entity_id": "Optional entity used to listen for physical remote control button presses to synchronize state.",
           "primary_backend": "Default transport used to dispatch commands in Hybrid mode.",
-          "ir_format": "Encoding format expected by your IR transmitter."
+          "ir_format": "Encoding format expected by your IR transmitter (e.g. Hardware-Tested Native Infrared, Capture-Verified Tasmota MQTT, Broadlink/Tuya Base64)."
         }
       }
     },

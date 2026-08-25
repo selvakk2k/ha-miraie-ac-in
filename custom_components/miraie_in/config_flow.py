@@ -593,10 +593,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.SelectSelectorConfig(
                         options=[
                             selector.SelectOptionDict(value="auto", label="Auto-Detect (Recommended)"),
-                            selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome"),
-                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (MQTT)"),
-                            selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (b64:...)"),
-                            selector.SelectOptionDict(value="tuya", label="Tuya Base64"),
+                            selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome (Hardware-Tested & Confirmed)"),
+                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (Capture Verified)"),
+                            selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (Format Verified)"),
+                            selector.SelectOptionDict(value="tuya", label="Tuya Base64 (Format Verified)"),
+                            selector.SelectOptionDict(value="pronto", label="Pronto Hex (Experimental)"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -725,10 +726,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             selector.SelectOptionDict(value="auto", label="Auto-Detect (Recommended)"),
-                            selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome"),
-                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (MQTT)"),
-                            selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (b64:...)"),
-                            selector.SelectOptionDict(value="tuya", label="Tuya Base64"),
+                            selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome (Hardware-Tested & Confirmed)"),
+                            selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (Capture Verified)"),
+                            selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (Format Verified)"),
+                            selector.SelectOptionDict(value="tuya", label="Tuya Base64 (Format Verified)"),
+                            selector.SelectOptionDict(value="pronto", label="Pronto Hex (Experimental)"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
