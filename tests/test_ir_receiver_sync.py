@@ -243,10 +243,11 @@ class TestIRReceiverSync(unittest.TestCase):
             coordinator.async_setup_receiver()
             self.assertIsNotNone(native_sub_callback)
 
-            # Generate raw pulses for Cool 23°C
+            # Generate raw pulses for Cool 23°C (convert to positive-only timings as sent by ESPHome / HA)
             ir = generate_ir_code(mode="cool", target_temp=23, fan="low", series="EU")
+            positive_timings = [abs(p) for p in ir["raw"]]
             signal_mock = MagicMock()
-            signal_mock.timings = ir["raw"]
+            signal_mock.timings = positive_timings
 
             native_sub_callback(signal_mock)
             self.assertEqual(coordinator.state["temperature"], 23)
