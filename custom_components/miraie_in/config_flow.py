@@ -597,7 +597,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (Capture Verified)"),
                             selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (Format Verified)"),
                             selector.SelectOptionDict(value="tuya", label="Tuya Base64 (Format Verified)"),
-                            selector.SelectOptionDict(value="pronto", label="Pronto Hex (Experimental)"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -730,7 +729,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (Capture Verified)"),
                             selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (Format Verified)"),
                             selector.SelectOptionDict(value="tuya", label="Tuya Base64 (Format Verified)"),
-                            selector.SelectOptionDict(value="pronto", label="Pronto Hex (Experimental)"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
