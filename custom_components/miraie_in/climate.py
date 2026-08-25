@@ -214,7 +214,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
+                origin="IR Blaster" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
                 if cloud_coro and hasattr(cloud_coro, "close"):

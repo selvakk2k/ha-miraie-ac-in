@@ -146,7 +146,7 @@ class MirAIeDisplaySwitch(SwitchEntity):
             success = await coord.async_dispatch_ir_command(
                 mode="display",
                 display=turn_on,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
+                origin="IR Blaster" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
                 return
@@ -256,7 +256,7 @@ class MirAIeNanoeSwitch(SwitchEntity):
         if use_ir_first and coord:
             success = await coord.async_dispatch_ir_command(
                 nanoe=turn_on,
-                origin="IR" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
+                origin="IR Blaster" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
                 return

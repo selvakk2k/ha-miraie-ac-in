@@ -126,7 +126,7 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
         coord_ir.state["v_vane"] = "V2"
 
         await switch.async_turn_off()
-        coord_ir.async_dispatch_ir_command.assert_awaited_with(mode="display", display=False, origin="IR")
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(mode="display", display=False, origin="IR Blaster")
         self.assertEqual(coord_ir.state.get("display"), "off")
         # Ensure climate HVAC mode and temperature were NOT altered by display toggle
         self.assertEqual(coord_ir.state.get("mode"), "cool")
@@ -164,7 +164,7 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(switch.available)
 
         await switch.async_turn_on()
-        coord_ir.async_dispatch_ir_command.assert_awaited_with(nanoe=True, origin="IR")
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(nanoe=True, origin="IR Blaster")
         self.assertTrue(coord_ir.state.get("nanoe"))
 
     async def test_coil_clean_button_press(self):
