@@ -32,6 +32,7 @@ class MirAIeDeviceCoordinator:
         hybrid_submode: str = "auto",  # "auto" or "manual"
         blaster_entity_id: Optional[str] = None,
         receiver_entity_id: Optional[str] = None,
+        temperature_sensor_entity_id: Optional[str] = None,
         ir_format: str = "auto",
         lookup=None,
         subentry_id: Optional[str] = None,  # Backward-compatible alias
@@ -48,9 +49,11 @@ class MirAIeDeviceCoordinator:
         self.hybrid_submode = hybrid_submode
         self.blaster_entity_id = blaster_entity_id
         self.receiver_entity_id = receiver_entity_id
+        self.temperature_sensor_entity_id = temperature_sensor_entity_id
         self.ir_format = ir_format
         self.hub: Any = None
         self._unsub_receiver: Optional[Callable[[], None]] = None
+        self._unsub_temp: Optional[Callable[[], None]] = None
 
         # Resolve hardware capabilities
         self.lookup = lookup if lookup is not None else ACModelLookup()
@@ -290,10 +293,20 @@ class MirAIeDeviceCoordinator:
                     await async_send_command(self.hass, self.blaster_entity_id, cmd_obj)
                     return True
                 except Exception as err:
-                    LOGGER.error("Native infrared transmission failed for %s: %s", self.device_id, err)
-                    return False
+                    LOGGER.debug("Native infrared helper threw exception for %s: %s, attempting infrared.send_command service call", self.device_id, err)
 
-            return False
+            try:
+                LOGGER.info("Device %s: Transmitting IR via infrared.send_command -> %s", self.device_id, self.blaster_entity_id)
+                await self.hass.services.async_call(
+                    "infrared",
+                    "send_command",
+                    {"entity_id": self.blaster_entity_id, "command": ir_data["raw"]},
+                    blocking=False,
+                )
+                return True
+            except Exception as s_err:
+                LOGGER.error("Device %s: infrared transmission failed: %s", self.device_id, s_err)
+                return False
 
 
 
@@ -518,10 +531,37 @@ class MirAIeDeviceCoordinator:
             LOGGER.info("Device %s: Successfully decoded physical remote IR transmission: %s", self.device_id, decoded)
             self._apply_decoded_ir_state(decoded)
 
-        self._unsub_receiver = async_track_state_change_event(
-            self.hass, [self.receiver_entity_id], _async_on_ir_state_change
-        )
-        LOGGER.info("Device %s: Registered IR receiver listener on entity %s", self.device_id, self.receiver_entity_id)
+        if self.receiver_entity_id:
+            self._unsub_receiver = async_track_state_change_event(
+                self.hass, [self.receiver_entity_id], _async_on_ir_state_change
+            )
+            LOGGER.info("Device %s: Registered IR receiver listener on entity %s", self.device_id, self.receiver_entity_id)
+
+        if self.temperature_sensor_entity_id:
+            @callback
+            def _async_on_temp_change(event: Any) -> None:
+                new_state = getattr(event, "data", {}).get("new_state") if hasattr(event, "data") else (event.get("data", {}).get("new_state") if isinstance(event, dict) else None)
+                if not new_state:
+                    return
+                raw_state = getattr(new_state, "state", None) if hasattr(new_state, "state") else (new_state.get("state") if isinstance(new_state, dict) else str(new_state))
+                if raw_state not in ("unknown", "unavailable", "None", None, ""):
+                    try:
+                        self.state["room_temperature"] = float(raw_state)
+                        self._notify_listeners()
+                    except (ValueError, TypeError):
+                        pass
+
+            self._unsub_temp = async_track_state_change_event(
+                self.hass, [self.temperature_sensor_entity_id], _async_on_temp_change
+            )
+            LOGGER.info("Device %s: Registered external temperature listener on entity %s", self.device_id, self.temperature_sensor_entity_id)
+            # Read initial state if available
+            cur_state = self.hass.states.get(self.temperature_sensor_entity_id)
+            if cur_state and cur_state.state not in ("unknown", "unavailable", "None", None, ""):
+                try:
+                    self.state["room_temperature"] = float(cur_state.state)
+                except (ValueError, TypeError):
+                    pass
 
     @callback
     def _apply_decoded_ir_state(self, decoded: Dict[str, Any]) -> None:
@@ -594,3 +634,6 @@ class MirAIeDeviceCoordinator:
         if self._unsub_receiver:
             self._unsub_receiver()
             self._unsub_receiver = None
+        if self._unsub_temp:
+            self._unsub_temp()
+            self._unsub_temp = None

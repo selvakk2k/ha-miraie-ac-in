@@ -340,10 +340,27 @@ class MirAIeClimate(ClimateEntity):
 
     @property
     def current_temperature(self) -> float | None:
+        # 1. External temperature sensor override from coordinator / options
         coord = getattr(self, "coordinator", None)
-        if coord and coord.state and "room_temperature" in coord.state:
-            return float(coord.state["room_temperature"])
-        return self.device.status.room_temperature
+        if coord and getattr(coord, "temperature_sensor_entity_id", None) and self.hass:
+            state_obj = self.hass.states.get(coord.temperature_sensor_entity_id)
+            if state_obj and str(state_obj.state).lower() not in ("unknown", "unavailable", "none", "null", ""):
+                try:
+                    return float(state_obj.state)
+                except (ValueError, TypeError):
+                    pass
+
+        # 2. Coordinator state (set via external sensor listener or cloud telemetry)
+        if coord and coord.state and coord.state.get("room_temperature") is not None:
+            try:
+                return float(coord.state["room_temperature"])
+            except (ValueError, TypeError):
+                pass
+
+        # 3. Wi-Fi device built-in hardware room temperature
+        if coord and not coord.has_wifi:
+            return None
+        return getattr(getattr(self, "device", None), "status", None) and getattr(self.device.status, "room_temperature", None)
 
     @property
     def target_temperature(self) -> float | int | None:

@@ -456,7 +456,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     pushed_sensors: list[SensorEntity] = []
     for device in devices:
         coordinator = coordinators.get(device.id)
-        pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
+        if not is_ir_entry and (not coordinator or coordinator.has_wifi):
+            pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
         pushed_sensors.append(MirAIeModelCapabilitiesSensor(device, coordinator))
 
         if not is_ir_entry and (not coordinator or coordinator.has_wifi):
