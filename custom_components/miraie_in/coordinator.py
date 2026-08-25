@@ -106,15 +106,9 @@ class MirAIeDeviceCoordinator:
         """
         LOGGER.debug("Device %s: Cloud state update received: %s", self.device_id, cloud_data)
 
-        try:
-            loop = getattr(self.hass, "loop", None) or asyncio.get_running_loop()
-            now = loop.time()
-            if not isinstance(now, (int, float)):
-                now = 0.0
-        except Exception:
-            now = 0.0
+        now = time.monotonic()
         last_ir_ts = getattr(self, "_last_ir_command_timestamp", 0.0)
-        in_ir_grace_window = (last_ir_ts > 0.0) and ((now - last_ir_ts) < 8.0)
+        in_ir_grace_window = (last_ir_ts > 0.0) and (0.0 <= (now - last_ir_ts) < 8.0)
 
         # Map cloud payload keys
         if "pwr" in cloud_data:
@@ -242,11 +236,7 @@ class MirAIeDeviceCoordinator:
         )
 
         # Optimistically update coordinator state IMMEDIATELY for zero-lag UI response
-        try:
-            loop = getattr(self.hass, "loop", None) or asyncio.get_running_loop()
-            self._last_ir_command_timestamp = loop.time()
-        except Exception:
-            self._last_ir_command_timestamp = 0.0
+        self._last_ir_command_timestamp = time.monotonic()
 
         if cmd_mode == "display":
             self.async_optimistic_update(
@@ -471,22 +461,40 @@ class MirAIeDeviceCoordinator:
                 return
 
             # Echo suppression: Ignore signals received within 1.5s of our own transmission
-            now = time.time()
-            if now - self._last_ir_command_timestamp < 1.5:
+            now = time.monotonic()
+            last_ts = getattr(self, "_last_ir_command_timestamp", 0.0)
+            if last_ts > 0.0 and (0.0 <= (now - last_ts) < 1.5):
                 LOGGER.debug("Device %s: Suppressing IR receiver echo (within 1.5s of transmission)", self.device_id)
                 return
 
             raw_state = getattr(new_state, "state", None) if hasattr(new_state, "state") else (new_state.get("state") if isinstance(new_state, dict) else str(new_state))
             attributes = getattr(new_state, "attributes", {}) if hasattr(new_state, "attributes") else (new_state.get("attributes", {}) if isinstance(new_state, dict) else {})
+            event_data = getattr(event, "data", {}) if hasattr(event, "data") else (event.get("data", {}) if isinstance(event, dict) else {})
 
-            payload = raw_state
-            if not payload or str(payload).lower() in ("unknown", "unavailable", "none", "null", ""):
-                payload = attributes.get("data") or attributes.get("raw") or attributes.get("code") or attributes.get("payload")
+            # Candidate payload sources across Home Assistant infrared, event, and sensor platforms
+            candidates = [
+                attributes.get("data"),
+                attributes.get("command"),
+                attributes.get("code"),
+                attributes.get("raw"),
+                attributes.get("pulses"),
+                attributes.get("payload"),
+                attributes.get("event_data"),
+                attributes.get("event_type"),
+                event_data.get("data"),
+                event_data.get("command"),
+                event_data.get("code"),
+                event_data.get("raw"),
+                raw_state,
+            ]
 
-            if not payload:
-                return
+            decoded = None
+            for cand in candidates:
+                if cand is not None and str(cand).lower() not in ("unknown", "unavailable", "none", "null", ""):
+                    decoded = decode_ir_code(cand)
+                    if decoded:
+                        break
 
-            decoded = decode_ir_code(payload)
             if not decoded:
                 return
 
@@ -502,7 +510,7 @@ class MirAIeDeviceCoordinator:
     def _apply_decoded_ir_state(self, decoded: Dict[str, Any]) -> None:
         """Apply a decoded physical remote state payload and notify entities."""
         # Initiate 8-second grace window to protect against stale incoming cloud packets
-        self._last_ir_command_timestamp = time.time()
+        self._last_ir_command_timestamp = time.monotonic()
         self.state["last_controlled_by"] = "IR Remote"
         self.state["provisional"] = False
 

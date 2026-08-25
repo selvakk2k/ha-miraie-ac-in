@@ -62,8 +62,8 @@ def build_cloud_devices_schema(default_install_date: str) -> vol.Schema:
             vol.Optional(CONF_PRIMARY_BACKEND, default="cloud"): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=[
-                        selector.SelectOptionDict(value="cloud", label="Cloud (Primary)"),
-                        selector.SelectOptionDict(value="ir", label="Infrared (Primary)"),
+                        selector.SelectOptionDict(value="cloud", label="Cloud"),
+                        selector.SelectOptionDict(value="ir", label="Infrared"),
                     ],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
@@ -79,6 +79,21 @@ def build_cloud_devices_schema(default_install_date: str) -> vol.Schema:
             ),
             vol.Optional(CONF_BLASTER_ENTITY_ID): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["infrared", "remote"])
+            ),
+            vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["infrared", "remote", "event"])
+            ),
+            vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value="auto", label="Auto-Detect (Recommended)"),
+                        selector.SelectOptionDict(value="raw", label="Home Assistant Infrared / ESPHome (Hardware-Tested & Confirmed)"),
+                        selector.SelectOptionDict(value="tasmota", label="Tasmota / AEHA Hex (Capture Verified)"),
+                        selector.SelectOptionDict(value="broadlink", label="Broadlink Base64 (Format Verified)"),
+                        selector.SelectOptionDict(value="tuya", label="Tuya Base64 (Format Verified)"),
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Optional(CONF_INSTALL_DATE, default=default_install_date): selector.DateSelector(),
         }
@@ -605,7 +620,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.EntitySelectorConfig(domain=["infrared", "remote"])
                 ),
                 vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["sensor", "event", "remote", "infrared"])
+                    selector.EntitySelectorConfig(domain=["infrared", "remote", "event"])
                 ),
                 vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
@@ -737,7 +752,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.EntitySelectorConfig(domain=["infrared", "remote"])
                 ),
                 vol.Optional(CONF_RECEIVER_ENTITY_ID): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["sensor", "event", "remote", "infrared"])
+                    selector.EntitySelectorConfig(domain=["infrared", "remote", "event"])
                 ),
                 vol.Optional(CONF_IR_FORMAT, default="auto"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
