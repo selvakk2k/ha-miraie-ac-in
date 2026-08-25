@@ -51,9 +51,11 @@ class MirAIeDeviceCoordinator:
         self.receiver_entity_id = receiver_entity_id
         self.temperature_sensor_entity_id = temperature_sensor_entity_id
         self.ir_format = ir_format
-        self.hub: Any = None
         self._unsub_receiver: Optional[Callable[[], None]] = None
+        self._unsub_native_receiver: Optional[Callable[[], None]] = None
+        self._unsub_event_bus: list[Callable[[], None]] = []
         self._unsub_temp: Optional[Callable[[], None]] = None
+        self._last_physical_rx_timestamp: float = 0.0
 
         # Resolve hardware capabilities
         self.lookup = lookup if lookup is not None else ACModelLookup()
@@ -110,7 +112,10 @@ class MirAIeDeviceCoordinator:
         LOGGER.debug("Device %s: Cloud state update received: %s", self.device_id, cloud_data)
 
         now = time.monotonic()
-        last_ir_ts = getattr(self, "_last_ir_command_timestamp", 0.0)
+        last_ir_ts = max(
+            getattr(self, "_last_ir_command_timestamp", 0.0),
+            getattr(self, "_last_physical_rx_timestamp", 0.0),
+        )
         in_ir_grace_window = (last_ir_ts > 0.0) and (0.0 <= (now - last_ir_ts) < 8.0)
 
         # Map cloud payload keys
@@ -466,17 +471,84 @@ class MirAIeDeviceCoordinator:
             return
 
         from homeassistant.helpers.event import async_track_state_change_event
+        try:
+            from panasonic_ac_models import decode_ir_code  # type: ignore[import-not-found, import-untyped]
+        except ImportError:
+            from .panasonic_ac_models import decode_ir_code
 
+        # 1. Native Home Assistant Infrared platform receiver subscription
+        if self.receiver_entity_id.startswith("infrared."):
+            try:
+                from homeassistant.components.infrared.helpers import async_subscribe_receiver
+
+                @callback
+                def _on_native_ir_signal(signal: Any) -> None:
+                    now = time.monotonic()
+                    last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
+                    if last_tx > 0.0 and (0.0 <= (now - last_tx) < 1.5):
+                        LOGGER.debug("Device %s: Suppressed native IR signal within 1.5s transmitter echo window", self.device_id)
+                        return
+
+                    raw_timings = (
+                        getattr(signal, "timings", None)
+                        or getattr(signal, "raw", None)
+                        or getattr(signal, "pulses", None)
+                        or (signal.get("timings") if isinstance(signal, dict) else None)
+                    )
+                    if raw_timings:
+                        decoded = decode_ir_code(raw_timings)
+                        if decoded:
+                            LOGGER.info("Device %s: Decoded physical remote IR via native subscription: %s", self.device_id, decoded)
+                            self._apply_decoded_ir_state(decoded)
+
+                self._unsub_native_receiver = async_subscribe_receiver(
+                    self.hass, self.receiver_entity_id, _on_native_ir_signal
+                )
+                LOGGER.info("Device %s: Registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
+            except Exception as err:
+                LOGGER.debug("Native infrared subscription not active for %s: %s", self.device_id, err)
+
+        # 2. Event bus listener for ESPHome / IR hardware event broadcasts
+        @callback
+        def _async_on_ir_event_bus(event: Any) -> None:
+            event_data = getattr(event, "data", {}) if hasattr(event, "data") else (event.get("data", {}) if isinstance(event, dict) else {})
+            event_entity = event_data.get("entity_id")
+            if event_entity and event_entity != self.receiver_entity_id:
+                return
+
+            now = time.monotonic()
+            last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
+            if last_tx > 0.0 and (0.0 <= (now - last_tx) < 1.5):
+                LOGGER.debug("Device %s: Suppressed event bus IR signal within 1.5s transmitter echo window", self.device_id)
+                return
+
+            for key in ("timings", "raw", "data", "pulses", "code", "command"):
+                payload = event_data.get(key)
+                if payload:
+                    decoded = decode_ir_code(payload)
+                    if decoded:
+                        LOGGER.info("Device %s: Decoded physical remote IR via event bus (%s): %s", self.device_id, key, decoded)
+                        self._apply_decoded_ir_state(decoded)
+                        break
+
+        for ev_name in ("esphome.raw_infrared", "infrared_command_received", "raw_infrared"):
+            try:
+                unsub = self.hass.bus.async_listen(ev_name, _async_on_ir_event_bus)
+                self._unsub_event_bus.append(unsub)
+            except Exception:
+                pass
+
+        # 3. Standard Home Assistant entity state / attribute listener
         @callback
         def _async_on_ir_state_change(event: Any) -> None:
             new_state = getattr(event, "data", {}).get("new_state") if hasattr(event, "data") else (event.get("data", {}).get("new_state") if isinstance(event, dict) else None)
             if not new_state:
                 return
 
-            # Echo suppression: Ignore signals received within 1.5s of our own transmission
+            # Echo suppression: Ignore signals received within 1.5s of our own TRANSMISSION
             now = time.monotonic()
-            last_ts = getattr(self, "_last_ir_command_timestamp", 0.0)
-            if last_ts > 0.0 and (0.0 <= (now - last_ts) < 1.5):
+            last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
+            if last_tx > 0.0 and (0.0 <= (now - last_tx) < 1.5):
                 LOGGER.debug("Device %s: Suppressing IR receiver echo (within 1.5s of transmission)", self.device_id)
                 return
 
@@ -511,14 +583,13 @@ class MirAIeDeviceCoordinator:
             if not decoded:
                 return
 
-            LOGGER.info("Device %s: Successfully decoded physical remote IR transmission: %s", self.device_id, decoded)
+            LOGGER.info("Device %s: Successfully decoded physical remote IR transmission (state): %s", self.device_id, decoded)
             self._apply_decoded_ir_state(decoded)
 
-        if self.receiver_entity_id:
-            self._unsub_receiver = async_track_state_change_event(
-                self.hass, [self.receiver_entity_id], _async_on_ir_state_change
-            )
-            LOGGER.info("Device %s: Registered IR receiver listener on entity %s", self.device_id, self.receiver_entity_id)
+        self._unsub_receiver = async_track_state_change_event(
+            self.hass, [self.receiver_entity_id], _async_on_ir_state_change
+        )
+        LOGGER.info("Device %s: Registered IR receiver listener on entity %s", self.device_id, self.receiver_entity_id)
 
         if self.temperature_sensor_entity_id:
             @callback
@@ -550,7 +621,7 @@ class MirAIeDeviceCoordinator:
     def _apply_decoded_ir_state(self, decoded: Dict[str, Any]) -> None:
         """Apply a decoded physical remote state payload and notify entities."""
         # Initiate 8-second grace window to protect against stale incoming cloud packets
-        self._last_ir_command_timestamp = time.monotonic()
+        self._last_physical_rx_timestamp = time.monotonic()
         self.state["last_controlled_by"] = "IR Remote"
         self.state["provisional"] = False
 
@@ -614,6 +685,12 @@ class MirAIeDeviceCoordinator:
     @callback
     def async_unload(self) -> None:
         """Unload and unregister listeners for this coordinator."""
+        if self._unsub_native_receiver:
+            self._unsub_native_receiver()
+            self._unsub_native_receiver = None
+        for unsub in self._unsub_event_bus:
+            unsub()
+        self._unsub_event_bus.clear()
         if self._unsub_receiver:
             self._unsub_receiver()
             self._unsub_receiver = None

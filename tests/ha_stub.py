@@ -403,7 +403,10 @@ def setup_ha_stubs():
 
     async def _async_send_command_stub(hass, entity_id, command):
         return True
+    def _async_subscribe_receiver_stub(hass, entity_id, callback):
+        return lambda: None
     ir_helpers_mod.async_send_command = _async_send_command_stub
+    ir_helpers_mod.async_subscribe_receiver = _async_subscribe_receiver_stub
     ir_mod.helpers = ir_helpers_mod
     sys.modules["homeassistant.components.infrared"] = ir_mod
     sys.modules["homeassistant.components.infrared.helpers"] = ir_helpers_mod
