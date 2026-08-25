@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import date, datetime
 from typing import Any, Callable, Dict, Optional
 
@@ -11,9 +12,9 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 
 from .logger import LOGGER
 try:
-    from panasonic_ac_models import ACModelLookup, generate_ir_code  # type: ignore[import-not-found, import-untyped]
+    from panasonic_ac_models import ACModelLookup, generate_ir_code, decode_ir_code  # type: ignore[import-not-found, import-untyped]
 except ImportError:
-    from .panasonic_ac_models import ACModelLookup, generate_ir_code
+    from .panasonic_ac_models import ACModelLookup, generate_ir_code, decode_ir_code
 
 
 class MirAIeDeviceCoordinator:
@@ -30,6 +31,7 @@ class MirAIeDeviceCoordinator:
         primary_backend: str = "cloud",  # "cloud" or "ir"
         hybrid_submode: str = "auto",  # "auto" or "manual"
         blaster_entity_id: Optional[str] = None,
+        receiver_entity_id: Optional[str] = None,
         ir_format: str = "auto",
         lookup=None,
         subentry_id: Optional[str] = None,  # Backward-compatible alias
@@ -45,8 +47,10 @@ class MirAIeDeviceCoordinator:
         self.primary_backend = primary_backend
         self.hybrid_submode = hybrid_submode
         self.blaster_entity_id = blaster_entity_id
+        self.receiver_entity_id = receiver_entity_id
         self.ir_format = ir_format
         self.hub: Any = None
+        self._unsub_receiver: Optional[Callable[[], None]] = None
 
         # Resolve hardware capabilities
         self.lookup = lookup if lookup is not None else ACModelLookup()
@@ -451,3 +455,117 @@ class MirAIeDeviceCoordinator:
         self.state["provisional"] = True
 
         self._notify_listeners()
+
+    @callback
+    def async_setup_receiver(self) -> None:
+        """Register state listener on the configured IR receiver entity."""
+        if not self.receiver_entity_id:
+            return
+
+        from homeassistant.helpers.event import async_track_state_change_event
+
+        @callback
+        def _async_on_ir_state_change(event: Any) -> None:
+            new_state = getattr(event, "data", {}).get("new_state") if hasattr(event, "data") else (event.get("data", {}).get("new_state") if isinstance(event, dict) else None)
+            if not new_state:
+                return
+
+            # Echo suppression: Ignore signals received within 1.5s of our own transmission
+            now = time.time()
+            if now - self._last_ir_command_timestamp < 1.5:
+                LOGGER.debug("Device %s: Suppressing IR receiver echo (within 1.5s of transmission)", self.device_id)
+                return
+
+            raw_state = getattr(new_state, "state", None) if hasattr(new_state, "state") else (new_state.get("state") if isinstance(new_state, dict) else str(new_state))
+            attributes = getattr(new_state, "attributes", {}) if hasattr(new_state, "attributes") else (new_state.get("attributes", {}) if isinstance(new_state, dict) else {})
+
+            payload = raw_state
+            if not payload or str(payload).lower() in ("unknown", "unavailable", "none", "null", ""):
+                payload = attributes.get("data") or attributes.get("raw") or attributes.get("code") or attributes.get("payload")
+
+            if not payload:
+                return
+
+            decoded = decode_ir_code(payload)
+            if not decoded:
+                return
+
+            LOGGER.info("Device %s: Successfully decoded physical remote IR transmission: %s", self.device_id, decoded)
+            self._apply_decoded_ir_state(decoded)
+
+        self._unsub_receiver = async_track_state_change_event(
+            self.hass, [self.receiver_entity_id], _async_on_ir_state_change
+        )
+        LOGGER.info("Device %s: Registered IR receiver listener on entity %s", self.device_id, self.receiver_entity_id)
+
+    @callback
+    def _apply_decoded_ir_state(self, decoded: Dict[str, Any]) -> None:
+        """Apply a decoded physical remote state payload and notify entities."""
+        # Initiate 8-second grace window to protect against stale incoming cloud packets
+        self._last_ir_command_timestamp = time.time()
+        self.state["last_controlled_by"] = "IR Remote"
+        self.state["provisional"] = False
+
+        if decoded.get("packet_type") == "short_frame":
+            action = decoded.get("action")
+            if action == "powerful":
+                self.state["power"] = "on"
+                self.state["active_preset"] = "powerful"
+                self.state["converti"] = "cv_off"
+                self.state["eco"] = False
+            elif action == "display":
+                self.state["display"] = "off" if self.state.get("display") == "on" else "on"
+            elif action == "clean":
+                self.state["power"] = "on"
+                self.state["active_preset"] = "clean"
+                self.state["converti"] = "cv_off"
+                self.state["eco"] = False
+            elif action and str(action).startswith("converti_"):
+                step = str(action).split("_")[1]
+                self.state["power"] = "on"
+                self.state["converti"] = f"cv_{step}"
+                self.state["active_preset"] = f"cv_{step}"
+                self.state["eco"] = False
+
+        elif decoded.get("packet_type") == "full_frame":
+            pwr = decoded.get("power", "on")
+            self.state["power"] = pwr
+            if pwr == "off":
+                self.state["mode"] = "off"
+                self.state["active_preset"] = "none"
+                self.state["converti"] = "cv_off"
+                self.state["eco"] = False
+            else:
+                mode = decoded.get("mode", "cool")
+                self.state["mode"] = mode
+                self.state["temperature"] = decoded.get("temperature", 24)
+                self.state["fan_speed"] = decoded.get("fan_speed", "auto")
+                self.state["v_vane"] = decoded.get("v_vane", "AUTO")
+                self.state["h_vane"] = decoded.get("h_vane", "AUTO")
+
+                if decoded.get("powerful"):
+                    self.state["active_preset"] = "powerful"
+                    self.state["converti"] = "cv_off"
+                    self.state["eco"] = False
+                elif decoded.get("eco"):
+                    self.state["eco"] = True
+                    self.state["active_preset"] = "eco"
+                    self.state["converti"] = "cv_off"
+                    self.state["temperature"] = 26
+                elif decoded.get("converti") and decoded.get("converti") != "cv_off":
+                    self.state["eco"] = False
+                    self.state["converti"] = decoded.get("converti")
+                    self.state["active_preset"] = decoded.get("converti")
+                else:
+                    self.state["eco"] = False
+                    self.state["active_preset"] = "none"
+                    self.state["converti"] = "cv_off"
+
+        self._notify_listeners()
+
+    @callback
+    def async_unload(self) -> None:
+        """Unload and unregister listeners for this coordinator."""
+        if self._unsub_receiver:
+            self._unsub_receiver()
+            self._unsub_receiver = None

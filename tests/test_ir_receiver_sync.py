@@ -1,0 +1,167 @@
+"""Unit tests for IR Receiver state synchronization, echo suppression, and physical remote decoding."""
+import asyncio
+import time
+import unittest
+from unittest.mock import MagicMock, patch
+
+from tests.ha_stub import setup_ha_stubs
+setup_ha_stubs()
+
+from homeassistant.core import HomeAssistant
+from custom_components.miraie_in.coordinator import MirAIeDeviceCoordinator
+from custom_components.miraie_in.panasonic_ac_models import generate_ir_code
+
+
+class TestIRReceiverSync(unittest.TestCase):
+    """Test suite for IR Receiver listening and state synchronization."""
+
+    def setUp(self):
+        self.hass = MagicMock(spec=HomeAssistant)
+        self.hass.states = MagicMock()
+        self.listeners = {}
+
+        def mock_track_state_change(hass, entity_ids, action):
+            for ent in entity_ids:
+                self.listeners[ent] = action
+            return lambda: [self.listeners.pop(ent, None) for ent in entity_ids]
+
+        self.patcher = patch(
+            "homeassistant.helpers.event.async_track_state_change_event",
+            side_effect=mock_track_state_change,
+        )
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def test_ir_receiver_state_sync_full_frame(self):
+        """Verify receiving a physical remote full-frame updates coordinator state."""
+        coordinator = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="test_entry",
+            device_id="ac_living_room",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            receiver_entity_id="sensor.ir_rx",
+        )
+        coordinator.async_setup_receiver()
+        self.assertIn("sensor.ir_rx", self.listeners)
+
+        updated = False
+        def on_update():
+            nonlocal updated
+            updated = True
+
+        coordinator.async_add_listener(on_update)
+
+        # Generate a Cool 22°C, High Fan, V2 Vane IR frame
+        ir = generate_ir_code(mode="cool", target_temp=22, fan="high", v_vane="V2", h_vane="H0", series="EU")
+
+        # Simulate incoming state change from sensor.ir_rx
+        event = MagicMock()
+        event.data = {
+            "new_state": MagicMock(state=ir["aeha_hex"], attributes={})
+        }
+
+        # Fire listener callback
+        self.listeners["sensor.ir_rx"](event)
+
+        self.assertTrue(updated)
+        self.assertEqual(coordinator.state["power"], "on")
+        self.assertEqual(coordinator.state["mode"], "cool")
+        self.assertEqual(coordinator.state["temperature"], 22)
+        self.assertEqual(coordinator.state["fan_speed"], "high")
+        self.assertEqual(coordinator.state["v_vane"], "V2")
+        self.assertEqual(coordinator.state["last_controlled_by"], "IR Remote")
+
+    def test_ir_receiver_echo_suppression(self):
+        """Verify received IR signals within 1.5s of transmission are suppressed as echos."""
+        coordinator = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="test_entry",
+            device_id="ac_living_room",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            receiver_entity_id="sensor.ir_rx",
+        )
+        coordinator.async_setup_receiver()
+
+        # Simulate transmission happened 0.5s ago
+        coordinator._last_ir_command_timestamp = time.time()
+        initial_temp = coordinator.state["temperature"]
+
+        # Receiver hears a command with a different temperature (e.g. 18°C)
+        ir = generate_ir_code(mode="cool", target_temp=18, fan="low", series="EU")
+        event = MagicMock()
+        event.data = {
+            "new_state": MagicMock(state=ir["aeha_hex"], attributes={})
+        }
+
+        self.listeners["sensor.ir_rx"](event)
+
+        # Echo suppression must prevent state from updating
+        self.assertEqual(coordinator.state["temperature"], initial_temp)
+
+        # Simulate 2.0s passed
+        coordinator._last_ir_command_timestamp = time.time() - 2.0
+        self.listeners["sensor.ir_rx"](event)
+
+        # Now it is accepted and state updates to 18°C
+        self.assertEqual(coordinator.state["temperature"], 18)
+
+    def test_ir_receiver_short_frame_actions(self):
+        """Verify dedicated 16-byte short-frame actions update presets and display."""
+        coordinator = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="test_entry",
+            device_id="ac_living_room",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            receiver_entity_id="sensor.ir_rx",
+        )
+        coordinator.async_setup_receiver()
+
+        # 1. Powerful Mode
+        pow_ir = generate_ir_code(mode="powerful")
+        event_pow = MagicMock()
+        event_pow.data = {"new_state": MagicMock(state=pow_ir["aeha_hex"], attributes={})}
+        coordinator._last_ir_command_timestamp = 0
+        self.listeners["sensor.ir_rx"](event_pow)
+        self.assertEqual(coordinator.state["active_preset"], "powerful")
+
+        # 2. Converti 80%
+        c80_ir = generate_ir_code(mode="converti_80")
+        event_c80 = MagicMock()
+        event_c80.data = {"new_state": MagicMock(state=c80_ir["aeha_hex"], attributes={})}
+        coordinator._last_ir_command_timestamp = 0
+        self.listeners["sensor.ir_rx"](event_c80)
+        self.assertEqual(coordinator.state["active_preset"], "cv_80")
+        self.assertEqual(coordinator.state["converti"], "cv_80")
+
+        # 3. Clean
+        clean_ir = generate_ir_code(mode="clean")
+        event_clean = MagicMock()
+        event_clean.data = {"new_state": MagicMock(state=clean_ir["aeha_hex"], attributes={})}
+        coordinator._last_ir_command_timestamp = 0
+        self.listeners["sensor.ir_rx"](event_clean)
+        self.assertEqual(coordinator.state["active_preset"], "clean")
+
+    def test_ir_receiver_unload(self):
+        """Verify async_unload cleanly unsubscribes the receiver listener."""
+        coordinator = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="test_entry",
+            device_id="ac_living_room",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=True,
+            receiver_entity_id="sensor.ir_rx",
+        )
+        coordinator.async_setup_receiver()
+        self.assertIn("sensor.ir_rx", self.listeners)
+
+        coordinator.async_unload()
+        self.assertNotIn("sensor.ir_rx", self.listeners)
+
+
+if __name__ == "__main__":
+    unittest.main()

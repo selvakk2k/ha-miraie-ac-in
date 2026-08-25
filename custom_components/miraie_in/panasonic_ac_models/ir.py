@@ -302,3 +302,225 @@ def generate_ir_code(
         "pronto_hex": pulses_to_pronto_hex(new_pulses),
         "description": desc
     }
+
+
+def decode_ir_code(payload: Union[str, List[int], Dict[str, Any], bytes, bytearray]) -> Optional[Dict[str, Any]]:
+    """Decodes a Panasonic AC IR command payload into a structured state dictionary.
+
+    Supports:
+    - Raw microsecond pulse lists: [3435, -1749, 469, -437, ...]
+    - AEHA Hex strings: "0x0220E004000000060220E00400393480A10D000EE0200089000038"
+    - Tasmota JSON strings / dicts: '{"Protocol":"PANASONIC_AC","Bits":216,"Data":"0x..."}'
+    - Raw byte arrays or lists
+
+    Returns:
+        Structured state dict or None if invalid/unrecognized.
+    """
+    if isinstance(payload, dict):
+        data = payload.get("Data") or payload.get("data") or payload.get("raw") or payload.get("hex")
+        if data:
+            return decode_ir_code(data)
+        return None
+
+    bytes_list: List[int] = []
+
+    if isinstance(payload, str):
+        cleaned = payload.strip()
+        if cleaned.startswith("{") and cleaned.endswith("}"):
+            import json
+            try:
+                d = json.loads(cleaned)
+                return decode_ir_code(d)
+            except Exception:
+                pass
+
+        hex_candidate = cleaned
+        if hex_candidate.lower().startswith("0x"):
+            hex_candidate = hex_candidate[2:]
+        hex_candidate = hex_candidate.replace(" ", "").replace(":", "")
+        try:
+            bytes_list = list(bytes.fromhex(hex_candidate))
+        except ValueError:
+            bytes_list = []
+
+        if not bytes_list:
+            return None
+
+    elif isinstance(payload, (bytes, bytearray)):
+        bytes_list = list(payload)
+    elif isinstance(payload, (list, tuple)):
+        if len(payload) > 0 and isinstance(payload[0], int) and (payload[0] > 255 or (len(payload) > 1 and payload[1] < 0)):
+            bytes_list = _pulses_to_bytes(list(payload))
+        else:
+            bytes_list = [int(x) for x in payload]
+    else:
+        return None
+
+    if len(bytes_list) < 16:
+        return None
+
+    # Verify Panasonic Frame 1 Preamble: 0x02, 0x20, 0xE0, 0x04
+    if bytes_list[0:4] != [0x02, 0x20, 0xE0, 0x04]:
+        return None
+
+    # ── 1. Decode 16-Byte Dedicated Short Frame (128 bits) ──
+    if len(bytes_list) == 16:
+        if bytes_list[8:13] != [0x02, 0x20, 0xE0, 0x04, 0x80]:
+            return None
+        checksum = sum(bytes_list[8:15]) & 0xFF
+        if bytes_list[15] != checksum:
+            return None
+
+        b13, b14 = bytes_list[13], bytes_list[14]
+        res: Dict[str, Any] = {
+            "packet_type": "short_frame",
+            "hex": bytes_to_aeha_hex(bytes_list),
+            "power": "on",
+            "mode": None,
+            "temperature": None,
+            "fan_speed": None,
+            "v_vane": None,
+            "h_vane": None,
+            "eco": False,
+            "powerful": False,
+            "clean": False,
+            "display": False,
+            "converti": "cv_off",
+            "nanoe": False,
+            "action": None,
+        }
+
+        for cmd_name, (cmd_b13, cmd_b14, _) in SHORT_FRAME_COMMANDS.items():
+            if b13 == cmd_b13 and b14 == cmd_b14:
+                res["action"] = cmd_name
+                if cmd_name == "powerful":
+                    res["powerful"] = True
+                    res["mode"] = "powerful"
+                elif cmd_name == "display":
+                    res["display"] = True
+                elif cmd_name == "clean":
+                    res["clean"] = True
+                    res["mode"] = "clean"
+                elif cmd_name.startswith("converti_"):
+                    res["converti"] = f"cv_{cmd_name.split('_')[1]}"
+                return res
+
+        return res
+
+    # ── 2. Decode 27-Byte Full State Packet (216 bits) ──
+    if len(bytes_list) >= 27:
+        bytes_list = bytes_list[:27]
+        checksum = sum(bytes_list[8:26]) & 0xFF
+        if bytes_list[26] != checksum:
+            return None
+
+        b13 = bytes_list[13]
+        b14 = bytes_list[14]
+        b16 = bytes_list[16]
+        b17 = bytes_list[17]
+        b21 = bytes_list[21]
+        b22 = bytes_list[22]
+        b24 = bytes_list[24]
+
+        # Power & Mode
+        is_on = bool(b13 & 0x01)
+        mode_nibble = (b13 >> 4) & 0x0F
+
+        mode_map = {
+            0x0: "auto",
+            0x2: "dry",
+            0x3: "cool",
+            0x4: "heat",
+            0x6: "fan_only"
+        }
+        mode = mode_map.get(mode_nibble, "cool")
+        power = "on" if is_on else "off"
+        if not is_on:
+            mode = "off"
+
+        # Temperature
+        temp = ((b14 - 0x20) // 2) + 16
+        temp = max(16, min(30, temp))
+
+        # Fan speed
+        fan_nibble = (b16 >> 4) & 0x0F
+        fan_map = {
+            0x3: "low",
+            0x4: "low",
+            0x5: "medium",
+            0x6: "high",
+            0x7: "high",
+            0xA: "auto"
+        }
+        fan_speed = fan_map.get(fan_nibble, "auto")
+
+        # Vertical Vane
+        v_nibble = b16 & 0x0F
+        v_map = {
+            0x1: "V1",
+            0x2: "V2",
+            0x3: "V3",
+            0x4: "V4",
+            0x5: "V5",
+            0xF: "AUTO"
+        }
+        v_vane = v_map.get(v_nibble, "AUTO")
+
+        # Horizontal Vane
+        h_map = {
+            0x06: "H1",
+            0x09: "H2",
+            0x0A: "H3",
+            0x0B: "H4",
+            0x0C: "H5",
+            0x0D: "AUTO"
+        }
+        h_vane = h_map.get(b17, "AUTO")
+
+        # Preset / Convertible / Quiet
+        converti = "cv_off"
+        powerful = False
+        if b21 == 0x20:
+            fan_speed = "quiet"
+        elif b21 == 0x01:
+            powerful = True
+        elif b21 == 0x03:
+            converti = "cv_110"
+        elif b21 == 0x04:
+            converti = "cv_90"
+        elif b21 == 0x05:
+            converti = "cv_80"
+        elif b21 == 0x06:
+            converti = "cv_70"
+        elif b21 == 0x07:
+            converti = "cv_50"
+        elif b21 == 0x08:
+            converti = "cv_40"
+
+        # Eco mode
+        eco = bool(b22 & 0x08)
+        if eco:
+            temp = 26
+
+        # Nanoe-G
+        nanoe = bool(b24 & 0x01)
+
+        return {
+            "packet_type": "full_frame",
+            "hex": bytes_to_aeha_hex(bytes_list),
+            "power": power,
+            "mode": mode,
+            "temperature": temp,
+            "fan_speed": fan_speed,
+            "v_vane": v_vane,
+            "h_vane": h_vane,
+            "eco": eco,
+            "powerful": powerful,
+            "clean": False,
+            "display": False,
+            "converti": converti,
+            "nanoe": nanoe,
+            "action": None
+        }
+
+    return None
