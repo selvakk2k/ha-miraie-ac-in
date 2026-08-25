@@ -51,6 +51,7 @@ class MirAIeDeviceCoordinator:
         self.receiver_entity_id = receiver_entity_id
         self.temperature_sensor_entity_id = temperature_sensor_entity_id
         self.ir_format = ir_format
+        self.hub: Any = None
         self._unsub_receiver: Optional[Callable[[], None]] = None
         self._unsub_native_receiver: Optional[Callable[[], None]] = None
         self._unsub_event_bus: list[Callable[[], None]] = []
@@ -468,7 +469,15 @@ class MirAIeDeviceCoordinator:
     @callback
     def async_setup_receiver(self) -> None:
         """Register state listener on the configured IR receiver entity."""
+        LOGGER.info(
+            "Device %s: Initializing IR receiver setup (receiver_entity_id=%r, blaster_entity_id=%r, primary_backend=%r)",
+            self.device_id,
+            self.receiver_entity_id,
+            self.blaster_entity_id,
+            self.primary_backend,
+        )
         if not self.receiver_entity_id:
+            LOGGER.info("Device %s: No receiver_entity_id configured, skipping IR receiver setup", self.device_id)
             return
 
         from homeassistant.helpers.event import async_track_state_change_event
@@ -487,7 +496,7 @@ class MirAIeDeviceCoordinator:
                     now = time.monotonic()
                     last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
                     if last_tx > 0.0 and (0.0 <= (now - last_tx) < 1.5):
-                        LOGGER.debug("Device %s: Suppressed native IR signal within 1.5s transmitter echo window", self.device_id)
+                        LOGGER.info("Device %s: [Native IR] Suppressed signal within 1.5s transmitter echo window (dt=%.2fs)", self.device_id, now - last_tx)
                         return
 
                     raw_timings = (
@@ -496,37 +505,48 @@ class MirAIeDeviceCoordinator:
                         or getattr(signal, "pulses", None)
                         or (signal.get("timings") if isinstance(signal, dict) else None)
                     )
+                    LOGGER.info(
+                        "Device %s: [Native IR Callback] Received signal object=%r (timings length=%s)",
+                        self.device_id,
+                        signal,
+                        len(raw_timings) if raw_timings else 0,
+                    )
                     if raw_timings:
                         decoded = decode_ir_code(raw_timings)
+                        LOGGER.info("Device %s: [Native IR Callback] decode_ir_code result: %r", self.device_id, decoded)
                         if decoded:
-                            LOGGER.info("Device %s: Decoded physical remote IR via native subscription: %s", self.device_id, decoded)
+                            LOGGER.info("Device %s: Successfully applied physical remote state via native IR subscription: %s", self.device_id, decoded)
                             self._apply_decoded_ir_state(decoded)
 
                 self._unsub_native_receiver = async_subscribe_receiver(
                     self.hass, self.receiver_entity_id, _on_native_ir_signal
                 )
-                LOGGER.info("Device %s: Registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
+                LOGGER.info("Device %s: Successfully registered native IR receiver subscription on %s", self.device_id, self.receiver_entity_id)
             except Exception as err:
-                LOGGER.debug("Native infrared subscription not active for %s: %s", self.device_id, err)
+                LOGGER.warning("Device %s: Native infrared subscription helper failed for %s: %s", self.device_id, self.receiver_entity_id, err)
 
         # 2. Event bus listener for ESPHome / IR hardware event broadcasts
         @callback
         def _async_on_ir_event_bus(event: Any) -> None:
+            ev_type = getattr(event, "event_type", "event")
             event_data = getattr(event, "data", {}) if hasattr(event, "data") else (event.get("data", {}) if isinstance(event, dict) else {})
             event_entity = event_data.get("entity_id")
+            LOGGER.info("Device %s: [Event Bus %s] Received event_data=%r", self.device_id, ev_type, event_data)
+
             if event_entity and event_entity != self.receiver_entity_id:
                 return
 
             now = time.monotonic()
             last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
             if last_tx > 0.0 and (0.0 <= (now - last_tx) < 1.5):
-                LOGGER.debug("Device %s: Suppressed event bus IR signal within 1.5s transmitter echo window", self.device_id)
+                LOGGER.info("Device %s: [Event Bus] Suppressed signal within 1.5s transmitter echo window", self.device_id)
                 return
 
             for key in ("timings", "raw", "data", "pulses", "code", "command"):
                 payload = event_data.get(key)
                 if payload:
                     decoded = decode_ir_code(payload)
+                    LOGGER.info("Device %s: [Event Bus] decode_ir_code for key '%s': %r", self.device_id, key, decoded)
                     if decoded:
                         LOGGER.info("Device %s: Decoded physical remote IR via event bus (%s): %s", self.device_id, key, decoded)
                         self._apply_decoded_ir_state(decoded)
@@ -546,15 +566,17 @@ class MirAIeDeviceCoordinator:
             if not new_state:
                 return
 
+            raw_state = getattr(new_state, "state", None) if hasattr(new_state, "state") else (new_state.get("state") if isinstance(new_state, dict) else str(new_state))
+            attributes = getattr(new_state, "attributes", {}) if hasattr(new_state, "attributes") else (new_state.get("attributes", {}) if isinstance(new_state, dict) else {})
+            LOGGER.info("Device %s: [IR State Change] Entity %s state=%s, attributes=%r", self.device_id, self.receiver_entity_id, raw_state, attributes)
+
             # Echo suppression: Ignore signals received within 1.5s of our own TRANSMISSION
             now = time.monotonic()
             last_tx = getattr(self, "_last_ir_command_timestamp", 0.0)
             if last_tx > 0.0 and (0.0 <= (now - last_tx) < 1.5):
-                LOGGER.debug("Device %s: Suppressing IR receiver echo (within 1.5s of transmission)", self.device_id)
+                LOGGER.info("Device %s: [IR State Change] Suppressing IR receiver echo (within 1.5s of transmission)", self.device_id)
                 return
 
-            raw_state = getattr(new_state, "state", None) if hasattr(new_state, "state") else (new_state.get("state") if isinstance(new_state, dict) else str(new_state))
-            attributes = getattr(new_state, "attributes", {}) if hasattr(new_state, "attributes") else (new_state.get("attributes", {}) if isinstance(new_state, dict) else {})
             event_data = getattr(event, "data", {}) if hasattr(event, "data") else (event.get("data", {}) if isinstance(event, dict) else {})
 
             # Candidate payload sources across Home Assistant infrared, event, and sensor platforms
@@ -590,7 +612,7 @@ class MirAIeDeviceCoordinator:
         self._unsub_receiver = async_track_state_change_event(
             self.hass, [self.receiver_entity_id], _async_on_ir_state_change
         )
-        LOGGER.info("Device %s: Registered IR receiver listener on entity %s", self.device_id, self.receiver_entity_id)
+        LOGGER.info("Device %s: Registered IR receiver state listener on entity %s", self.device_id, self.receiver_entity_id)
 
         if self.temperature_sensor_entity_id:
             @callback
