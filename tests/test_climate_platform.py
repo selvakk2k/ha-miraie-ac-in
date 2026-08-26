@@ -334,6 +334,31 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ir_climate.current_temperature, 27.5)
 
+    async def test_convertible_preset_transition_and_reset_to_none(self):
+        """Test setting a convertible preset and resetting back to 'none' in Cool mode."""
+        from homeassistant.components.climate import PRESET_NONE
+
+        # 1. Set convertible 80% preset
+        await self.climate.async_set_preset_mode("cv_80")
+        self.assertEqual(self.climate.preset_mode, "cv_80")
+        self.assertEqual(self.coordinator.state["active_preset"], "cv_80")
+        self.assertEqual(self.coordinator.state["converti"], "cv_80")
+
+        # 2. Reset preset back to 'none'
+        await self.climate.async_set_preset_mode(PRESET_NONE)
+        self.assertEqual(self.climate.preset_mode, PRESET_NONE)
+        self.assertEqual(self.coordinator.state["active_preset"], "none")
+        self.assertEqual(self.coordinator.state["converti"], "cv_off")
+        self.assertEqual(self.coordinator.state["mode"], "cool")
+
+        # 3. Setting 'cv_0' should also reset back to 'none'
+        await self.climate.async_set_preset_mode("cv_100")
+        self.assertEqual(self.climate.preset_mode, "cv_100")
+        await self.climate.async_set_preset_mode("cv_0")
+        self.assertEqual(self.climate.preset_mode, PRESET_NONE)
+        self.assertEqual(self.coordinator.state["active_preset"], "none")
+        self.assertEqual(self.coordinator.state["converti"], "cv_off")
+
 
 if __name__ == "__main__":
     unittest.main()
