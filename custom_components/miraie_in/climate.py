@@ -173,6 +173,7 @@ class MirAIeClimate(ClimateEntity):
         h_vane: str | None = None,
         eco: bool | None = None,
         nanoe: bool | None = None,
+        preset: str | None = None,
         cloud_coro=None,
     ) -> None:
         """Route command through Hybrid Coordinator based on active primary_backend and failover rules."""
@@ -197,6 +198,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
+                preset=preset,
                 origin="IR" if use_ir_first else "Cloud",
             )
             if hasattr(self, "async_write_ha_state"):
@@ -543,14 +545,16 @@ class MirAIeClimate(ClimateEntity):
         eco_val = None
         mode_val = None
         target_temp_val = None
+        preset_val = None
         cloud_coro = None
 
-        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF) and preset_mode not in (PRESET_NONE, "none", "None", None):
+        if self.hvac_mode not in (HVACMode.COOL, HVACMode.OFF) and preset_mode not in (PRESET_NONE, "none", "None", None, "cv_0", "cv 0"):
             LOGGER.info("Preset '%s' requested while in %s mode; auto-switching to Cool mode", preset_mode, self.hvac_mode)
             mode_val = "cool"
 
-        if preset_mode in (PRESET_NONE, "none", "None", None):
+        if preset_mode in (PRESET_NONE, "none", "None", None, "cv_0", "cv 0"):
             eco_val = False
+            preset_val = "none"
             mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if isinstance(self.hvac_mode, HVACMode) else "cool")
 
             def _clear_converti_and_preset():
@@ -564,10 +568,12 @@ class MirAIeClimate(ClimateEntity):
 
         elif preset_mode == PRESET_ECO:
             eco_val = True
+            preset_val = "eco"
             target_temp_val = 26
             cloud_coro = self.device.set_preset_mode(PresetMode.ECO)
         elif preset_mode in (PRESET_BOOST, "boost", "powerful", "Powerful"):
             eco_val = False
+            preset_val = "powerful"
             mode_val = "powerful"
             cloud_coro = self.device.set_preset_mode(PresetMode.BOOST)
         else:
@@ -577,6 +583,7 @@ class MirAIeClimate(ClimateEntity):
                 perc_str = match.group(0)
                 if perc_str == "0":
                     eco_val = False
+                    preset_val = "none"
                     mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if isinstance(self.hvac_mode, HVACMode) else "cool")
 
                     def _clear_converti_and_preset():
@@ -589,12 +596,13 @@ class MirAIeClimate(ClimateEntity):
                     cloud_coro = _clear_converti_and_preset()
                 else:
                     eco_val = False
+                    preset_val = f"cv_{perc_str}"
+                    mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if isinstance(self.hvac_mode, HVACMode) else "cool")
                     try:
                         c_enum = ConvertiMode(int(perc_str))
                         cloud_coro = self.device.set_converti_mode(c_enum)
                     except (ValueError, KeyError):
                         cloud_coro = None
-                    mode_val = f"converti_{perc_str}"
             else:
                 p_mode_map = {
                     PRESET_BOOST: PresetMode.BOOST,
@@ -602,12 +610,14 @@ class MirAIeClimate(ClimateEntity):
                     PRESET_NONE: PresetMode.NONE,
                 }
                 target_preset = p_mode_map.get(preset_mode, PresetMode.NONE)
+                preset_val = "none" if target_preset == PresetMode.NONE else preset_mode
                 cloud_coro = self.device.set_preset_mode(target_preset)
 
         await self._send_command_via_hybrid(
             eco=eco_val,
             mode=mode_val,
             temp=target_temp_val,
+            preset=preset_val,
             cloud_coro=cloud_coro,
         )
 

@@ -166,9 +166,8 @@ class MirAIeDeviceCoordinator:
                 self.state["converti"] = "cv_off"
             else:
                 self.state["eco"] = False
-                if self.primary_backend != "ir" or not self.state.get("provisional"):
-                    self.state["active_preset"] = "none"
-                    self.state["converti"] = "cv_off"
+                self.state["active_preset"] = "none"
+                self.state["converti"] = "cv_off"
 
         if "tset" in cloud_data:
             try:
@@ -398,6 +397,7 @@ class MirAIeDeviceCoordinator:
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
         display: Optional[bool] = None,
+        preset: Optional[str] = None,
         origin: str = "Cloud",
     ) -> None:
         """Optimistically update coordinator state for instant UI response."""
@@ -436,6 +436,39 @@ class MirAIeDeviceCoordinator:
                     self.state["active_preset"] = "none"
                     self.state["converti"] = "cv_off"
                     self.state["eco"] = False
+
+        if preset is not None:
+            norm_preset = preset.lower().strip()
+            if norm_preset in ("none", "off", "0", "cv_0", "cv 0", "cv_off", "converti_0", "converti_off"):
+                self.state["active_preset"] = "none"
+                self.state["converti"] = "cv_off"
+                self.state["eco"] = False
+            elif norm_preset == "eco":
+                self.state["eco"] = True
+                self.state["active_preset"] = "eco"
+                self.state["converti"] = "cv_off"
+                self.state["temperature"] = 26
+            elif norm_preset in ("boost", "powerful"):
+                self.state["eco"] = False
+                self.state["active_preset"] = "powerful"
+                self.state["converti"] = "cv_off"
+            elif norm_preset == "clean":
+                self.state["eco"] = False
+                self.state["active_preset"] = "clean"
+                self.state["converti"] = "cv_off"
+            elif norm_preset.startswith("cv_") or norm_preset.startswith("converti_"):
+                step = norm_preset.split("_")[1]
+                if step in ("0", "off"):
+                    self.state["active_preset"] = "none"
+                    self.state["converti"] = "cv_off"
+                else:
+                    self.state["active_preset"] = f"cv_{step}"
+                    self.state["converti"] = f"cv_{step}"
+                self.state["eco"] = False
+            else:
+                self.state["active_preset"] = norm_preset
+                self.state["converti"] = "cv_off"
+                self.state["eco"] = False
 
         if target_temp is not None:
             self.state["temperature"] = target_temp
