@@ -308,6 +308,7 @@ class MirAIeHybridSubmodeSwitch(SwitchEntity, RestoreEntity):
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
         self._attr_name = "Hybrid Automatic Control"
+        self._attr_translation_key = "hybrid_submode"
         self._attr_unique_id = f"{device.id}_hybrid_submode"
         self.device = device
         self.coordinator = coordinator
@@ -370,6 +371,7 @@ class MirAIeBackendSelectSwitch(SwitchEntity, RestoreEntity):
         self._attr_should_poll: bool = False
         self._attr_has_entity_name = True
         self._attr_name = "Primary Transport Backend"
+        self._attr_translation_key = "active_backend"
         self._attr_unique_id = f"{device.id}_active_backend"
         self.device = device
         self.coordinator = coordinator
