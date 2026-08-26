@@ -253,6 +253,9 @@
       },
       "last_controlled_via": {
         "name": "Last Controlled Via"
+      },
+      "model_capabilities": {
+        "name": "Model Capabilities"
       }
     }
   },
