@@ -216,6 +216,7 @@ class MirAIeClimate(ClimateEntity):
                 h_vane=h_vane,
                 eco=eco,
                 nanoe=nanoe,
+                preset=preset,
                 origin="IR Blaster" if getattr(coord, "primary_backend", "cloud") == "ir" else "IR Failover (Offline)",
             )
             if success:
@@ -597,7 +598,7 @@ class MirAIeClimate(ClimateEntity):
                 else:
                     eco_val = False
                     preset_val = f"cv_{perc_str}"
-                    mode_val = "cool" if self.hvac_mode == HVACMode.COOL else (self.hvac_mode.value if isinstance(self.hvac_mode, HVACMode) else "cool")
+                    mode_val = f"converti_{perc_str}"
                     try:
                         c_enum = ConvertiMode(int(perc_str))
                         cloud_coro = self.device.set_converti_mode(c_enum)

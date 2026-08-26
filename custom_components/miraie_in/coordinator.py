@@ -208,6 +208,7 @@ class MirAIeDeviceCoordinator:
         eco: Optional[bool] = None,
         nanoe: Optional[bool] = None,
         display: Optional[bool] = None,
+        preset: Optional[str] = None,
         origin: str = "IR Blaster",
     ) -> bool:
         """Generate and transmit IR payload via configured blaster entity.
@@ -264,6 +265,7 @@ class MirAIeDeviceCoordinator:
                 h_vane=cmd_h,
                 eco=cmd_eco,
                 nanoe=cmd_nanoe,
+                preset=preset,
                 origin=origin,
             )
 

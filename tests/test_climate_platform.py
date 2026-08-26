@@ -201,6 +201,7 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
             h_vane=None,
             eco=None,
             nanoe=None,
+            preset=None,
             origin="IR Failover (Offline)",
         )
 
@@ -235,6 +236,7 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
             h_vane=None,
             eco=None,
             nanoe=None,
+            preset=None,
             origin="IR Failover (Offline)",
         )
 
@@ -358,6 +360,56 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.climate.preset_mode, PRESET_NONE)
         self.assertEqual(self.coordinator.state["active_preset"], "none")
         self.assertEqual(self.coordinator.state["converti"], "cv_off")
+
+    async def test_convertible_preset_transition_and_reset_to_none_ir_mode(self):
+        """Test setting convertible preset and resetting to none when primary_backend is ir."""
+        from homeassistant.components.climate import PRESET_NONE
+
+        coord_ir = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id="ir_test_entry",
+            device_id="ir_dev_cv",
+            model_code="CS-HZ24XKE",
+            has_wifi=False,
+            blaster_entity_id="infrared.living_room_blaster",
+            primary_backend="ir",
+        )
+        coord_ir.async_dispatch_ir_command = AsyncMock(return_value=True)
+        climate_ir = MirAIeClimate(self.mock_device, self.mock_entry, coord_ir)
+
+        # 1. Set convertible 80% via IR
+        await climate_ir.async_set_preset_mode("cv_80")
+        self.assertEqual(climate_ir.preset_mode, "cv_80")
+        self.assertEqual(coord_ir.state["active_preset"], "cv_80")
+        self.assertEqual(coord_ir.state["converti"], "cv_80")
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(
+            mode="converti_80",
+            target_temp=None,
+            fan=None,
+            v_vane=None,
+            h_vane=None,
+            eco=False,
+            nanoe=None,
+            preset="cv_80",
+            origin="IR Blaster",
+        )
+
+        # 2. Reset back to Normal mode via IR
+        await climate_ir.async_set_preset_mode(PRESET_NONE)
+        self.assertEqual(climate_ir.preset_mode, PRESET_NONE)
+        self.assertEqual(coord_ir.state["active_preset"], "none")
+        self.assertEqual(coord_ir.state["converti"], "cv_off")
+        coord_ir.async_dispatch_ir_command.assert_awaited_with(
+            mode="cool",
+            target_temp=None,
+            fan=None,
+            v_vane=None,
+            h_vane=None,
+            eco=False,
+            nanoe=None,
+            preset="none",
+            origin="IR Blaster",
+        )
 
 
 if __name__ == "__main__":
