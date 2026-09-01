@@ -99,6 +99,154 @@ class TestCoordinatorIRDispatch(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(coord.state["power"], "off")
         self.assertEqual(coord.state["display"], "off")
 
+    async def test_blaster_reconnect_resync_success(self):
+        import time
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from homeassistant.core import Event
+
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_ir_123",
+            device_id="dev_ir_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=False,
+            primary_backend="ir",
+            blaster_entity_id="infrared.living_room_blaster",
+        )
+        coord._is_esphome_blaster = True
+
+        # 1. Dispatch command (Cool 22C, Fan Low)
+        with patch.object(coord, "async_dispatch_ir_command", wraps=coord.async_dispatch_ir_command):
+            await coord.async_dispatch_ir_command(mode="cool", target_temp=22, fan="low", origin="HA UI")
+            self.assertEqual(coord._last_ir_command_source, "HA UI")
+            self.assertEqual(coord._last_requested_ir_params["target_temp"], 22)
+            self.assertEqual(coord._last_requested_ir_params["mode"], "cool")
+
+        # 2. Simulate blaster reconnect event (unavailable -> available)
+        event = MagicMock(spec=Event)
+        event.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch, patch(
+            "custom_components.miraie_in.coordinator.asyncio.sleep", new_callable=AsyncMock
+        ) as mock_sleep:
+            mock_dispatch.return_value = True
+            await coord._async_blaster_state_changed(event)
+
+            mock_sleep.assert_called_once_with(0.3)
+            mock_dispatch.assert_called_once()
+            call_kwargs = mock_dispatch.call_args[1]
+            self.assertEqual(call_kwargs["target_temp"], 22)
+            self.assertEqual(call_kwargs["mode"], "cool")
+            self.assertEqual(call_kwargs["origin"], "Blaster Reconnect Resync")
+            # Action is consumed
+            self.assertIsNone(coord._last_requested_ir_params)
+
+    async def test_blaster_reconnect_ttl_discard(self):
+        import time
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from homeassistant.core import Event
+
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_ir_123",
+            device_id="dev_ir_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=False,
+            primary_backend="ir",
+            blaster_entity_id="infrared.living_room_blaster",
+        )
+
+        # Simulate command issued 200 seconds ago (> 180s TTL)
+        coord._last_ir_command_source = "HA UI"
+        coord._last_ir_command_timestamp = time.monotonic() - 200.0
+        coord._last_requested_ir_params = {"mode": "cool", "target_temp": 20}
+
+        event = MagicMock(spec=Event)
+        event.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch:
+            await coord._async_blaster_state_changed(event)
+            mock_dispatch.assert_not_called()
+
+    async def test_blaster_reconnect_physical_remote_precedence(self):
+        import time
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from homeassistant.core import Event
+
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_ir_123",
+            device_id="dev_ir_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=False,
+            primary_backend="ir",
+            blaster_entity_id="infrared.living_room_blaster",
+            receiver_entity_id="infrared.living_room_receiver",
+        )
+
+        # 1. HA command issued
+        await coord.async_dispatch_ir_command(mode="cool", target_temp=22, origin="HA UI")
+        self.assertIsNotNone(coord._last_requested_ir_params)
+
+        # 2. Physical remote decoded
+        coord._apply_decoded_ir_state({
+            "packet_type": "full_frame",
+            "power": "on",
+            "mode": "cool",
+            "temperature": 26,
+            "fan_speed": "auto",
+        })
+        self.assertEqual(coord._last_ir_command_source, "IR Remote")
+        self.assertIsNone(coord._last_requested_ir_params)
+
+        # 3. Blaster reconnects
+        event = MagicMock(spec=Event)
+        event.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch:
+            await coord._async_blaster_state_changed(event)
+            mock_dispatch.assert_not_called()
+
+    async def test_blaster_reconnect_ha_startup_no_spurious_transmission(self):
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from homeassistant.core import Event
+
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_ir_123",
+            device_id="dev_ir_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=False,
+            primary_backend="ir",
+            blaster_entity_id="infrared.living_room_blaster",
+        )
+
+        self.assertEqual(coord._last_ir_command_source, "Init")
+        self.assertIsNone(coord._last_requested_ir_params)
+
+        event = MagicMock(spec=Event)
+        event.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch:
+            await coord._async_blaster_state_changed(event)
+            mock_dispatch.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

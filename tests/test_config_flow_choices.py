@@ -67,7 +67,9 @@ class TestConfigFlowChoices(unittest.IsolatedAsyncioTestCase):
         }
         handler = OptionsFlowHandler(mock_entry)
 
-        res = await handler.async_step_device_settings({"blaster_entity_id": None, "install_date": "2026-01-01", "primary_backend": "cloud", "hybrid_submode": "auto"})
+        from datetime import date, timedelta
+        valid_date = (date.today() - timedelta(days=60)).isoformat()
+        res = await handler.async_step_device_settings({"blaster_entity_id": None, "install_date": valid_date, "primary_backend": "cloud", "hybrid_submode": "auto"})
         self.assertEqual(res["type"], "create_entry")
         self.assertEqual(res["data"]["blaster_entity_id"], "")
         self.assertEqual(res["data"]["devices"]["dev123"]["blaster_entity_id"], "")

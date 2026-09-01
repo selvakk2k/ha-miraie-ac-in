@@ -110,15 +110,17 @@ class TestModuleImports(unittest.TestCase):
         self.assertEqual(result_step1["step_id"], "device_settings")
 
         # Step 2 device_settings submission
+        from datetime import date, timedelta
+        valid_date = (date.today() - timedelta(days=60)).isoformat()
         result_step2 = asyncio.run(
             handler.async_step_device_settings(
-                {"install_date": "2026-01-01"}
+                {"install_date": valid_date}
             )
         )
         self.assertEqual(result_step2["type"], "create_entry")
         options = result_step2["data"]
         self.assertIn("devices", options)
-        self.assertEqual(options["devices"]["dev1"]["install_date"], "2026-01-01")
+        self.assertEqual(options["devices"]["dev1"]["install_date"], valid_date)
 
 
     def test_climate_precision(self):

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .coordinator import MirAIeDeviceCoordinator
 
 from miraie_ac import (
     Device as MirAIeDevice,
@@ -184,49 +187,39 @@ class MirAIeDisplaySwitch(SwitchEntity):
 
 
 class MirAIeNanoeSwitch(SwitchEntity):
-    """Representation of a MirAIe Nanoe Air Purification switch.
-    
-    WARNING: Untested feature, added based on protocol structure but lacking a
-    physical Nanoe-compatible device to verify active MQTT control.
-    """
+    """Switch entity for Panasonic AC nanoe-G Air Purification Control."""
 
-    def __init__(self, device: MirAIeDevice, coordinator=None) -> None:
-        self._attr_should_poll: bool = False
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "nanoe"
-        self._attr_unique_id = f"{device.id}_nanoe"
+    _attr_has_entity_name = True
+    _attr_translation_key = "nanoe"
+    _attr_icon = "mdi:air-filter"
+
+    def __init__(
+        self,
+        device: MirAIeDevice,
+        coordinator: MirAIeDeviceCoordinator | None = None,
+        entry: ConfigEntry | None = None,
+    ) -> None:
+        """Initialize the switch."""
         self.device = device
         self.coordinator = coordinator
-
-    @property
-    def icon(self) -> str | None:
-        return "mdi:air-filter"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                (DOMAIN, self.device.id)
-            },
-            name=self.device.friendly_name,
-            manufacturer=self.device.details.brand,
-            model=self.device.details.model_number,
-            sw_version=self.device.details.firmware_version,
-        )
+        self._entry = entry
+        self._attr_unique_id = f"{device.id}_nanoe"
 
     @property
     def is_on(self) -> bool:
-        """Return True if Nanoe is on."""
+        """Return true if switch is on."""
         if self.coordinator and "nanoe" in self.coordinator.state:
             return bool(self.coordinator.state.get("nanoe"))
         return getattr(self.device.status, "nanoe_mode", "off") == "on"
 
     @property
     def available(self) -> bool:
-        if self.coordinator:
-            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir" or getattr(self.coordinator, "blaster_entity_id", None):
-                return True
+        """Return True if entity is available."""
+        coord = self.coordinator
+        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
+            return True
+        if coord and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None):
+            return True
         return self.device.status.is_online
 
     async def _send_nanoe_command(self, turn_on: bool) -> None:
