@@ -215,11 +215,9 @@ class MirAIeNanoeSwitch(SwitchEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        coord = self.coordinator
-        if coord and getattr(coord, "primary_backend", "cloud") == "ir":
-            return True
-        if coord and getattr(coord, "hybrid_submode", "auto") == "auto" and getattr(coord, "blaster_entity_id", None):
-            return True
+        if self.coordinator:
+            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir" or getattr(self.coordinator, "blaster_entity_id", None):
+                return True
         return self.device.status.is_online
 
     async def _send_nanoe_command(self, turn_on: bool) -> None:

@@ -248,5 +248,54 @@ class TestCoordinatorIRDispatch(unittest.IsolatedAsyncioTestCase):
             mock_dispatch.assert_not_called()
 
 
+    async def test_blaster_reconnect_flapping_no_rearm(self):
+        """Verify that connection flapping (multiple reconnects) does not recursively re-arm resync."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from homeassistant.core import Event
+
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_ir_123",
+            device_id="dev_ir_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=False,
+            primary_backend="ir",
+            blaster_entity_id="infrared.living_room_blaster",
+        )
+        coord._is_esphome_blaster = False
+
+        # 1. Dispatch initial command (Cool 22C)
+        await coord.async_dispatch_ir_command(mode="cool", target_temp=22, origin="HA UI")
+        self.assertEqual(coord._last_ir_command_source, "HA UI")
+        self.assertIsNotNone(coord._last_requested_ir_params)
+
+        # 2. First reconnect event (unavailable -> available)
+        event1 = MagicMock(spec=Event)
+        event1.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        # Trigger first resync (runs actual async_dispatch_ir_command with is_resync=True)
+        await coord._async_blaster_state_changed(event1)
+
+        # Verify that after first resync, pending params is None and source is stamped as resync
+        self.assertIsNone(coord._last_requested_ir_params)
+        self.assertEqual(coord._last_ir_command_source, "Blaster Reconnect Resync")
+
+        # 3. Flapping: Second reconnect event 30 seconds later (unavailable -> available)
+        event2 = MagicMock(spec=Event)
+        event2.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch2:
+            await coord._async_blaster_state_changed(event2)
+            # Second flap must NOT trigger any new IR dispatch!
+            mock_dispatch2.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

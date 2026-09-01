@@ -218,6 +218,7 @@ class MirAIeDeviceCoordinator:
         display: Optional[bool] = None,
         preset: Optional[str] = None,
         origin: str = "IR Blaster",
+        is_resync: bool = False,
     ) -> bool:
         """Generate and transmit IR payload via configured blaster entity.
 
@@ -257,19 +258,23 @@ class MirAIeDeviceCoordinator:
         )
 
         # Record command metadata and desired parameters for resync-on-reconnect
-        self._last_ir_command_timestamp = time.monotonic()
-        self._last_ir_command_source = origin
-        self._last_requested_ir_params = {
-            "mode": cmd_mode,
-            "target_temp": cmd_temp,
-            "fan": cmd_fan,
-            "v_vane": cmd_v,
-            "h_vane": cmd_h,
-            "eco": cmd_eco,
-            "nanoe": cmd_nanoe,
-            "display": display,
-            "preset": preset,
-        }
+        if not is_resync:
+            self._last_ir_command_timestamp = time.monotonic()
+            self._last_ir_command_source = origin
+            self._last_requested_ir_params = {
+                "mode": cmd_mode,
+                "target_temp": cmd_temp,
+                "fan": cmd_fan,
+                "v_vane": cmd_v,
+                "h_vane": cmd_h,
+                "eco": cmd_eco,
+                "nanoe": cmd_nanoe,
+                "display": display,
+                "preset": preset,
+            }
+        else:
+            self._last_ir_command_source = origin
+            self._last_requested_ir_params = None
 
         def _on_success() -> bool:
             if cmd_mode == "display":
@@ -819,7 +824,7 @@ class MirAIeDeviceCoordinator:
                 await asyncio.sleep(0.3)
             params = dict(self._last_requested_ir_params)
             self._last_requested_ir_params = None
-            await self.async_dispatch_ir_command(**params, origin="Blaster Reconnect Resync")
+            await self.async_dispatch_ir_command(**params, origin="Blaster Reconnect Resync", is_resync=True)
         else:
             LOGGER.debug(
                 "Device %s: IR blaster %s reconnected — resync skipped (source=%s, elapsed=%.1fs, pending=%s)",
