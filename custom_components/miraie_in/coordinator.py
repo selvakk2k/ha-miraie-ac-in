@@ -6,6 +6,7 @@ import time
 from datetime import date, datetime
 from typing import Any, Callable, Dict, Optional
 
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval, async_track_time_change
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
@@ -87,8 +88,11 @@ class MirAIeDeviceCoordinator:
         self.device_online = False
         self.ir_blaster_available = False
         self._working_ir_format: Optional[str] = ir_format
+        self._is_esphome_blaster: bool = False
 
         self._last_ir_command_timestamp: float = 0.0
+        self._last_ir_command_source: str = "Init"
+        self._last_requested_ir_params: Optional[Dict[str, Any]] = None
         self._listeners: list[Callable[[], None]] = []
 
     @callback
@@ -190,8 +194,12 @@ class MirAIeDeviceCoordinator:
             self.state["nanoe"] = str(cloud_data["acngs"]).lower() in ["on", "1", "true"]
 
         # Origin tracking: preserve "IR" origins during active IR control
-        if not in_ir_grace_window and self.state.get("last_controlled_by") not in ("IR Blaster", "IR Remote", "IR Failover", "IR Failover (Offline)"):
-            self.state["last_controlled_by"] = "Cloud"
+        if not in_ir_grace_window:
+            if "pwr" in cloud_data or "md" in cloud_data or "tset" in cloud_data:
+                self._last_ir_command_source = "Cloud"
+                self._last_requested_ir_params = None
+            if self.state.get("last_controlled_by") not in ("IR Blaster", "IR Remote", "IR Failover", "IR Failover (Offline)"):
+                self.state["last_controlled_by"] = "Cloud"
 
         self.state["provisional"] = False
         self.device_online = True
@@ -248,26 +256,40 @@ class MirAIeDeviceCoordinator:
             ir_data["description"],
         )
 
-        # Optimistically update coordinator state IMMEDIATELY for zero-lag UI response
+        # Record command metadata and desired parameters for resync-on-reconnect
         self._last_ir_command_timestamp = time.monotonic()
+        self._last_ir_command_source = origin
+        self._last_requested_ir_params = {
+            "mode": cmd_mode,
+            "target_temp": cmd_temp,
+            "fan": cmd_fan,
+            "v_vane": cmd_v,
+            "h_vane": cmd_h,
+            "eco": cmd_eco,
+            "nanoe": cmd_nanoe,
+            "display": display,
+            "preset": preset,
+        }
 
-        if cmd_mode == "display":
-            self.async_optimistic_update(
-                display=display if display is not None else (self.state.get("display") != "on"),
-                origin=origin,
-            )
-        else:
-            self.async_optimistic_update(
-                mode=cmd_mode,
-                target_temp=cmd_temp,
-                fan=cmd_fan,
-                v_vane=cmd_v,
-                h_vane=cmd_h,
-                eco=cmd_eco,
-                nanoe=cmd_nanoe,
-                preset=preset,
-                origin=origin,
-            )
+        def _on_success() -> bool:
+            if cmd_mode == "display":
+                self.async_optimistic_update(
+                    display=display if display is not None else (self.state.get("display") != "on"),
+                    origin=origin,
+                )
+            else:
+                self.async_optimistic_update(
+                    mode=cmd_mode,
+                    target_temp=cmd_temp,
+                    fan=cmd_fan,
+                    v_vane=cmd_v,
+                    h_vane=cmd_h,
+                    eco=cmd_eco,
+                    nanoe=cmd_nanoe,
+                    preset=preset,
+                    origin=origin,
+                )
+            return True
 
         # Determine target domain & service call based on blaster_entity_id
         target_domain = self.blaster_entity_id.split(".")[0]
@@ -302,7 +324,7 @@ class MirAIeDeviceCoordinator:
                     cmd_obj = MirAIeRawIRCommand(ir_data["raw"])
                     LOGGER.info("Device %s: Transmitting native IR command via %s", self.device_id, self.blaster_entity_id)
                     await async_send_command(self.hass, self.blaster_entity_id, cmd_obj)
-                    return True
+                    return _on_success()
                 except Exception as err:
                     LOGGER.debug("Native infrared helper threw exception for %s: %s, falling back to remote.send_command", self.device_id, err)
 
@@ -316,7 +338,7 @@ class MirAIeDeviceCoordinator:
                     {"topic": self.blaster_entity_id, "payload": ir_data["tasmota_json"]},
                     blocking=False,
                 )
-                return True
+                return _on_success()
             except Exception as err:
                 LOGGER.error("Device %s: MQTT IR transmission failed: %s", self.device_id, err)
                 return False
@@ -339,13 +361,13 @@ class MirAIeDeviceCoordinator:
                     {"entity_id": self.blaster_entity_id, "command": cmd_payload},
                     blocking=False,
                 )
-                return True
+                return _on_success()
             except Exception as err:
                 LOGGER.warning("Cached IR format %s failed for %s: %s, re-detecting format", self._working_ir_format, self.device_id, err)
                 self._working_ir_format = None
 
         # Format detection / candidate list based on user configuration
-        fmt = str(self.ir_format or "auto").lower()
+        fmt = (self.ir_format or "auto").lower()
         if fmt == "raw":
             transmission_attempts = [
                 ("Raw pulse array:", [ir_data["raw"]]),
@@ -381,7 +403,7 @@ class MirAIeDeviceCoordinator:
                 )
                 self._working_ir_format = label
                 LOGGER.info("Device %s: Locked in working IR format: %s", self.device_id, label)
-                return True
+                return _on_success()
             except Exception as err:
                 LOGGER.debug("IR payload format (%s) rejected: %s", label, err)
 
@@ -506,7 +528,7 @@ class MirAIeDeviceCoordinator:
 
     @callback
     def async_setup_receiver(self) -> None:
-        """Register state listener on the configured IR receiver entity."""
+        """Register state listeners on the configured IR receiver and blaster entities."""
         LOGGER.info(
             "Device %s: Initializing IR receiver setup (receiver_entity_id=%r, blaster_entity_id=%r, primary_backend=%r)",
             self.device_id,
@@ -514,11 +536,33 @@ class MirAIeDeviceCoordinator:
             self.blaster_entity_id,
             self.primary_backend,
         )
+
+        from homeassistant.helpers.event import async_track_state_change_event
+
+        if self.blaster_entity_id:
+            from homeassistant.helpers import entity_registry as er
+
+            ent_reg = er.async_get(self.hass) if hasattr(er, "async_get") else None
+            entry = None
+            if ent_reg:
+                if hasattr(ent_reg, "async_get"):
+                    entry = ent_reg.async_get(self.blaster_entity_id)
+                elif hasattr(ent_reg, "get"):
+                    entry = ent_reg.get(self.blaster_entity_id)
+            self._is_esphome_blaster = (
+                (entry is not None and getattr(entry, "platform", None) == "esphome")
+                or self.blaster_entity_id.startswith(("infrared.", "esphome."))
+            )
+            unsub_blaster = async_track_state_change_event(
+                self.hass, [self.blaster_entity_id], self._async_blaster_state_changed
+            )
+            self._unsub_event_bus.append(unsub_blaster)
+            LOGGER.info("Device %s: Registered IR blaster state listener on entity %s (is_esphome=%s)", self.device_id, self.blaster_entity_id, self._is_esphome_blaster)
+
         if not self.receiver_entity_id:
             LOGGER.info("Device %s: No receiver_entity_id configured, skipping IR receiver setup", self.device_id)
             return
 
-        from homeassistant.helpers.event import async_track_state_change_event
         try:
             from panasonic_ac_models import decode_ir_code  # type: ignore[import-not-found, import-untyped]
         except ImportError:
@@ -734,11 +778,65 @@ class MirAIeDeviceCoordinator:
                 except (ValueError, TypeError):
                     pass
 
+    async def _async_blaster_state_changed(self, event: Any) -> None:
+        """Handle IR blaster emitter availability changes."""
+        event_data = getattr(event, "data", {}) if hasattr(event, "data") else (event.get("data", {}) if isinstance(event, dict) else {})
+        old_state = event_data.get("old_state")
+        new_state = event_data.get("new_state")
+        if new_state is None:
+            self.ir_blaster_available = False
+            self._notify_listeners()
+            return
+
+        new_raw = getattr(new_state, "state", None) if hasattr(new_state, "state") else (new_state.get("state") if isinstance(new_state, dict) else str(new_state))
+        if new_raw in (STATE_UNAVAILABLE, STATE_UNKNOWN, None, ""):
+            self.ir_blaster_available = False
+            self._notify_listeners()
+            return
+
+        # Trigger only on the edge transition from unavailable/unknown to available
+        old_raw = getattr(old_state, "state", None) if hasattr(old_state, "state") else (old_state.get("state") if isinstance(old_state, dict) else str(old_state) if old_state else None)
+        if old_raw is not None and old_raw not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+
+        self.ir_blaster_available = True
+        self._notify_listeners()
+
+        elapsed = time.monotonic() - self._last_ir_command_timestamp
+        if (
+            self._last_ir_command_source not in ("IR Remote", "Cloud", "Init")
+            and self._last_requested_ir_params is not None
+            and elapsed <= 180.0
+        ):
+            LOGGER.info(
+                "Device %s: IR blaster %s reconnected after %.1fs — resyncing AC state %s",
+                self.device_id,
+                self.blaster_entity_id,
+                elapsed,
+                self._last_requested_ir_params,
+            )
+            if self._is_esphome_blaster:
+                await asyncio.sleep(0.3)
+            params = dict(self._last_requested_ir_params)
+            self._last_requested_ir_params = None
+            await self.async_dispatch_ir_command(**params, origin="Blaster Reconnect Resync")
+        else:
+            LOGGER.debug(
+                "Device %s: IR blaster %s reconnected — resync skipped (source=%s, elapsed=%.1fs, pending=%s)",
+                self.device_id,
+                self.blaster_entity_id,
+                self._last_ir_command_source,
+                elapsed,
+                self._last_requested_ir_params,
+            )
+
     @callback
     def _apply_decoded_ir_state(self, decoded: Dict[str, Any]) -> None:
         """Apply a decoded physical remote state payload and notify entities."""
         # Initiate 8-second grace window to protect against stale incoming cloud packets
         self._last_physical_rx_timestamp = time.monotonic()
+        self._last_ir_command_source = "IR Remote"
+        self._last_requested_ir_params = None
         self.state["last_controlled_by"] = "IR Remote"
         self.state["provisional"] = False
 

@@ -51,9 +51,11 @@ class TestMultipleIRDevices(unittest.IsolatedAsyncioTestCase):
         }
         options_flow.config_entry = mock_entry
 
+        from datetime import date, timedelta
+        valid_date = (date.today() - timedelta(days=60)).isoformat()
         result = await options_flow.async_step_device_settings(
             user_input={
-                "install_date": "2026-01-01",
+                "install_date": valid_date,
                 "blaster_entity_id": "infrared.updated_blaster",
                 "primary_backend": "ir",
                 "hybrid_submode": "manual",

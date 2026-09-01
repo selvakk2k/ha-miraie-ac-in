@@ -232,6 +232,10 @@ def setup_ha_stubs():
     homeassistant.const.PRECISION_TENTHS = 0.1
     homeassistant.const.SIGNAL_STRENGTH_DECIBELS_MILLIWATT = "dBm"
     homeassistant.const.PERCENTAGE = "%"
+    homeassistant.const.STATE_UNAVAILABLE = "unavailable"
+    homeassistant.const.STATE_UNKNOWN = "unknown"
+    homeassistant.const.STATE_ON = "on"
+    homeassistant.const.STATE_OFF = "off"
 
     # homeassistant.components.climate symbols
     class ClimateEntityFeature(IntFlag):
@@ -362,6 +366,7 @@ def setup_ha_stubs():
     import homeassistant.helpers.event
     homeassistant.helpers.event.async_track_time_change = lambda *args, **kwargs: (lambda: None)
     homeassistant.helpers.event.async_track_time_interval = lambda *args, **kwargs: (lambda: None)
+    homeassistant.helpers.event.async_track_state_change_event = lambda *args, **kwargs: (lambda: None)
 
     # Entity helper stubs
     import homeassistant.helpers.entity
