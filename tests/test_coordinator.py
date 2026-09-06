@@ -296,6 +296,47 @@ class TestCoordinatorIRDispatch(unittest.IsolatedAsyncioTestCase):
             # Second flap must NOT trigger any new IR dispatch!
             mock_dispatch2.assert_not_called()
 
+    async def test_blaster_reconnect_toggle_display_not_resynced(self):
+        """Verify that hardware toggle commands like display LED are never retransmitted on blaster reconnect."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from homeassistant.core import Event
+
+        hass = MockHass()
+        coord = MirAIeDeviceCoordinator(
+            hass=hass,
+            entry_id="entry_ir_123",
+            device_id="dev_ir_456",
+            model_code="CS-CU-RU18CKY-1",
+            has_wifi=False,
+            primary_backend="ir",
+            blaster_entity_id="infrared.living_room_blaster",
+        )
+        coord._is_esphome_blaster = False
+
+        # 1. Dispatch display toggle command
+        await coord.async_dispatch_ir_command(mode="display", origin="HA UI")
+        self.assertEqual(coord._last_ir_command_source, "HA UI")
+        # Ensure toggle commands are never stored in _last_requested_ir_params
+        self.assertIsNone(coord._last_requested_ir_params)
+
+        # 2. Simulate blaster reconnect event
+        event = MagicMock(spec=Event)
+        event.data = {
+            "old_state": MagicMock(state="unavailable"),
+            "new_state": MagicMock(state="available"),
+        }
+
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch:
+            await coord._async_blaster_state_changed(event)
+            mock_dispatch.assert_not_called()
+
+        # 3. Defense-in-depth: even if _last_requested_ir_params somehow contains mode="display",
+        # the reconnect handler's guard must reject it.
+        coord._last_requested_ir_params = {"mode": "display"}
+        with patch.object(coord, "async_dispatch_ir_command", new_callable=AsyncMock) as mock_dispatch:
+            await coord._async_blaster_state_changed(event)
+            mock_dispatch.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval, async_track_time_change
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 
+from .const import NON_RESYNCABLE_IR_MODES
 from .logger import LOGGER
 try:
     from panasonic_ac_models import ACModelLookup, generate_ir_code, decode_ir_code  # type: ignore[import-not-found, import-untyped]
@@ -273,17 +274,20 @@ class MirAIeDeviceCoordinator:
         if not is_resync:
             self._last_ir_command_timestamp = time.monotonic()
             self._last_ir_command_source = origin
-            self._last_requested_ir_params = {
-                "mode": cmd_mode,
-                "target_temp": cmd_temp,
-                "fan": cmd_fan,
-                "v_vane": cmd_v,
-                "h_vane": cmd_h,
-                "eco": cmd_eco,
-                "nanoe": cmd_nanoe,
-                "display": display,
-                "preset": preset,
-            }
+            if cmd_mode not in NON_RESYNCABLE_IR_MODES:
+                self._last_requested_ir_params = {
+                    "mode": cmd_mode,
+                    "target_temp": cmd_temp,
+                    "fan": cmd_fan,
+                    "v_vane": cmd_v,
+                    "h_vane": cmd_h,
+                    "eco": cmd_eco,
+                    "nanoe": cmd_nanoe,
+                    "display": display,
+                    "preset": preset,
+                }
+            else:
+                self._last_requested_ir_params = None
         else:
             self._last_ir_command_source = origin
             self._last_requested_ir_params = None
@@ -832,6 +836,7 @@ class MirAIeDeviceCoordinator:
         if (
             self._last_ir_command_source not in ("IR Remote", "Cloud", "Init")
             and self._last_requested_ir_params is not None
+            and self._last_requested_ir_params.get("mode") not in NON_RESYNCABLE_IR_MODES
             and elapsed <= 180.0
         ):
             LOGGER.info(
