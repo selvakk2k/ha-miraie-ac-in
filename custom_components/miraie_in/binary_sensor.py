@@ -104,12 +104,20 @@ class MirAIeFilterCleanBinarySensor(BinarySensorEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         LOGGER.debug("Successfully added filter clean alert binary sensor to HA")
-        self.device.register_callback(self.async_write_ha_state)
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
+        self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         LOGGER.debug("Successfully removed filter clean alert binary sensor from HA")
-        self.device.remove_callback(self.async_write_ha_state)
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
 
 
 class MirAIeCoilCleanBinarySensor(BinarySensorEntity):
@@ -152,7 +160,13 @@ class MirAIeCoilCleanBinarySensor(BinarySensorEntity):
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         LOGGER.debug("Successfully added coil cleaning binary sensor to HA")
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
@@ -254,7 +268,13 @@ class MirAIeCloudMQTTConnectedBinarySensor(BinarySensorEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
         from homeassistant.helpers.event import async_track_time_interval
         from homeassistant.core import callback
@@ -306,7 +326,13 @@ class MirAIeDeviceOnlineBinarySensor(BinarySensorEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:

@@ -499,7 +499,13 @@ class MirAIeRoomTemperatureSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self):
@@ -537,7 +543,13 @@ class MirAIeWifiSignalSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self):
@@ -584,7 +596,13 @@ class MirAIeControlSourceSensor(SensorEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self):
