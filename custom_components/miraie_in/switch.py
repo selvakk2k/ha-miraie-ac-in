@@ -18,7 +18,7 @@ from homeassistant.components.switch import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -197,16 +197,28 @@ class MirAIeDisplaySwitch(SwitchEntity):
             if self.coordinator.blaster_entity_id and hasattr(self, "hass") and self.hass:
                 try:
                     from homeassistant.helpers.event import async_track_state_change_event
+
+                    @callback
+                    def _on_blaster_change(event) -> None:
+                        self.async_write_ha_state()
+
                     self.async_on_remove(
                         async_track_state_change_event(
                             self.hass,
                             [self.coordinator.blaster_entity_id],
-                            lambda event: self.async_write_ha_state(),
+                            _on_blaster_change,
                         )
                     )
                 except Exception:
                     pass
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
@@ -324,16 +336,28 @@ class MirAIeNanoeSwitch(SwitchEntity):
             if self.coordinator.blaster_entity_id and hasattr(self, "hass") and self.hass:
                 try:
                     from homeassistant.helpers.event import async_track_state_change_event
+
+                    @callback
+                    def _on_blaster_change(event) -> None:
+                        self.async_write_ha_state()
+
                     self.async_on_remove(
                         async_track_state_change_event(
                             self.hass,
                             [self.coordinator.blaster_entity_id],
-                            lambda event: self.async_write_ha_state(),
+                            _on_blaster_change,
                         )
                     )
                 except Exception:
                     pass
-        self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
+
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
         self.device.register_callback(self._device_callback)
 
     async def async_will_remove_from_hass(self) -> None:
