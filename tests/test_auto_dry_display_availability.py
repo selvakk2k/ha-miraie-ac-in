@@ -145,6 +145,31 @@ class TestAutoDryDisplayAvailability(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(elapsed, 0.4)
         self.assertEqual(coord.state.get("temperature"), 26)
 
+    async def test_auto_mode_multiple_temp_changes_debounced(self):
+        """Verify multiple rapid temperature changes in Auto mode cancel earlier tasks and only send latest."""
+        coord = MirAIeDeviceCoordinator(
+            hass=self.hass,
+            entry_id=self.mock_entry.entry_id,
+            device_id=self.mock_device.id,
+            model_code="CS-KN18YKY",
+            has_wifi=True,
+        )
+        climate = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=coord)
+        await climate.async_set_hvac_mode(HVACMode.AUTO)
+        climate._auto_mode_switch_time = time.monotonic() - 14.5
+
+        # Send 25, 26, 27 concurrently
+        task1 = asyncio.create_task(climate.async_set_temperature(temperature=25))
+        task2 = asyncio.create_task(climate.async_set_temperature(temperature=26))
+        task3 = asyncio.create_task(climate.async_set_temperature(temperature=27))
+
+        await asyncio.gather(task1, task2, task3)
+
+        # Only 27 should be final target temperature
+        self.assertEqual(coord.state.get("temperature"), 27)
+        self.assertEqual(self.mock_device.set_temperature.call_count, 1)
+        self.mock_device.set_temperature.assert_called_with(27)
+
     async def test_dual_control_availability_logic(self):
         """Verify dual-control AC remains online if either channel is up, offline only when both are down."""
         self.hass.states["remote.blaster"] = MagicMock(state="on")
