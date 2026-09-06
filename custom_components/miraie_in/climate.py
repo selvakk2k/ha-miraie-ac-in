@@ -487,12 +487,12 @@ class MirAIeClimate(ClimateEntity):
         target_temp = int(round(raw_temp))
         LOGGER.debug(f"Set temperature to {target_temp}")
 
-        # In Auto mode, the physical AC firmware blinks the display for 5-8 seconds upon entering Auto mode.
-        # Delay subsequent temperature change commands if within 8 seconds of entering Auto mode.
+        # In Auto mode, the physical AC firmware blinks the display for 13-15 seconds upon entering Auto mode.
+        # Delay subsequent temperature change commands if within 15 seconds of entering Auto mode.
         if self.hvac_mode == HVACMode.AUTO and hasattr(self, "_auto_mode_switch_time"):
             elapsed = time.monotonic() - self._auto_mode_switch_time
-            if elapsed < 8.0:
-                wait_time = 8.0 - elapsed
+            if elapsed < 15.0:
+                wait_time = 15.0 - elapsed
                 LOGGER.info("Device %s: Auto mode blinking transition active. Waiting %.1fs before setting temperature to %d", self.device.id, wait_time, target_temp)
                 await asyncio.sleep(wait_time)
 

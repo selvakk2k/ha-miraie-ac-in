@@ -134,8 +134,8 @@ class TestAutoDryDisplayAvailability(unittest.IsolatedAsyncioTestCase):
 
         # Transition into Auto mode
         await climate.async_set_hvac_mode(HVACMode.AUTO)
-        # Simulate 7.5s already elapsed
-        climate._auto_mode_switch_time = time.monotonic() - 7.5
+        # Simulate 14.5s already elapsed
+        climate._auto_mode_switch_time = time.monotonic() - 14.5
 
         t0 = time.monotonic()
         await climate.async_set_temperature(temperature=26)
