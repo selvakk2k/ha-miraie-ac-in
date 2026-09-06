@@ -165,6 +165,7 @@ class MirAIeClimate(ClimateEntity):
         self._attr_precision = PRECISION_WHOLE
         self._attr_unique_id = device.id
         self._auto_mode_switch_time: float = 0.0
+        self._pending_auto_temp_task: asyncio.Task | None = None
 
     async def _send_command_via_hybrid(
         self,
@@ -487,14 +488,12 @@ class MirAIeClimate(ClimateEntity):
         target_temp = int(round(raw_temp))
         LOGGER.debug(f"Set temperature to {target_temp}")
 
-        # In Auto mode, the physical AC firmware blinks the display for 13-15 seconds upon entering Auto mode.
-        # Delay subsequent temperature change commands if within 15 seconds of entering Auto mode.
-        if self.hvac_mode == HVACMode.AUTO and hasattr(self, "_auto_mode_switch_time"):
-            elapsed = time.monotonic() - self._auto_mode_switch_time
-            if elapsed < 15.0:
-                wait_time = 15.0 - elapsed
-                LOGGER.info("Device %s: Auto mode blinking transition active. Waiting %.1fs before setting temperature to %d", self.device.id, wait_time, target_temp)
-                await asyncio.sleep(wait_time)
+        # In Auto mode, physical AC firmware blinks the display for 13-15 seconds upon entering Auto mode.
+        # If multiple temperature changes arrive during this window, cancel the previous pending command
+        # and only dispatch the latest one once the delay finishes.
+        if self._pending_auto_temp_task and not self._pending_auto_temp_task.done():
+            self._pending_auto_temp_task.cancel()
+            self._pending_auto_temp_task = None
 
         # If Eco mode is active, adjusting temperature automatically exits Eco mode
         is_eco_active = (self.preset_mode == PRESET_ECO) or bool(getattr(getattr(self, "coordinator", None), "state", {}).get("eco"))
@@ -513,7 +512,34 @@ class MirAIeClimate(ClimateEntity):
                 except Exception:
                     pass
 
-        # Dispatch command immediately to physical AC / Cloud with zero artificial delay
+        async def _delayed_send(wait_s: float) -> None:
+            try:
+                if wait_s > 0:
+                    LOGGER.info("Device %s: Auto mode blinking transition active. Waiting %.1fs before setting temperature to %d", self.device.id, wait_s, target_temp)
+                    await asyncio.sleep(wait_s)
+                await self._send_command_via_hybrid(
+                    temp=target_temp,
+                    eco=False if is_eco_active else None,
+                    cloud_coro=self.device.set_temperature(target_temp),
+                )
+            except asyncio.CancelledError:
+                LOGGER.debug("Device %s: Superseded by newer temperature command to %d", self.device.id, target_temp)
+                raise
+
+        if self.hvac_mode == HVACMode.AUTO and hasattr(self, "_auto_mode_switch_time"):
+            elapsed = time.monotonic() - self._auto_mode_switch_time
+            if elapsed < 15.0:
+                wait_time = 15.0 - elapsed
+                # Run the delayed send as a task and await it so only the latest task executes
+                task = asyncio.create_task(_delayed_send(wait_time))
+                self._pending_auto_temp_task = task
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    return
+                return
+
+        # Zero delay for non-Auto or when past the blinking transition window
         await self._send_command_via_hybrid(
             temp=target_temp,
             eco=False if is_eco_active else None,
