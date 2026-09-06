@@ -17,6 +17,7 @@ from homeassistant.components.switch import (
     SwitchEntity,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
@@ -114,10 +115,27 @@ class MirAIeDisplaySwitch(SwitchEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        if self.coordinator:
-            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir" or getattr(self.coordinator, "blaster_entity_id", None):
-                return True
-        return self.device.status.is_online
+        coord = self.coordinator
+        has_wifi = getattr(coord, "has_wifi", True) if coord else True
+        has_cloud = bool(getattr(getattr(self.device, "status", None), "is_online", False))
+        if coord and hasattr(coord, "hub") and getattr(coord.hub, "broker", None):
+            broker = coord.hub.broker
+            if hasattr(broker, "connected") and not broker.connected.is_set():
+                has_cloud = False
+
+        blaster_id = coord.blaster_entity_id if coord else None
+        has_blaster = bool(blaster_id)
+        has_ir = False
+        if blaster_id and coord:
+            hass = getattr(self, "hass", None) or getattr(coord, "hass", None)
+            st = hass.states.get(blaster_id) if (hass and hasattr(hass, "states")) else None
+            has_ir = st is not None and str(st.state).lower() not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+
+        if has_blaster and has_wifi:
+            return has_cloud or has_ir
+        elif has_blaster and not has_wifi:
+            return has_ir
+        return has_cloud
 
     async def _send_display_command(self, turn_on: bool) -> None:
         target_mode = DisplayMode.ON if turn_on else DisplayMode.OFF
@@ -176,6 +194,18 @@ class MirAIeDisplaySwitch(SwitchEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
+            if self.coordinator.blaster_entity_id and hasattr(self, "hass") and self.hass:
+                try:
+                    from homeassistant.helpers.event import async_track_state_change_event
+                    self.async_on_remove(
+                        async_track_state_change_event(
+                            self.hass,
+                            [self.coordinator.blaster_entity_id],
+                            lambda event: self.async_write_ha_state(),
+                        )
+                    )
+                except Exception:
+                    pass
         self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
         self.device.register_callback(self._device_callback)
 
@@ -215,10 +245,27 @@ class MirAIeNanoeSwitch(SwitchEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        if self.coordinator:
-            if not self.coordinator.has_wifi or getattr(self.coordinator, "primary_backend", "cloud") == "ir" or getattr(self.coordinator, "blaster_entity_id", None):
-                return True
-        return self.device.status.is_online
+        coord = self.coordinator
+        has_wifi = getattr(coord, "has_wifi", True) if coord else True
+        has_cloud = bool(getattr(getattr(self.device, "status", None), "is_online", False))
+        if coord and hasattr(coord, "hub") and getattr(coord.hub, "broker", None):
+            broker = coord.hub.broker
+            if hasattr(broker, "connected") and not broker.connected.is_set():
+                has_cloud = False
+
+        blaster_id = coord.blaster_entity_id if coord else None
+        has_blaster = bool(blaster_id)
+        has_ir = False
+        if blaster_id and coord:
+            hass = getattr(self, "hass", None) or getattr(coord, "hass", None)
+            st = hass.states.get(blaster_id) if (hass and hasattr(hass, "states")) else None
+            has_ir = st is not None and str(st.state).lower() not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+
+        if has_blaster and has_wifi:
+            return has_cloud or has_ir
+        elif has_blaster and not has_wifi:
+            return has_ir
+        return has_cloud
 
     async def _send_nanoe_command(self, turn_on: bool) -> None:
         coord = self.coordinator
@@ -274,6 +321,18 @@ class MirAIeNanoeSwitch(SwitchEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
+            if self.coordinator.blaster_entity_id and hasattr(self, "hass") and self.hass:
+                try:
+                    from homeassistant.helpers.event import async_track_state_change_event
+                    self.async_on_remove(
+                        async_track_state_change_event(
+                            self.hass,
+                            [self.coordinator.blaster_entity_id],
+                            lambda event: self.async_write_ha_state(),
+                        )
+                    )
+                except Exception:
+                    pass
         self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
         self.device.register_callback(self._device_callback)
 

@@ -162,7 +162,8 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         climate_cloud_only = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=None)
         self.assertFalse(climate_cloud_only.available)
 
-        # With blaster attached -> available
+        # With blaster attached and online -> available
+        self.hass.states["infrared.living_room_blaster"] = MagicMock(state="on")
         coord_hybrid = MirAIeDeviceCoordinator(
             hass=self.hass,
             entry_id=self.mock_entry.entry_id,
@@ -175,6 +176,10 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
         )
         climate_hybrid = MirAIeClimate(device=self.mock_device, entry=self.mock_entry, coordinator=coord_hybrid)
         self.assertTrue(climate_hybrid.available)
+
+        # When IR blaster is also unavailable -> entity becomes unavailable
+        self.hass.states["infrared.living_room_blaster"] = MagicMock(state="unavailable")
+        self.assertFalse(climate_hybrid.available)
 
     async def test_offline_proactive_ir_dispatch(self):
         """Test that offline cloud with auto hybrid proactively dispatches IR command."""

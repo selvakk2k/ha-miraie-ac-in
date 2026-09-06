@@ -149,6 +149,7 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
 
     async def test_nanoe_switch_ir_primary(self):
         """Test nanoe switch dispatches IR command when primary_backend is ir."""
+        self.hass.states["infrared.living_room_blaster"] = MagicMock(state="on")
         coord_ir = MirAIeDeviceCoordinator(
             hass=self.hass,
             entry_id=self.mock_entry.entry_id,
@@ -162,6 +163,11 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
 
         switch = MirAIeNanoeSwitch(self.mock_device, coord_ir)
         self.assertTrue(switch.available)
+
+        # For IR-only device, when blaster is unavailable, entity must be unavailable
+        self.hass.states["infrared.living_room_blaster"] = MagicMock(state="unavailable")
+        self.assertFalse(switch.available)
+        self.hass.states["infrared.living_room_blaster"] = MagicMock(state="on")
 
         await switch.async_turn_on()
         coord_ir.async_dispatch_ir_command.assert_awaited_with(nanoe=True, origin="IR Blaster")

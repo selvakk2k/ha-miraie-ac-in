@@ -658,6 +658,8 @@ def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any
             preset_obj = getattr(status_obj, "preset_mode", None)
             preset_val = preset_obj.value if preset_obj and hasattr(preset_obj, "value") else str(preset_obj or "none")
             nanoe_val = getattr(status_obj, "nanoe_mode", "off")
+            disp_obj = getattr(status_obj, "display_mode", None)
+            disp_val = disp_obj.value if disp_obj and hasattr(disp_obj, "value") else disp_obj
 
             power_obj = getattr(status_obj, "power_mode", None)
             power_val = power_obj.value if power_obj and hasattr(power_obj, "value") else power_obj
@@ -675,6 +677,7 @@ def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any
                 "achs": SWING_H_MAP.get(h_val, H0) if h_val is not None else None,
                 "acec": "on" if preset_val == "eco" else "off",
                 "acngs": "on" if str(nanoe_val).lower() in ("on", "1", "true") else "off",
+                "acdc": "on" if str(disp_val).lower() in ("on", "1", "true") else "off",
                 "converti": c_val,
                 "preset": preset_val,
             }
