@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import asyncio
+import time
 from typing import Any
 from miraie_ac import (
     Device as MirAIeDevice,
@@ -27,7 +28,7 @@ from homeassistant.components.climate import (
     FAN_OFF,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature, PRECISION_WHOLE, PRECISION_HALVES
+from homeassistant.const import UnitOfTemperature, PRECISION_WHOLE, PRECISION_HALVES, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -163,6 +164,7 @@ class MirAIeClimate(ClimateEntity):
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_precision = PRECISION_WHOLE
         self._attr_unique_id = device.id
+        self._auto_mode_switch_time: float = 0.0
 
     async def _send_command_via_hybrid(
         self,
@@ -295,12 +297,33 @@ class MirAIeClimate(ClimateEntity):
 
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
+        """Return True if entity is available.
+
+        Dual-control (Wi-Fi + IR Blaster): Available if EITHER channel is online.
+        Only transitions to unavailable when BOTH channels are unavailable.
+        Single-control (Wi-Fi only or IR only): Available only if its sole channel is online.
+        """
         coord = getattr(self, "coordinator", None)
-        if coord:
-            if not coord.has_wifi or getattr(coord, "primary_backend", "cloud") == "ir" or getattr(coord, "blaster_entity_id", None):
-                return True
-        return self.device.status.is_online
+        has_wifi = getattr(coord, "has_wifi", True) if coord else True
+        has_cloud = bool(getattr(getattr(self.device, "status", None), "is_online", False))
+        if coord and hasattr(coord, "hub") and getattr(coord.hub, "broker", None):
+            broker = coord.hub.broker
+            if hasattr(broker, "connected") and not broker.connected.is_set():
+                has_cloud = False
+
+        blaster_id = coord.blaster_entity_id if coord else None
+        has_blaster = bool(blaster_id)
+        has_ir = False
+        if blaster_id and coord:
+            hass = getattr(self, "hass", None) or getattr(coord, "hass", None)
+            st = hass.states.get(blaster_id) if (hass and hasattr(hass, "states")) else None
+            has_ir = st is not None and str(st.state).lower() not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+
+        if has_blaster and has_wifi:
+            return has_cloud or has_ir
+        elif has_blaster and not has_wifi:
+            return has_ir
+        return has_cloud
 
     @property
     def hvac_mode(self) -> HVACMode | None:
@@ -347,7 +370,7 @@ class MirAIeClimate(ClimateEntity):
         coord = getattr(self, "coordinator", None)
         if coord and getattr(coord, "temperature_sensor_entity_id", None) and self.hass:
             state_obj = self.hass.states.get(coord.temperature_sensor_entity_id)
-            if state_obj and str(state_obj.state).lower() not in ("unknown", "unavailable", "none", "null", ""):
+            if state_obj and state_obj.state.lower() not in ("unknown", "unavailable", "none", "null", ""):
                 try:
                     return float(state_obj.state)
                 except (ValueError, TypeError):
@@ -464,6 +487,15 @@ class MirAIeClimate(ClimateEntity):
         target_temp = int(round(raw_temp))
         LOGGER.debug(f"Set temperature to {target_temp}")
 
+        # In Auto mode, the physical AC firmware blinks the display for 5-8 seconds upon entering Auto mode.
+        # Delay subsequent temperature change commands if within 8 seconds of entering Auto mode.
+        if self.hvac_mode == HVACMode.AUTO and hasattr(self, "_auto_mode_switch_time"):
+            elapsed = time.monotonic() - self._auto_mode_switch_time
+            if elapsed < 8.0:
+                wait_time = 8.0 - elapsed
+                LOGGER.info("Device %s: Auto mode blinking transition active. Waiting %.1fs before setting temperature to %d", self.device.id, wait_time, target_temp)
+                await asyncio.sleep(wait_time)
+
         # If Eco mode is active, adjusting temperature automatically exits Eco mode
         is_eco_active = (self.preset_mode == PRESET_ECO) or bool(getattr(getattr(self, "coordinator", None), "state", {}).get("eco"))
 
@@ -505,7 +537,27 @@ class MirAIeClimate(ClimateEntity):
                     await self.device.set_hvac_mode(MHVACMode(hvac_mode.value))
 
             mode_str = hvac_mode.value if hvac_mode != HVACMode.FAN_ONLY else "fan"
-            await self._send_command_via_hybrid(mode=mode_str, cloud_coro=_cloud_turn_on_and_mode())
+            temp_param = None
+            fan_param = None
+            coord = getattr(self, "coordinator", None)
+
+            if hvac_mode == HVACMode.AUTO:
+                self._auto_mode_switch_time = time.monotonic()
+                series = getattr(coord, "capabilities", {}).get("series", "EU") if coord else "EU"
+                room_t = coord.state.get("room_temperature") if coord and coord.state else None
+                if series in ("EZ", "KZ") and room_t is not None and isinstance(room_t, (int, float)) and room_t < 18:
+                    temp_param = 21
+                else:
+                    temp_param = 24
+            elif hvac_mode == HVACMode.DRY:
+                fan_param = "low"
+
+            await self._send_command_via_hybrid(
+                mode=mode_str,
+                temp=temp_param,
+                fan=fan_param,
+                cloud_coro=_cloud_turn_on_and_mode(),
+            )
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
 
@@ -632,6 +684,18 @@ class MirAIeClimate(ClimateEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
+            if self.coordinator.blaster_entity_id and hasattr(self, "hass") and self.hass:
+                try:
+                    from homeassistant.helpers.event import async_track_state_change_event
+                    self.async_on_remove(
+                        async_track_state_change_event(
+                            self.hass,
+                            [self.coordinator.blaster_entity_id],
+                            lambda event: self.async_write_ha_state(),
+                        )
+                    )
+                except Exception:
+                    pass
 
         self._device_callback = lambda *args, **kwargs: self.async_write_ha_state()
         self.device.register_callback(self._device_callback)

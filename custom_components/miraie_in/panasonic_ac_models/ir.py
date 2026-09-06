@@ -213,7 +213,10 @@ def generate_ir_code(
     b[13] = mode_map.get(mode_key, 0x39)
 
     if mode_key not in ["fan_only", "fan"]:
-        t_val = 26 if eco else max(16, min(30, int(target_temp)))
+        if mode_key == "auto" and target_temp is None:
+            t_val = 24
+        else:
+            t_val = 26 if eco else max(16, min(30, int(target_temp if target_temp is not None else 24)))
         b[14] = (t_val - 16) * 2 + 0x20
 
     if mode_key == "dry":
@@ -296,7 +299,7 @@ def generate_ir_code(
     set_frame2_byte(18, b[26])
 
     aeha = bytes_to_aeha_hex(b)
-    actual_temp = 26 if eco else target_temp
+    actual_temp = 26 if eco else (24 if (mode_key == "auto" and target_temp is None) else target_temp)
     desc = f"{series_label} | {mode_key.upper()} {actual_temp}°C (Fan: {fan}, V-Vane: {v_vane}, H-Vane: {h_vane or 'Mirrored'} [{louver_type}], ECO: {'ON' if eco else 'OFF'}, NANOE: {'ON' if nanoe else 'OFF'})"
 
     return {
@@ -492,6 +495,8 @@ def _decode_full_state(
     # Temperature
     temp = ((b14 - 0x20) // 2) + 16
     temp = max(16, min(30, temp))
+    if mode == "auto" and (b14 == 0 or temp < 16 or temp > 30):
+        temp = 24
 
     # Fan speed
     fan_nibble = (b16 >> 4) & 0x0F
@@ -503,7 +508,7 @@ def _decode_full_state(
         0x7: "high",
         0xA: "auto"
     }
-    fan_speed = fan_map.get(fan_nibble, "auto")
+    fan_speed = "low" if mode == "dry" else fan_map.get(fan_nibble, "auto")
 
     # Vertical Vane
     v_nibble = b16 & 0x0F

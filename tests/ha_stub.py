@@ -320,6 +320,15 @@ def setup_ha_stubs():
         async def async_add_executor_job(self, target, *args):
             return target(*args) if callable(target) else None
 
+    _mock_rec = MockRecorderInstance()
+    homeassistant.components.recorder.get_instance = lambda *args, **kwargs: _mock_rec
+    homeassistant.components.recorder.statistics.get_last_statistics = lambda hass, count, stat_id, *args, **kwargs: {stat_id: [{"start": 0.0, "sum": 0.0}]}
+    try:
+        import homeassistant.helpers.recorder
+        homeassistant.helpers.recorder.get_instance = lambda *args, **kwargs: _mock_rec
+    except Exception:
+        pass
+
     # Selector helper stubs
     import homeassistant.helpers.selector as selector_mod
     class SelectorBase(dict):
@@ -554,7 +563,7 @@ def setup_ha_stubs():
             del homeassistant.components.climate.__dict__[const_name]
 
 
-class MockEntry:
+class _MockEntryImpl:
     def __init__(self, entry_id, data=None, options=None, title="MirAIe AC"):
         self.entry_id = entry_id
         self.data = data or {}
@@ -574,7 +583,7 @@ class MockStates(dict):
         return super().get(key, default)
 
 
-class MockHass:
+class _MockHassImpl:
     def __init__(self):
         self.data = {}
         self.is_running: bool = True
@@ -599,6 +608,17 @@ class MockHass:
         async def _dummy_exec(func, *args, **kwargs):
             return func(*args, **kwargs)
         self.async_add_executor_job = AsyncMock(side_effect=_dummy_exec)
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
+    MockEntry: Any = homeassistant.config_entries.ConfigEntry
+    MockHass: Any = homeassistant.core.HomeAssistant
+else:
+    MockEntry = _MockEntryImpl
+    MockHass = _MockHassImpl
 
 
 # Auto-install Home Assistant stubs on import

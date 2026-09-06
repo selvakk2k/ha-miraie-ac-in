@@ -230,15 +230,27 @@ class MirAIeDeviceCoordinator:
 
         # Apply parameters or use current coordinator state
         cmd_mode = mode or self.state["mode"]
-        cmd_temp = target_temp if target_temp is not None else self.state["temperature"]
-        cmd_fan = fan or self.state["fan_speed"]
+        series_code = self.capabilities.get("series", "EU")
+        if cmd_mode == "auto" and target_temp is None:
+            room_t = self.state.get("room_temperature")
+            if series_code in ("EZ", "KZ") and room_t is not None and isinstance(room_t, (int, float)) and room_t < 18:
+                cmd_temp = 21
+            else:
+                cmd_temp = 24
+        else:
+            cmd_temp = target_temp if target_temp is not None else self.state["temperature"]
+
+        if cmd_mode == "dry" and fan is None:
+            cmd_fan = "low"
+        else:
+            cmd_fan = fan or self.state["fan_speed"]
+
         cmd_v = v_vane or self.state["v_vane"]
         cmd_h = h_vane or self.state["h_vane"]
         cmd_eco = eco if eco is not None else self.state["eco"]
         cmd_nanoe = nanoe if nanoe is not None else self.state["nanoe"]
 
         # Generate IR payload using panasonic-ac-models
-        series_code = self.capabilities.get("series", "EU")
         ir_data = generate_ir_code(
             mode=cmd_mode,
             target_temp=cmd_temp,
@@ -465,6 +477,15 @@ class MirAIeDeviceCoordinator:
                     self.state["active_preset"] = "none"
                     self.state["converti"] = "cv_off"
                     self.state["eco"] = False
+                if mode == "auto" and target_temp is None:
+                    series = self.capabilities.get("series", "EU")
+                    room_t = self.state.get("room_temperature")
+                    if series in ("EZ", "KZ") and room_t is not None and isinstance(room_t, (int, float)) and room_t < 18:
+                        self.state["temperature"] = 21
+                    else:
+                        self.state["temperature"] = 24
+                elif mode == "dry" and fan is None:
+                    self.state["fan_speed"] = "low"
 
         if preset is not None:
             norm_preset = preset.lower().strip()
