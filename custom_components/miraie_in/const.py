@@ -30,6 +30,9 @@ BACKEND_IR = "ir"
 HYBRID_SUBMODE_AUTO = "auto"
 HYBRID_SUBMODE_MANUAL = "manual"
 
+# Commands that are hardware toggles or non-idempotent and must never be retransmitted on blaster reconnect
+NON_RESYNCABLE_IR_MODES = frozenset({"display"})
+
 
 # Possible swing state codes
 H0 = "H0"
