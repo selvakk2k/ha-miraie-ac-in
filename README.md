@@ -15,6 +15,19 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 
 ---
 
+## Table of Contents
+
+1. [Features](#features)
+2. [Tested Models](#tested-models)
+3. [Caveats & Integration Limitations](#caveats--integration-limitations)
+4. [Companion Lovelace Card](#companion-lovelace-card)
+5. [Installation](#installation)
+6. [Configuration](#configuration)
+7. [Troubleshooting & Logs](#troubleshooting--logs)
+8. [Credits & License](#credits--license)
+
+---
+
 ## Features
 
 ### 1. Hardware Mappings
