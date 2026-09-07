@@ -1,7 +1,10 @@
 # Panasonic MirAIe AC India Integration (`ha-miraie-ac-in`)
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![Version](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in)](https://github.com/selvakk2k/ha-miraie-ac-in/releases)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
+[![Stable](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in?label=Stable&style=flat-square)](https://github.com/selvakk2k/ha-miraie-ac-in/releases/latest)
+[![Beta](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in?include_prereleases&label=Beta&color=orange&style=flat-square)](https://github.com/selvakk2k/ha-miraie-ac-in/releases)
+[![AI-Assisted](https://img.shields.io/badge/AI%20Assisted-Antigravity%20%7C%20Claude-blueviolet?style=flat-square&logo=google)](https://github.com/selvakk2k)
+[![AI Attribution](https://img.shields.io/badge/AI%20Attribution-AIA%20PAI%20Nc%20Hin-orange?style=flat-square)](https://aiattribution.github.io/interpret-attribution)
 
 A Home Assistant custom integration for Panasonic Air Conditioners operating on the Indian-market MirAIe IoT platform.
 
@@ -138,8 +141,10 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 * Originally designed and written by [@rkzofficial](https://github.com/rkzofficial).
 * Key features contributed by upstream community developers: [@deCodeIt](https://github.com/deCodeIt) and [@gutpull](https://github.com/gutpull).
 
-### Fork Authors & Contributors
-* Historical energy statistics backfill feature contributed by [@shashi278](https://github.com/shashi278).
-* Fork enhancements (firmware 3.02+ temperature fix, Converti 8-in-1, and Panasonic cloud MQTT connection resolutions) developed by [@selvakk2k](https://github.com/selvakk2k) with assistance from **Claude** (Anthropic) and **Gemini/Antigravity** (Google DeepMind).
+### Fork Maintainers & Contributors
+* **Lead Architecture & Hardware Validation**: [@selvakk2k](https://github.com/selvakk2k) — physical testing on Panasonic MirAIe ACs, BEE taxonomy analysis, and domain requirements.
+* **Community Features**: Historical energy statistics backfill contributed by [@shashi278](https://github.com/shashi278).
+* **Code Implementation & Engineering**: **Antigravity** (Google DeepMind) — firmware 3.02+ temperature parsing, Converti 8-in-1 presets, MQTT resource lifecycle, and test coverage.
+* **Pre-Release Code Review & Auditing**: **Claude** (Anthropic) — independent architectural review, code audits, and edge-case verification.
 
 Licensed under the **Apache License 2.0**. See the `LICENSE` file for the original license text.
