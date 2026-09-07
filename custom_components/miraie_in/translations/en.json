@@ -262,7 +262,7 @@
   "issues": {
     "manual_migration_required": {
       "title": "Manual Upgrade Required for MirAIe India",
-      "description": "MirAIe India 2.0 introduces independent per-device entries and IR blaster support. Auto-migration could not split your legacy account entry automatically. Please delete the old 'MirAIe Cloud Account' entry under Settings -> Devices & Services -> MirAIe India and re-add your account via Add Integration. All your existing entity names, automations, and dashboards will be preserved seamlessly!"
+      "description": "MirAIe India 2.0 introduces independent per-device entries and IR blaster support. Auto-migration could not split your legacy account entry automatically. Please delete the old 'MirAIe Cloud Account' entry under Settings -> Devices & Services -> MirAIe India and re-add your account via Add Integration. All your existing entity names, automations, and dashboards will remain unchanged."
     },
     "migration_successful": {
       "title": "Migrated to MirAIe 2.0 — IR Blaster Setup Available",

@@ -41,7 +41,7 @@ This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designe
 * **Filter Clean Notification**: Exposes a binary sensor that triggers when the AC's internal controller flags that the mesh air filter needs cleaning.
 * **Standalone Room Temperature**: Exposes a dedicated temperature sensor entity for easier historical tracking and graphing.
 * **Wi-Fi Strength & Last Control Source**: Sensors tracking Wi-Fi RSSI (in dBm) and whether the unit was last adjusted via the remote or the app.
-* **Historical Energy Backfill & Statistics**: Automatically imports historical daily energy data from MirAIe (up to ~8 months) directly into Home Assistant's long-term recorder statistics database under the statistic ID `sensor.<device>_energy_history` for seamless visualization on the Energy Dashboard without race conditions or negative bars.
+* **Historical Energy Backfill & Statistics**: Automatically imports historical daily energy data from MirAIe (up to ~8 months) directly into Home Assistant's long-term recorder statistics database under the statistic ID `sensor.<device>_energy_history` for clean visualization on the Energy Dashboard without missing days.
 * **Energy Verification & Diagnostic Buttons**: Implements automatic 4-stage (`Yesterday -> Weekly -> Monthly -> Today`) API reconciliation to protect statistics integrity, and adds **Rebuild Energy Statistics** (`mdi:database-refresh`) and **Verify Energy Statistics** (`mdi:database-check`) diagnostic buttons on the device page.
 * **Core Diagnostics**: Supports Home Assistant Core Diagnostics. You can download a diagnostic file for the integration directly from the Device page, making it easier to troubleshoot issues without exposing sensitive credentials.
 
@@ -73,7 +73,7 @@ This integration has been explicitly tested on the following hardware models:
 
 To get the most out of this integration, check out the [**MirAIe AC Lovelace Card**](https://github.com/selvakk2k/miraie-ac-card-in)!
 
-It is a premium, custom Lovelace thermostat card specifically designed to work seamlessly with this integration. It supports all the custom features exposed by this integration (Converti 8-in-1 presets, Nanoe, Coil Clean, external temperature sensors, etc.) and includes full visual editor support.
+A custom Lovelace thermostat card designed specifically for this integration. It supports all the custom features exposed by this integration (Converti 8-in-1 presets, Nanoe, Coil Clean, external temperature sensors, etc.) and includes full visual editor support.
 
 ---
 
