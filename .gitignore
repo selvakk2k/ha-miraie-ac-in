@@ -48,7 +48,6 @@ test_config/
 htmlcov/
 .nox/
 .tox/
-pytest.ini
 
 # IDE / Editor configuration
 .vscode/

@@ -160,4 +160,4 @@ Diagnostics provide a snapshot of the current device status, configuration, and 
 * **Code Implementation & Engineering**: **Antigravity** (Google DeepMind) — firmware 3.02+ temperature parsing, Converti 8-in-1 presets, MQTT resource lifecycle, and test coverage.
 * **Pre-Release Code Review & Auditing**: **Claude** (Anthropic) — independent architectural review, code audits, and edge-case verification.
 
-Licensed under the **Apache License 2.0**. See the `LICENSE` file for the original license text.
+Licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
