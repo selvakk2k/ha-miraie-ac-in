@@ -195,10 +195,28 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
                 if match:
                     found = True
-                    raw_str = json.dumps(payload) if isinstance(payload, (dict, list)) else str(payload)
-                    LOGGER.info("Sending custom MQTT payload to %s (%s): %s", dev.id, dev.control_topic, raw_str)
-                    await broker.publish(dev.control_topic, raw_str)
-                    LOGGER.info("Successfully published custom MQTT payload to %s", dev.control_topic)
+                    if isinstance(payload, dict) and (payload.get("query_cloud_capabilities") or payload.get("query_details")):
+                        LOGGER.info("Querying Panasonic cloud device details for %s...", dev.id)
+                        try:
+                            details = await hub._get_device_details(dev.id)
+                            LOGGER.info("Panasonic Cloud Device Details Response for %s: %s", dev.id, json.dumps(details))
+                        except Exception as e:
+                            LOGGER.error("Failed to query device details: %s", e)
+
+                        model_number = getattr(getattr(dev, "details", None), "model_number", "")
+                        if model_number and hub.http:
+                            try:
+                                model_url = f"https://app.miraie.in/simplifi/v1/deviceManagement/deviceModels/{model_number}"
+                                async with hub.http.get(model_url, headers=hub.__build_headers__()) as resp:
+                                    model_json = await resp.json()
+                                    LOGGER.info("Panasonic Cloud Model Capabilities Response for %s (%s): %s", model_number, resp.status, json.dumps(model_json))
+                            except Exception as e:
+                                LOGGER.error("Failed to query model capabilities: %s", e)
+                    else:
+                        raw_str = json.dumps(payload) if isinstance(payload, (dict, list)) else str(payload)
+                        LOGGER.info("Sending custom MQTT payload to %s (%s): %s", dev.id, dev.control_topic, raw_str)
+                        await broker.publish(dev.control_topic, raw_str)
+                        LOGGER.info("Successfully published custom MQTT payload to %s", dev.control_topic)
 
         if not found:
             LOGGER.warning("send_mqtt_payload: No matching online MirAIe device found for target: %s", target_device_id or target_entity_id)
