@@ -1,3 +1,7 @@
 {
-  "name": "Panasonic AC India"
+  "name": "Panasonic AC India",
+  "render_readme": true,
+  "country": [
+    "IN"
+  ]
 }
