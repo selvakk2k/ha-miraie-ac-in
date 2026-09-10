@@ -4,9 +4,13 @@ send_mqtt_payload:
   fields:
     payload:
       name: Payload
-      description: JSON payload dictionary to transmit (e.g. {"BuzzerControl": "off", "ki": 30}).
+      description: 'JSON payload dictionary to transmit (e.g. {"bzr": "off", "ki": 1, "cnt": "an", "sid": "1"}).'
       required: true
-      example: '{"BuzzerControl": "off", "ki": 30}'
+      example:
+        bzr: "off"
+        ki: 1
+        cnt: "an"
+        sid: "1"
       selector:
         object:
     entity_id:
