@@ -1,0 +1,27 @@
+send_mqtt_payload:
+  name: Send Custom MQTT Payload
+  description: Sends a raw JSON dictionary command payload directly over the authenticated MirAIe MQTT broker to the target AC unit.
+  fields:
+    payload:
+      name: Payload
+      description: JSON payload dictionary to transmit (e.g. {"BuzzerControl": "off", "ki": 30}).
+      required: true
+      example: '{"BuzzerControl": "off", "ki": 30}'
+      selector:
+        object:
+    entity_id:
+      name: Target Entity
+      description: The climate entity to send the payload to (e.g. climate.room_2_room_2_ac).
+      required: false
+      example: climate.room_2_room_2_ac
+      selector:
+        entity:
+          domain: climate
+          integration: miraie_in
+    device_id:
+      name: Device ID
+      description: Target Panasonic device ID (optional if entity_id is specified).
+      required: false
+      example: 8c53afca6252
+      selector:
+        text:

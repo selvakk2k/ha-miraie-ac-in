@@ -9,7 +9,7 @@ from miraie_ac import MirAIeBroker, MirAIeHub
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -20,6 +20,7 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 from datetime import date
 import aiohttp
 import asyncio
+import json
 
 from .const import (
     CONF_INSTALL_DATE,
@@ -71,7 +72,7 @@ def _migrate_unique_ids(
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
 
     # Build a set of known device IDs for fast lookup
-    device_ids = {device.id for device in hub.home.devices}
+    device_ids = {device.id for device in getattr(getattr(hub, "home", None), "devices", [])}
 
     migrated = 0
     for entity_entry in entities:
@@ -159,6 +160,53 @@ def _cleanup_cross_device_entities(hass: HomeAssistant, entry: ConfigEntry, targ
                 LOGGER.info("Pruned foreign device %s (%s) from entry %s", dev_entry.id, matching_identifiers, entry.entry_id)
     except Exception as exc:
         LOGGER.debug("Could not prune device registry entries for %s: %s", entry.entry_id, exc)
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the mirAIe_in integration at domain level."""
+    async def async_handle_send_mqtt_payload(call: ServiceCall) -> None:
+        """Send custom raw MQTT payload to a MirAIe device."""
+        payload = call.data.get("payload")
+        target_device_id = call.data.get("device_id")
+        target_entity_id = call.data.get("entity_id")
+
+        if not payload:
+            LOGGER.error("send_mqtt_payload: 'payload' dictionary is required")
+            return
+
+        sessions = hass.data.get(DOMAIN, {}).get("sessions", {})
+        found = False
+
+        for session in sessions.values():
+            hub = session.get("hub")
+            broker = session.get("broker")
+            devices = getattr(getattr(hub, "home", None), "devices", [])
+            for dev in devices:
+                match = False
+                if target_device_id and (dev.id == target_device_id or getattr(dev, "friendly_name", None) == target_device_id):
+                    match = True
+                elif target_entity_id:
+                    ent_reg = er.async_get(hass)
+                    ent = ent_reg.async_get(target_entity_id)
+                    if ent and (ent.unique_id.startswith(dev.id) or (ent.device_id and ent.device_id == dev.id)):
+                        match = True
+                elif not target_device_id and not target_entity_id:
+                    match = True
+
+                if match:
+                    found = True
+                    raw_str = json.dumps(payload) if isinstance(payload, (dict, list)) else str(payload)
+                    LOGGER.info("Sending custom MQTT payload to %s (%s): %s", dev.id, dev.control_topic, raw_str)
+                    await broker.publish(dev.control_topic, raw_str)
+                    LOGGER.info("Successfully published custom MQTT payload to %s", dev.control_topic)
+
+        if not found:
+            LOGGER.warning("send_mqtt_payload: No matching online MirAIe device found for target: %s", target_device_id or target_entity_id)
+
+    if not hass.services.has_service(DOMAIN, "send_mqtt_payload"):
+        hass.services.async_register(DOMAIN, "send_mqtt_payload", async_handle_send_mqtt_payload)
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -643,6 +691,7 @@ def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any
     def _cloud_cb(*args, **kwargs):
         status_obj = getattr(dev, "status", None)
         if status_obj:
+            LOGGER.info("MirAIe Cloud Status Received for %s: %s", dev.id, status_obj)
             v_swing = getattr(status_obj, "v_swing_mode", None)
             h_swing = getattr(status_obj, "h_swing_mode", None)
             v_val = v_swing.value if v_swing and hasattr(v_swing, "value") else v_swing
