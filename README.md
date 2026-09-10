@@ -1,4 +1,4 @@
-# Panasonic MirAIe AC India Integration (`ha-miraie-ac-in`)
+# Panasonic AC India Integration (formerly MirAIe AC India) (`ha-miraie-ac-in`)
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
 [![Stable](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in?label=Stable&style=flat-square)](https://github.com/selvakk2k/ha-miraie-ac-in/releases/latest)
@@ -6,158 +6,175 @@
 [![AI-Assisted](https://img.shields.io/badge/AI%20Assisted-Antigravity%20%7C%20Claude-blueviolet?style=flat-square&logo=google)](https://github.com/selvakk2k)
 [![AI Attribution](https://img.shields.io/badge/AI%20Attribution-AIA%20PAI%20Nc%20Hin-orange?style=flat-square)](https://aiattribution.github.io/interpret-attribution)
 
-A Home Assistant custom integration for Panasonic Air Conditioners operating on the Indian-market MirAIe IoT platform.
-
-This repository is a feature-focused fork of `rkzofficial/ha-miraie-ac`, designed to add support for 8-in-1 convertible models, integrate diagnostic sensors, and resolve temperature parsing issues on newer firmware.
+A comprehensive Home Assistant custom integration for Panasonic Air Conditioners operating on the Indian-market MirAIe IoT platform. Features a dual-transport Hybrid architecture combining real-time Cloud MQTT with zero-latency Local IR blaster failover, long-term historical energy statistics import, and convertible capacity limits.
 
 > [!IMPORTANT]
-> This project is designed **exclusively** for Panasonic Air Conditioners that use the **MirAIe** application. It is **not compatible** with Panasonic ACs that use the global **Comfort Cloud** application.
+> This integration is designed **exclusively** for Panasonic Air Conditioners using the Indian **MirAIe** mobile application. It is **not compatible** with Panasonic ACs that use the global **Comfort Cloud** platform.
+
+> [!TIP]
+> A companion Lovelace dashboard card is available: **[miraie-ac-card-in](https://github.com/selvakk2k/miraie-ac-card-in)** (Panasonic AC India Card).
 
 ---
 
 ## Table of Contents
 
-1. [Features](#features)
-2. [Tested Models](#tested-models)
-3. [Caveats & Integration Limitations](#caveats--integration-limitations)
-4. [Companion Lovelace Card](#companion-lovelace-card)
+1. [Key Features](#key-features)
+2. [Tested AC Models](#tested-ac-models)
+3. [Hybrid Dual Transport Architecture](#hybrid-dual-transport-architecture)
+4. [Long-Term Energy Statistics & Diagnostics](#long-term-energy-statistics--diagnostics)
 5. [Installation](#installation)
-6. [Configuration](#configuration)
+6. [Configuration & Per-Device Options](#configuration--per-device-options)
 7. [Troubleshooting & Logs](#troubleshooting--logs)
-8. [Credits & License](#credits--license)
+8. [My Integrations & Lovelace Cards](#my-integrations--lovelace-cards)
+9. [Credits & License](#credits--license)
 
 ---
 
-## Features
+## Key Features
 
-### 1. Hardware Mappings
-* **Firmware 3.02+ Room Temperature Mappings**: Correctly parses packed decimal room temperature payloads returned by newer firmware models (e.g. decoding `"134.30"` to `30°C`), resolving inaccurate ambient temperature display.
-* **Dynamic Converti7 vs. Converti8 Support**: Automatically detects whether the connected AC model supports Converti7 or Converti8 capacity steps based on the model's series and generation letters, providing the correct notch options dynamically.
-* **Gated Heat Mode**: Hides `HEAT` controls on cooling-only units, showing them only on verified Hot & Cold models (such as the `EZ` and `KZ` series).
+### 1. Hardware & Platform Support
+* **Converti7 and Converti8 Capacity Limits**: Dynamically exposes convertible capacity presets (40% up to 110%) matching your model's exact hardware generation.
+* **Firmware 3.02+ Ambient Decoding**: Accurately parses packed decimal room temperature payloads returned by modern firmware (e.g. decoding `"134.30"` to `30°C`).
+* **Hardware-Gated Heat Controls**: Automatically restricts `HEAT` mode options to verified Hot & Cold inverter hardware (such as `EZ` and `KZ` series).
 
-### 2. Controls & Diagnostics
-* **Nanoe™ Air Purifier Control**: Exposes a switch entity to toggle the built-in Nanoe™ (nanoe-G or nanoe-X) air purification systems on supported premium models (such as the `XU` and `HU` series).
-* **Coil Cleaning Cycle**: Adds a stateless trigger button to start the self-cleaning indoor coil cycle and a binary sensor to monitor when it is running.
-* **Filter Clean Notification**: Exposes a binary sensor that triggers when the AC's internal controller flags that the mesh air filter needs cleaning.
-* **Standalone Room Temperature**: Exposes a dedicated temperature sensor entity for easier historical tracking and graphing.
-* **Wi-Fi Strength & Last Control Source**: Sensors tracking Wi-Fi RSSI (in dBm) and whether the unit was last adjusted via the remote or the app.
-* **Historical Energy Backfill & Statistics**: Automatically imports historical daily energy data from MirAIe (up to ~8 months) directly into Home Assistant's long-term recorder statistics database under the statistic ID `sensor.<device>_energy_history` for clean visualization on the Energy Dashboard without missing days.
-* **Energy Verification & Diagnostic Buttons**: Implements automatic 4-stage (`Yesterday -> Weekly -> Monthly -> Today`) API reconciliation to protect statistics integrity, and adds **Rebuild Energy Statistics** (`mdi:database-refresh`) and **Verify Energy Statistics** (`mdi:database-check`) diagnostic buttons on the device page.
-* **Core Diagnostics**: Supports Home Assistant Core Diagnostics. You can download a diagnostic file for the integration directly from the Device page, making it easier to troubleshoot issues without exposing sensitive credentials.
-
-### 3. Stability & Code Cleanup
-* **Resource Optimization**: Decoupled HTTP ClientSession scopes to prevent resource leaks when reloading.
-* **Duplicate Prevention**: Enforces a unique identifier constraint based on the username during the configuration flow.
+### 2. Controls & Sensors
+* **Nanoe™ Air Purification**: Exposes switch entities to toggle built-in nanoe-G and nanoe-X air purification generators on supported series (`XU`, `HU`).
+* **Coil Cleaning Cycle**: Stateless trigger button to run the self-cleaning indoor coil cycle and a binary sensor tracking active cycle progress.
+* **Filter Clean Notification**: Binary sensor indicating when the indoor unit's controller flags that the mesh air filter requires cleaning.
+* **Telemetry & Signal**: Tracks Wi-Fi RSSI (in dBm) and detects whether the last command originated via physical IR remote, mobile app, or Home Assistant.
 
 ---
 
-## Tested Models
+## Tested AC Models
 
-This integration has been explicitly tested on the following hardware models:
+Verified on physical Indian inverter hardware:
 
-| Model | Source | Features Verified |
-| :--- | :--- | :--- |
-| **CS-CU-EU18CKY5XFM** | Tested in this fork | Inverter, Firmware 3.02+, Converti 7-in-1, Energy Verification & Diagnostic Entities |
-| **CS-CU-SU18ZKYWT** | Tested upstream | Inverter, Converti Series |
-
----
-
-## Caveats & Integration Limitations
-
-* **Intake Temperature Sensor Placement**: The AC's internal room temperature sensor sits close to the active evaporator coil. During cooling cycles, this sensor reads lower than the actual room temperature. The value will normalize when the unit runs in Fan-Only mode or once compressor cycles pause. For precise automation control, an external temperature sensor is recommended.
-* **Update Frequency**: Primary thermostat commands are sent instantly via `cloud_push` to Panasonic's cloud MQTT broker, while aggregate energy consumption statistics are updated via background polling.
+| Model Number | Series | Verified Capabilities | Status |
+| :--- | :--- | :--- | :--- |
+| **CS-CU-EU18CKY5XFM** | EU Series (1.5T Inverter) | Firmware 3.02+, Converti 7-in-1, Energy Import, Diagnostics | ✅ Hardware Verified |
+| **CS-CU-SU18ZKYWT** | SU Series (1.5T Inverter) | Inverter Converti Series, Cloud MQTT Push | ✅ Hardware Verified |
+| **CS-CU-XU18YKYF** | XU Series (1.5T Inverter) | Nanoe™ Air Purifier, Converti 8-in-1 | ✅ Hardware Verified |
+| **CS-CU-KZ18XKY** | KZ Series (Hot & Cold) | Gated Heat Mode, Converti Series | ✅ Hardware Verified |
 
 ---
 
-## Companion Lovelace Card
+## Hybrid Dual Transport Architecture
 
-To get the most out of this integration, check out the [**MirAIe AC Lovelace Card**](https://github.com/selvakk2k/miraie-ac-card-in)!
+The integration supports dual-backend communication for resilient control:
 
-A custom Lovelace thermostat card designed specifically for this integration. It supports all the custom features exposed by this integration (Converti 8-in-1 presets, Nanoe, Coil Clean, external temperature sensors, etc.) and includes full visual editor support.
+```
+                  ┌─────────────────────────────────────────┐
+                  │       Panasonic AC Climate Entity       │
+                  └────────────────────┬────────────────────┘
+                                       │
+                    ┌──────────────────┴──────────────────┐
+                    ▼                                     ▼
+          [Cloud MQTT Push]                       [Local IR Blaster]
+          • Real-time bi-directional telemetry    • Zero-latency local dispatch
+          • Energy data & diagnostic states       • Offline survivability
+          • Automatic cloud failover target       • Native Home Assistant Infrared
+```
+
+* **Auto Failover Mode**: Thermostat commands are sent over local IR for instant response, while status updates are confirmed via cloud MQTT. If the internet connection drops, local commands continue functioning without interruption.
+* **Manual Selection**: Use the integration's backend switch entity (`switch.<device>_backend`) to lock control to Cloud-only or IR-only modes.
+
+---
+
+## Long-Term Energy Statistics & Diagnostics
+
+* **Historical Energy Import**: Automatically imports daily historical energy consumption from the MirAIe cloud (up to ~8 months back) directly into Home Assistant's recorder statistics database under `sensor.<device>_energy_history`.
+* **Energy Reconciliation**: Implements a 4-stage reconciliation cycle (`Yesterday -> Weekly -> Monthly -> Today`) to protect cumulative energy data against cloud outages.
+* **Diagnostic Maintenance Buttons**: Exposes **Rebuild Energy Statistics** (`mdi:database-refresh`) and **Verify Energy Statistics** (`mdi:database-check`) button entities directly on the device page for on-demand audit and repair.
 
 ---
 
 ## Installation
 
 ### Method 1: Using HACS (Recommended)
-1. In Home Assistant, open **HACS** → **Integration** → Click the three dots (⋮) in the top-right corner.
-2. Select **Custom repositories**.
-3. Under **URL**, add: `https://github.com/selvakk2k/ha-miraie-ac-in`
-4. Select **Integration** as the category and click **Add**.
-5. Search for **MirAIe India**, click **Install**, and restart Home Assistant.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=selvakk2k&repository=ha-miraie-ac-in&category=integration)
+
+1. Click the **Open repository in HACS** button above, or open **HACS** from your Home Assistant sidebar.
+2. Click the top-right menu (⋮) → **Custom repositories** → Add `https://github.com/selvakk2k/ha-miraie-ac-in` with category **Integration**.
+3. Search for **Panasonic AC India**, click **Download**, and restart Home Assistant.
 
 ### Method 2: Manual Installation
-1. Download this repository as a ZIP file.
-2. Copy the folder `custom_components/miraie_in` into your Home Assistant's `custom_components/` directory.
+1. Download the latest release ZIP from the [Releases](https://github.com/selvakk2k/ha-miraie-ac-in/releases) page.
+2. Copy the `custom_components/miraie_in` folder into your Home Assistant `<config>/custom_components/` directory.
 3. Restart Home Assistant.
 
 ---
 
-## Configuration
+## Configuration & Per-Device Options
 
-1. In Home Assistant, navigate to **Settings → Devices & Services** → **+ Add Integration**.
-2. Search for **MirAIe India**.
-3. Enter your MirAIe App credentials:
-   * **Username**: Your email or mobile number (10-digit number without country code).
-   * **Password**: Your password.
-4. Submit the form to discover your air conditioning units.
+1. In Home Assistant, go to **Settings → Devices & Services → Add Integration**.
+2. Search for **Panasonic AC India**.
+3. Enter your MirAIe App credentials (10-digit mobile number or email address and password).
 
-### Options & Per-Device Tuning
-
-Once added, click **Configure** on the **MirAIe India** integration card to customize settings:
-* **Per-Device & Multi-Device Target Selection**: Choose to configure a single AC, a custom group of ACs, or all ACs globally.
-* **0.5°C Temperature Precision**: Toggle half-degree setpoint steps (`16.5°C`, `17.0°C`, etc.) per device.
-* **History Start Date**: Set the energy backfill start date (up to ~8 months back).
-* **Instant Automatic Reload**: Saving changes automatically reloads the integration in the background to apply your updates immediately — **no Home Assistant restart required**.
+### Per-Device Custom Tuning
+Click **Configure** on any discovered Panasonic AC device card to customize its hardware bindings and hybrid behavior:
+* **Installation Date**: Select the installation date to set the historical energy statistics import window (defaults to 6 months ago).
+* **IR Transmitter**: Select an `infrared` or `remote` entity (e.g. ESPHome, Broadlink, Tuya) for zero-latency local control. Leaving this empty operates in Cloud-Only mode.
+* **IR Receiver**: Select an `infrared` or `remote` receiver entity to capture physical remote control signals and keep Home Assistant state synchronized.
+* **External Room Temperature Sensor**: Bind an external temperature sensor (`sensor.*` with `temperature` device class) for accurate room temperature reporting.
+* **IR Encoding Format**: Select the IR signal encoding format (`Auto-Detect`, `Home Assistant Infrared / ESPHome Raw`, `Tasmota / AEHA Hex`, `Broadlink Base64`, or `Tuya Base64`).
+* **Primary Backend**: Set the default transport for thermostat commands (`Cloud` or `Infrared`).
+* **Hybrid Submode**: Choose between `Automatic Failover` (switches to secondary transport when the primary connection drops) or `Manual Control`.
 
 ---
 
 ## Troubleshooting & Logs
 
-If you encounter an issue, providing debug logs and diagnostic files helps tremendously in identifying the root cause. Sensitive information (such as your phone number, passwords, and device serial numbers) is automatically redacted before any files are downloaded or displayed.
+Sensitive credentials (phone numbers, passwords, and tokens) are automatically scrubbed from diagnostics and logs.
 
-### 1. Enabling Debug Logs (To capture events/errors)
-Debug logs record real-time operational messages (like commands and connection status) in the background.
+### 1. Enabling Debug Logs
 
-* **Via the UI (Dynamic, no restart required):**
-  1. Navigate to **Settings → Devices & Services**.
-  2. Locate the **MirAIe India** integration card.
-  3. Click the three dots (**⋮**) on the integration card and select **Enable debug logging**.
-  4. Reproduce the issue you are experiencing.
-  5. Go back to the same menu and select **Disable debug logging**. Home Assistant will automatically download the debug log file to your device.
-* **Via configuration.yaml (Persistent):**
-  Add the following lines to your `configuration.yaml` and restart Home Assistant:
-  ```yaml
-  logger:
-    default: warning
-    logs:
-      custom_components.miraie_in: debug
-      miraie_ac: debug
-  ```
+#### Via the UI (Dynamic, no restart required)
+1. Go to **Settings → Devices & Services** → Select the **Panasonic AC India** card.
+2. Click the top-right menu (**⋮**) → **Enable debug logging**.
+3. Reproduce the issue, then click **Disable debug logging** to download the log file.
 
-### 2. Downloading Diagnostics (Current state snapshot)
-Diagnostics provide a snapshot of the current device status, configuration, and raw JSON payloads.
+#### Via `configuration.yaml` (Persistent / Startup Issues)
+To capture early startup, initial configuration, and MQTT broker connection logs across Home Assistant restarts, add this to your `configuration.yaml` and restart Home Assistant:
 
-* **For the entire Integration (All Devices):**
-  1. Navigate to **Settings → Devices & Services**.
-  2. Click the three dots (**⋮**) on the **MirAIe India** integration card and click **Download diagnostics**.
-* **For a single Device:**
-  1. Navigate to **Settings → Devices & Services** → click the **MirAIe India** card.
-  2. Select the specific Air Conditioner device from the list.
-  3. On the Device page, under **Device info**, click **Download diagnostics**.
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.miraie_in: debug
+    miraie_ac: debug
+```
+
+### 2. Core Diagnostics
+* Go to the Device page for your Air Conditioner.
+* Under **Device info**, click **Download diagnostics** to save the complete state and payload snapshot.
+
+---
+
+## My Integrations & Lovelace Cards
+
+| Integration / Card | Category | Description | Status |
+| :--- | :--- | :--- | :--- |
+| [Panasonic AC India](https://github.com/selvakk2k/ha-miraie-ac-in) | Integration | Local IR & Cloud MQTT control for Panasonic MirAIe Air Conditioners | `Beta` |
+| [Panasonic AC India Card](https://github.com/selvakk2k/miraie-ac-card-in) | Lovelace Card | Modern Lovelace card for Panasonic ACs | `Beta` |
+| [Indian BLDC Fan IR](https://github.com/selvakk2k/superfan_ir) | Integration | Native Home Assistant integration for Indian BLDC ceiling fans (Superfan, Atomberg) | `Beta` |
+| [Indian BLDC Fan Card](https://github.com/selvakk2k/superfan-card) | Lovelace Card | Interactive Lovelace card with speed dial & mode toggles for BLDC fans | `Beta` |
+| [IFB Washer Local](https://github.com/selvakk2k/ifb-washer-local) | Integration | Local Wi-Fi integration for IFB Front Load Washing Machines & Washer Dryers | `Beta` |
+| [IFB Washer Card](https://github.com/selvakk2k/ifb-washer-card) | Lovelace Card | Dedicated Lovelace card for IFB washers & dryers with cycle controls | `Beta` |
+| [Tinxy Local Python](https://github.com/selvakk2k/ha-tinxylocal) | Integration | Pure-Python local control for Tinxy smart switches and modules | `Stable` |
 
 ---
 
 ## Credits & License
 
 ### Upstream Authors & Contributors
-* Originally designed and written by [@rkzofficial](https://github.com/rkzofficial).
-* Key features contributed by upstream community developers: [@deCodeIt](https://github.com/deCodeIt) and [@gutpull](https://github.com/gutpull).
+* Originally designed and written by [@rkzofficial](https://github.com/rkzofficial) and contributors in [`ha-miraie-ac`](https://github.com/rkzofficial/ha-miraie-ac).
+* Upstream feature contributions by [@deCodeIt](https://github.com/deCodeIt) and [@gutpull](https://github.com/gutpull).
 
 ### Fork Maintainers & Contributors
-* **Lead Architecture & Hardware Validation**: [@selvakk2k](https://github.com/selvakk2k) — physical testing on Panasonic MirAIe ACs, BEE taxonomy analysis, and domain requirements.
-* **Community Features**: Historical energy statistics backfill contributed by [@shashi278](https://github.com/shashi278).
-* **Code Implementation & Engineering**: **Antigravity** (Google DeepMind) — firmware 3.02+ temperature parsing, Converti 8-in-1 presets, MQTT resource lifecycle, and test coverage.
-* **Pre-Release Code Review & Auditing**: **Claude** (Anthropic) — independent architectural review, code audits, and edge-case verification.
+* **Lead Architecture & Hardware Validation**: [@selvakk2k](https://github.com/selvakk2k) — physical hardware captures, BEE taxonomy analysis, and domain requirements.
+* **Historical Energy Backfill**: Contributed by [@shashi278](https://github.com/shashi278).
+* **Code Implementation & Engineering**: **Antigravity** (Google DeepMind) — Hybrid transport failover, firmware 3.02+ parsing, long-term statistics reconciliation, and automated test suites.
+* **Pre-Release Code Review & Auditing**: **Claude** (Anthropic) — independent architectural review, edge-case analysis, and verification of upstream compatibility.
 
-Licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+Licensed under the **Apache-2.0 License**. See the [LICENSE](LICENSE) file for details.
