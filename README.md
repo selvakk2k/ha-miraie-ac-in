@@ -28,7 +28,7 @@ A comprehensive Home Assistant custom integration for Panasonic Air Conditioners
 
 1. [Key Features](#key-features)
 2. [Tested AC Models](#tested-ac-models)
-3. [Hybrid Dual Transport Architecture](#hybrid-dual-transport-architecture)
+3. [Control Modes & Architecture](#control-modes--architecture)
 4. [Long-Term Energy Statistics & Diagnostics](#long-term-energy-statistics--diagnostics)
 5. [Installation](#installation)
 6. [Configuration & Per-Device Options](#configuration--per-device-options)
@@ -69,9 +69,13 @@ Verified on physical Indian inverter hardware:
 
 ---
 
-## Hybrid Dual Transport Architecture
+## Control Modes & Architecture
 
-The integration supports dual-backend communication for resilient control:
+The integration supports three operating modes depending on how you set up your AC:
+
+* **Cloud-Only Mode**: Set up using your MirAIe account for Wi-Fi ACs. No IR blaster hardware is required. Provides full temperature control, convertible capacity presets, live room temperature readings, and long-term energy import.
+* **Hybrid Mode**: Created by attaching a local IR blaster entity to a Cloud-connected Wi-Fi AC. Commands are dispatched instantly over local IR, while the cloud connection provides live state confirmation, diagnostics, and energy data. If the internet connection drops, local commands continue operating without interruption.
+* **Standalone IR-Only Mode**: A separate, cloud-free setup path for non-Wi-Fi ACs or users wanting 100% offline control. In the setup wizard, choose **Standalone IR Device**, select your Panasonic AC model from the hardware database, and bind your IR blaster. Creates a fully capable local climate entity without any cloud account.
 
 ```
                   ┌─────────────────────────────────────────┐
@@ -86,7 +90,7 @@ The integration supports dual-backend communication for resilient control:
           • Automatic cloud failover target       • Native Home Assistant Infrared
 ```
 
-* **Unified Single Climate Entity**: Thermostat commands and controls route through your existing `climate.<device>` entity without generating duplicate entities.
+* **Unified Single Climate Entity**: In Hybrid mode, commands and controls route through a single `climate.<device>` entity without generating duplicate entities.
 * **Auto Failover Mode**: Thermostat commands are sent over local IR for instant response, while status updates are confirmed via cloud MQTT. If the internet connection drops, local commands continue functioning without interruption.
 * **Manual Backend Selection**: Use the integration's backend switch entity (`switch.<device>_backend`) to lock control to Cloud-only or IR-only modes manually or via automations.
 * **Optional IR Receiver**: An IR receiver is optional. In Hybrid mode, Cloud MQTT acts as the authoritative state feedback loop, preventing state drift without extra receiver hardware.
@@ -122,19 +126,29 @@ The integration supports dual-backend communication for resilient control:
 
 ## Configuration & Per-Device Options
 
-1. In Home Assistant, go to **Settings → Devices & Services → Add Integration**.
-2. Search for **Panasonic AC India**.
-3. Enter your MirAIe App credentials (10-digit mobile number or email address and password).
+When adding the integration (**Settings → Devices & Services → Add Integration → Panasonic AC India**), you are presented with two setup paths:
+
+### Path A: MirAIe Cloud Account (Wi-Fi ACs)
+1. Select **MirAIe Cloud Account** in the setup wizard.
+2. Enter your MirAIe App credentials (10-digit mobile number or email address and password).
+3. The integration discovers all ACs linked to your account and provisions them in **Cloud-Only** mode.
+4. *(Optional Hybrid Upgrade)*: To enable **Hybrid** control, click **Configure** on any device card and select your local IR blaster entity.
+
+### Path B: Standalone IR Device (Non-Wi-Fi ACs & Offline Setups)
+1. Select **Standalone IR Device** in the setup wizard. No cloud login or Wi-Fi AC is required.
+2. Choose your Panasonic AC model / series from the hardware database.
+3. Select your IR blaster entity (`remote.*` or `infrared.*`) and optional room temperature sensor.
+4. The integration provisions a 100% local, standalone **IR-Only** climate entity with model-accurate presets, temperature ranges, and swing modes.
 
 ### Per-Device Custom Tuning
-Click **Configure** on any discovered Panasonic AC device card to customize its hardware bindings and hybrid behavior. All IR signal encoding is handled automatically—simply select your existing blaster entity:
-* **Installation Date**: Select the installation date to set the historical energy statistics import window (defaults to 6 months ago).
-* **IR Transmitter**: Select an `infrared` or `remote` entity (e.g. ESPHome, Broadlink, Tuya) for zero-latency local control. Leaving this empty operates in Cloud-Only mode.
+Click **Configure** on any Panasonic AC device card to adjust hardware bindings and control preferences:
+* **Primary Backend**: For Hybrid devices, choose whether commands prefer `Cloud` or `Infrared` by default.
+* **Hybrid Submode**: Choose between `Automatic Failover` (switches transport automatically if a connection drops) or `Manual Control`.
+* **IR Transmitter**: Select an `infrared` or `remote` entity (e.g. ESPHome, Broadlink, Tuya) to enable Local IR or Hybrid control. Leaving this empty operates in Cloud-Only mode.
 * **IR Receiver**: Optional. Select an `infrared` or `remote` receiver entity to capture physical remote control signals.
 * **External Room Temperature Sensor**: Bind an external temperature sensor (`sensor.*` with `temperature` device class) for accurate room temperature reporting.
 * **IR Encoding Format**: Select the IR signal encoding format (`Auto-Detect`, `Home Assistant Infrared / ESPHome Raw`, `Tasmota / AEHA Hex`, `Broadlink Base64`, or `Tuya Base64`).
-* **Primary Backend**: Set the default transport for thermostat commands (`Cloud` or `Infrared`).
-* **Hybrid Submode**: Choose between `Automatic Failover` (switches to secondary transport when the primary connection drops) or `Manual Control`.
+* **Installation Date**: Select the installation date to set the historical energy statistics import window (defaults to 6 months ago).
 
 ---
 
