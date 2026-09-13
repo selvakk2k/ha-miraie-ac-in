@@ -264,12 +264,12 @@
   },
   "issues": {
     "manual_migration_required": {
-      "title": "Manual Upgrade Required for MirAIe India",
-      "description": "MirAIe India 2.0 introduces independent per-device entries and IR blaster support. Auto-migration could not split your legacy account entry automatically. Please delete the old 'MirAIe Cloud Account' entry under Settings -> Devices & Services -> MirAIe India and re-add your account via Add Integration. All your existing entity names, automations, and dashboards will remain unchanged."
+      "title": "Manual Upgrade Required for Panasonic AC India",
+      "description": "Panasonic AC India introduces independent per-device entries and local IR blaster support. Auto-migration could not split your legacy account entry automatically. Please delete the old entry under Settings -> Devices & Services -> Panasonic AC India and re-add your account via Add Integration. All your existing entity names, automations, and dashboards will remain unchanged."
     },
     "migration_successful": {
-      "title": "Migrated to MirAIe 2.0 — IR Blaster Setup Available",
-      "description": "Your Panasonic AC integration has been successfully updated to MirAIe 2.0!\n\nIf you want to set up local IR control or hybrid failover for your Wi-Fi AC unit:\n1. Go to **Settings -> Devices & Services -> MirAIe India**.\n2. Click the **Configure (Settings Cog)** next to your AC device.\n3. Select your **IR Blaster / Transmitter** entity."
+      "title": "Migrated to Panasonic AC India — Device Settings Available",
+      "description": "Your Panasonic AC integration has been successfully updated!\n\nEach AC unit is now managed as an independent device entry with hybrid Cloud + IR support.\n\nTo set up local IR control or hybrid failover for your AC unit:\n1. Go to **Settings -> Devices & Services -> Panasonic AC India**.\n2. Click the **Configure (Settings Cog)** button next to your AC device.\n3. Configure your **IR Blaster**, **IR Receiver**, or control preferences."
     }
   }
 }

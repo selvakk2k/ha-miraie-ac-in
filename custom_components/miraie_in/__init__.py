@@ -611,23 +611,24 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 def _notify_migration_successful(hass: HomeAssistant) -> None:
-    """Notify users of successful 2.0 migration and IR blaster setup instructions."""
+    """Notify users of successful migration and device setup instructions."""
     try:
         from homeassistant.components import persistent_notification
-        title = "MirAIe 2.0 Migration Complete"
+        title = "Panasonic AC India Migration Complete"
         msg = (
-            "Your Panasonic AC integration has been successfully updated to **MirAIe 2.0**!\n\n"
-            "Each AC unit is now managed as an individual device entry with hybrid Cloud + IR support.\n\n"
-            "**To set up an IR Blaster / Transmitter for your cloud AC unit:**\n"
-            "1. Go to **Settings -> Devices & Services -> MirAIe India**.\n"
+            "Your Panasonic AC integration has been successfully upgraded!\n\n"
+            "Each AC unit is now managed as an independent device entry with hybrid Cloud + IR support.\n\n"
+            "**To configure an IR Blaster, IR Receiver, or customize device settings:**\n"
+            "1. Go to **Settings → Devices & Services → Panasonic AC India**.\n"
             "2. Find your AC device and click the **Configure (Settings Cog)** button.\n"
-            "3. Select your **IR Blaster / Transmitter** entity."
+            "3. Set up your **IR Blaster / Transmitter**, **IR Receiver**, or control preferences."
         )
+        persistent_notification.async_dismiss(hass, "miraie_20_migration_complete")
         persistent_notification.async_create(
             hass,
             msg,
             title=title,
-            notification_id="miraie_20_migration_complete",
+            notification_id="panasonic_ac_migration_complete",
         )
     except Exception as exc:
         LOGGER.debug("Could not send migration notification: %s", exc)
