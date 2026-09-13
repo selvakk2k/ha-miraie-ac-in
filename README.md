@@ -75,7 +75,7 @@ The integration supports three operating modes depending on how you set up your 
 
 * **Cloud-Only Mode**: Set up using your MirAIe account for Wi-Fi ACs. No IR blaster hardware is required. Provides full temperature control, convertible capacity presets, live room temperature readings, and long-term energy import.
 * **Hybrid Mode**: Created by attaching a local IR blaster entity to a Cloud-connected Wi-Fi AC. Commands are dispatched instantly over local IR, while the cloud connection provides live state confirmation, diagnostics, and energy data. If the internet connection drops, local commands continue operating without interruption.
-* **Standalone IR-Only Mode**: A separate, cloud-free setup path for non-Wi-Fi ACs or users wanting 100% offline control. In the setup wizard, choose **Standalone IR Device**, select your Panasonic AC model from the hardware database, and bind your IR blaster. Creates a fully capable local climate entity without any cloud account.
+* **Standalone IR-Only Mode**: A separate, cloud-free setup path for non-Wi-Fi ACs or users wanting 100% offline control. In the setup wizard, choose **Standalone IR Device**, enter your Panasonic AC model, and it's feature set will be retrived from the hardware database, confirm the features and the add your IR blaster (receiver is optional). Creates a fully capable local climate entity without any cloud account.
 
 ```
                   ┌─────────────────────────────────────────┐
