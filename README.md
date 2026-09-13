@@ -111,14 +111,14 @@ The integration supports three operating modes depending on how you set up your 
 
 ### Method 1: Using HACS (Recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=selvakk2k&repository=ha-miraie-ac-in&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=selvakk2k&repository=ha-panasonic-ac-in&category=integration)
 
 1. Click the **Open repository in HACS** button above, or open **HACS** from your Home Assistant sidebar.
-2. Click the top-right menu (⋮) → **Custom repositories** → Add `https://github.com/selvakk2k/ha-miraie-ac-in` with category **Integration**.
+2. Click the top-right menu (⋮) → **Custom repositories** → Add `https://github.com/selvakk2k/ha-panasonic-ac-in` with category **Integration**.
 3. Search for **Panasonic AC India**, click **Download**, and restart Home Assistant.
 
 ### Method 2: Manual Installation
-1. Download the latest release ZIP from the [Releases](https://github.com/selvakk2k/ha-miraie-ac-in/releases) page.
+1. Download the latest release ZIP from the [Releases](https://github.com/selvakk2k/ha-panasonic-ac-in/releases) page.
 2. Copy the `custom_components/miraie_in` folder into your Home Assistant `<config>/custom_components/` directory.
 3. Restart Home Assistant.
 
