@@ -93,7 +93,7 @@ The integration supports three operating modes depending on how you set up your 
 * **Unified Single Climate Entity**: In Hybrid mode, commands and controls route through a single `climate.<device>` entity without generating duplicate entities.
 * **Auto Failover Mode**: Thermostat commands are sent over local IR for instant response, while status updates are confirmed via cloud MQTT. If the internet connection drops, local commands continue functioning without interruption.
 * **Manual Backend Selection**: Use the integration's backend switch entity (`switch.<device>_backend`) to lock control to Cloud-only or IR-only modes manually or via automations.
-* **Optional IR Receiver**: An IR receiver is optional. In Hybrid mode, Cloud MQTT acts as the authoritative state feedback loop, preventing state drift without extra receiver hardware.
+* **Optional IR Receiver**: An IR receiver is optional. In Hybrid mode, Cloud MQTT acts as the authoritative state feedback loop, preventing state drift without extra receiver hardware. The IR receiver is only for receiving commands from external IR remotes/devices (eg. IR blaster from phone). 
 
 ---
 
