@@ -179,6 +179,33 @@ class TestSwitchAndButtonPlatform(unittest.IsolatedAsyncioTestCase):
         await btn.async_press()
         self.mock_device.set_preset_mode.assert_awaited_with(LibPresetMode.CLEAN)
 
+    async def test_async_attach_blaster_listener(self):
+        """Test async_attach_blaster_listener helper attaches callback and logs gracefully on failure."""
+        from custom_components.miraie_in.utils import async_attach_blaster_listener
+        from unittest.mock import patch
+
+        mock_entity = MagicMock()
+        mock_entity.hass = self.hass
+        mock_entity.entity_id = "switch.room_2_ac_display"
+
+        # Case 1: Coordinator has no blaster -> does nothing
+        coord_no_blaster = MagicMock(blaster_entity_id=None)
+        async_attach_blaster_listener(mock_entity, coord_no_blaster)
+        mock_entity.async_on_remove.assert_not_called()
+
+        # Case 2: Coordinator has blaster -> registers tracking and on_remove
+        coord_blaster = MagicMock(blaster_entity_id="remote.living_room_blaster")
+        async_attach_blaster_listener(mock_entity, coord_blaster)
+        mock_entity.async_on_remove.assert_called_once()
+
+        # Case 3: Error during tracking -> caught and logged via LOGGER.debug without raising
+        mock_entity.reset_mock()
+        with patch("homeassistant.helpers.event.async_track_state_change_event", side_effect=RuntimeError("Tracking failed")), \
+             patch("custom_components.miraie_in.utils.LOGGER.debug") as mock_debug:
+            async_attach_blaster_listener(mock_entity, coord_blaster)
+            mock_debug.assert_called_once()
+            self.assertIn("Could not track blaster state change", mock_debug.call_args[0][0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -758,8 +758,13 @@ class MirAIeDeviceCoordinator:
             try:
                 unsub = self.hass.bus.async_listen(ev_name, _async_on_ir_event_bus)
                 self._unsub_event_bus.append(unsub)
-            except Exception:
-                pass
+            except Exception as err:
+                LOGGER.debug(
+                    "Device %s: Could not register event bus listener for %s: %s",
+                    self.device_id,
+                    ev_name,
+                    err,
+                )
 
         # 3. Standard Home Assistant entity state / attribute listener
         @callback

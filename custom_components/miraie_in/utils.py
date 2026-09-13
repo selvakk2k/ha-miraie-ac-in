@@ -172,3 +172,34 @@ def get_devices_for_entry(hub: Any, entry: Any) -> list[Any]:
     return []
 
 
+def async_attach_blaster_listener(entity: Any, coordinator: Any) -> None:
+    """Attach a state-change listener to the coordinator's blaster entity, if present."""
+    if not coordinator or not getattr(coordinator, "blaster_entity_id", None):
+        return
+    hass = getattr(entity, "hass", None)
+    if not hass:
+        return
+    try:
+        from homeassistant.core import callback
+        from homeassistant.helpers.event import async_track_state_change_event
+
+        @callback
+        def _on_blaster_change(event: Any) -> None:
+            entity.async_write_ha_state()
+
+        entity.async_on_remove(
+            async_track_state_change_event(
+                hass,
+                [coordinator.blaster_entity_id],
+                _on_blaster_change,
+            )
+        )
+    except Exception as err:
+        LOGGER.debug(
+            "Could not track blaster state change for %s: %s",
+            getattr(entity, "entity_id", "unknown"),
+            err,
+        )
+
+
+

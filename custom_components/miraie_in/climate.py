@@ -63,7 +63,7 @@ from .const import (
 
 
 from .logger import LOGGER
-from .utils import get_devices_for_entry
+from .utils import get_devices_for_entry, async_attach_blaster_listener
 
 PARALLEL_UPDATES = 0
 
@@ -711,23 +711,7 @@ class MirAIeClimate(ClimateEntity):
             self.async_on_remove(
                 self.coordinator.async_add_listener(self.async_write_ha_state)
             )
-            if self.coordinator.blaster_entity_id and hasattr(self, "hass") and self.hass:
-                try:
-                    from homeassistant.helpers.event import async_track_state_change_event
-
-                    @callback
-                    def _on_blaster_change(event) -> None:
-                        self.async_write_ha_state()
-
-                    self.async_on_remove(
-                        async_track_state_change_event(
-                            self.hass,
-                            [self.coordinator.blaster_entity_id],
-                            _on_blaster_change,
-                        )
-                    )
-                except Exception:
-                    pass
+            async_attach_blaster_listener(self, self.coordinator)
 
         def _safe_device_cb(*args, **kwargs) -> None:
             if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
