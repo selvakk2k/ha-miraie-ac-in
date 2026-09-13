@@ -65,7 +65,7 @@ Verified on physical Indian inverter hardware:
 | **CS-CU-KZ18XKY** | KZ Series (Hot & Cold) | Gated Heat Mode, Converti Series | ✅ Hardware Verified |
 
 > [!NOTE]
-> Models not listed in this table are not blocked during setup. Any Indian-market Panasonic inverter split AC (including Converti 7-in-1 and Converti 8-in-1 series) sharing this remote protocol or connected via the Indian MirAIe mobile app will function normally. The table above lists physically lab-verified hardware, not a hard compatibility limit.
+> Models not listed in this table are not blocked during setup. Any Indian-market Panasonic inverter split AC (including Converti 7-in-1 and Converti 8-in-1 series) sharing this remote protocol or connected via the Indian MirAIe mobile app will function normally. The table above lists physically tested hardware, not a hard compatibility limit.
 
 ---
 
