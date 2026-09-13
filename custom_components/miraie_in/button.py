@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
-import time
 from datetime import timedelta
 
 from miraie_ac import (
     Device as MirAIeDevice,
     MirAIeHub,
-    FanMode,
     PresetMode,
 )
 
@@ -109,11 +105,9 @@ class MirAIeCoilCleanButton(ButtonEntity):
 class MirAIeRebuildEnergyStatsButton(ButtonEntity):
     """Diagnostic button entity to force a full 6-8 month rebuild of energy statistics."""
 
-    def __init__(self, hub: MirAIeHub, device: MirAIeDevice, hass: HomeAssistant | None = None) -> None:
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice) -> None:
         self.hub = hub
         self.device = device
-        if hass:
-            self.hass = hass
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "rebuild_energy_statistics"
@@ -149,11 +143,9 @@ class MirAIeRebuildEnergyStatsButton(ButtonEntity):
 class MirAIeVerifyEnergyStatsButton(ButtonEntity):
     """Diagnostic button entity to run Yesterday -> Weekly -> Monthly gating verification."""
 
-    def __init__(self, hub: MirAIeHub, device: MirAIeDevice, hass: HomeAssistant | None = None) -> None:
+    def __init__(self, hub: MirAIeHub, device: MirAIeDevice) -> None:
         self.hub = hub
         self.device = device
-        if hass:
-            self.hass = hass
         self._attr_should_poll = False
         self._attr_has_entity_name = True
         self._attr_translation_key = "verify_energy_statistics"

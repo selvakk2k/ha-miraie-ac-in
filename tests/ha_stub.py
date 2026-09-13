@@ -491,9 +491,18 @@ def setup_ha_stubs():
         def async_remove(self, entity_id):
             self.entities.pop(entity_id, None)
 
-        def async_update_entity(self, entity_id, *, new_unique_id=None):
-            if entity_id in self.entities and new_unique_id:
-                self.entities[entity_id].unique_id = new_unique_id
+        def async_is_registered(self, entity_id):
+            return entity_id in self.entities
+
+        def async_update_entity(self, entity_id, *, new_unique_id=None, new_entity_id=None, **kwargs):
+            if entity_id in self.entities:
+                entry = self.entities[entity_id]
+                if new_unique_id:
+                    entry.unique_id = new_unique_id
+                if new_entity_id:
+                    self.entities.pop(entity_id, None)
+                    entry.entity_id = new_entity_id
+                    self.entities[new_entity_id] = entry
 
     _mock_ent_reg = MockEntityRegistry()
     entity_registry_mod.async_get = lambda hass: _mock_ent_reg

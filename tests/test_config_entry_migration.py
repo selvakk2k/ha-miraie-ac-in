@@ -186,6 +186,92 @@ class TestConfigEntryMigration(unittest.IsolatedAsyncioTestCase):
             # Verify orphaned buzzer switch from v1.x was pruned
             mock_ent_reg.async_remove.assert_called_with("switch.migrated_ac_buzzer")
 
+    async def test_custom_entity_id_preserved_across_migrations_and_restarts(self):
+        """Verify user-customized entity_ids are strictly preserved and never force-renamed across routine setup/migration passes."""
+        from custom_components.miraie_in import _migrate_unique_ids
+        from homeassistant.helpers import entity_registry as er
+        from tests.ha_stub import MockHass, MockEntry
+
+        hass = MockHass()
+        mock_entry = MockEntry(
+            entry_id="entry_bedroom_ac",
+            data={"device_id": "dev_bedroom"},
+            options={},
+        )
+
+        mock_dev = MagicMock(id="dev_bedroom", friendly_name="Room 2 AC")
+        mock_hub = MagicMock()
+        mock_hub.home = MagicMock(devices=[mock_dev])
+
+        registry = er.async_get(hass)
+        orig_entities = dict(registry.entities)
+        orig_update_entity = registry.async_update_entity
+        try:
+            # Reset entities in mock registry for this test
+            registry.entities.clear()
+
+            # Simulate user having customized the entity_id in Home Assistant UI to 'climate.master_bedroom_cooling'
+            climate_entry = registry.async_get_or_create(
+                "climate",
+                "miraie_in",
+                "dev_bedroom",
+                config_entry=mock_entry,
+            )
+            # Emulate custom entity_id assigned by user
+            registry.entities.pop(climate_entry.entity_id)
+            climate_entry.entity_id = "climate.master_bedroom_cooling"
+            registry.entities[climate_entry.entity_id] = climate_entry
+
+            # Also register a sensor with an old 1.x format unique_id that should have its unique_id migrated
+            sensor_entry = registry.async_get_or_create(
+                "sensor",
+                "miraie_in",
+                "sensor.room_2_ac_dev_bedroom_temperature",
+                config_entry=mock_entry,
+            )
+            # User gave sensor a custom entity_id as well
+            registry.entities.pop(sensor_entry.entity_id)
+            sensor_entry.entity_id = "sensor.custom_ambient_temp"
+            registry.entities[sensor_entry.entity_id] = sensor_entry
+
+            # Wrap async_update_entity to spy on any forced renames
+            update_calls = []
+
+            def spy_update_entity(entity_id, **kwargs):
+                update_calls.append((entity_id, kwargs))
+                return orig_update_entity(entity_id, **kwargs)
+
+            registry.async_update_entity = spy_update_entity
+
+            # Pass 1: Initial startup / migration pass
+            _migrate_unique_ids(hass, mock_entry, mock_hub)
+
+            # 1. Custom climate entity_id must NOT be renamed to climate.room_2_ac
+            self.assertEqual(climate_entry.entity_id, "climate.master_bedroom_cooling")
+            self.assertIn("climate.master_bedroom_cooling", registry.entities)
+            self.assertNotIn("climate.room_2_ac", registry.entities)
+
+            # 2. Sensor unique_id was migrated, but custom entity_id was strictly preserved
+            self.assertEqual(sensor_entry.unique_id, "dev_bedroom_temperature")
+            self.assertEqual(sensor_entry.entity_id, "sensor.custom_ambient_temp")
+
+            # 3. Verify async_update_entity was NEVER called with new_entity_id
+            for eid, kwargs in update_calls:
+                self.assertNotIn("new_entity_id", kwargs, f"Forced rename detected on entity {eid}")
+
+            update_calls.clear()
+
+            # Pass 2: Subsequent routine restart
+            _migrate_unique_ids(hass, mock_entry, mock_hub)
+
+            # Verify idempotency: entity IDs preserved, zero updates triggered
+            self.assertEqual(climate_entry.entity_id, "climate.master_bedroom_cooling")
+            self.assertEqual(sensor_entry.entity_id, "sensor.custom_ambient_temp")
+            self.assertEqual(len(update_calls), 0)
+        finally:
+            registry.entities = orig_entities
+            registry.async_update_entity = orig_update_entity
+
 
 if __name__ == "__main__":
     unittest.main()
