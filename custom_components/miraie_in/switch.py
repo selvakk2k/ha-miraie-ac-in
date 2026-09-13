@@ -51,6 +51,20 @@ async def async_setup_entry(
     for device in devices:
         coordinator = coordinators.get(device.id)
         entities.append(MirAIeDisplaySwitch(device, coordinator))
+
+        # Buzzer Switch gating & orphan cleanup
+        has_buzzer = False
+        if coordinator and hasattr(coordinator, "capabilities") and coordinator.capabilities:
+            has_buzzer = bool(coordinator.capabilities.get("has_buzzer", False))
+
+        if has_buzzer:
+            entities.append(MirAIeBuzzerSwitch(device, coordinator))
+        else:
+            buzzer_unq_id = f"{device.id}_buzzer"
+            buzzer_entity_id = ent_reg.async_get_entity_id("switch", DOMAIN, buzzer_unq_id)
+            if buzzer_entity_id:
+                ent_reg.async_remove(buzzer_entity_id)
+                LOGGER.info("Cleaned up unsupported buzzer switch %s for device %s", buzzer_entity_id, device.id)
         
         # Untested: Expose Nanoe switch only if the model supports it
         model_number = getattr(getattr(device, "details", None), "model_number", None)
@@ -224,6 +238,93 @@ class MirAIeDisplaySwitch(SwitchEntity):
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         LOGGER.debug("Successfully removed display switch from HA")
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+class MirAIeBuzzerSwitch(SwitchEntity):
+    """Representation of a MirAIe Buzzer Mute/Unmute switch."""
+
+    def __init__(self, device: MirAIeDevice, coordinator=None) -> None:
+        self._attr_should_poll: bool = False
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "buzzer"
+        self._attr_unique_id = f"{device.id}_buzzer"
+        self.device = device
+        self.coordinator = coordinator
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon to use in the frontend, if any."""
+        return "mdi:volume-high" if self.is_on else "mdi:volume-mute"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=getattr(getattr(self.device, "details", None), "brand", "Panasonic"),
+            model=getattr(getattr(self.device, "details", None), "model_number", ""),
+            sw_version=getattr(getattr(self.device, "details", None), "firmware_version", ""),
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if buzzer is on (enabled)."""
+        if self.coordinator and "buzzer" in self.coordinator.state:
+            return bool(self.coordinator.state.get("buzzer"))
+        return bool(getattr(getattr(self.device, "status", None), "buzzer", False))
+
+    @property
+    def available(self) -> bool:
+        """Return True if cloud connection is online."""
+        has_cloud = bool(getattr(getattr(self.device, "status", None), "is_online", False))
+        coord = self.coordinator
+        if coord and hasattr(coord, "hub") and getattr(coord.hub, "broker", None):
+            broker = coord.hub.broker
+            if hasattr(broker, "connected") and not broker.connected.is_set():
+                has_cloud = False
+        return has_cloud
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Enable buzzer sound."""
+        await self._send_buzzer_command(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Mute buzzer sound."""
+        await self._send_buzzer_command(False)
+
+    async def _send_buzzer_command(self, state: bool) -> None:
+        if self.coordinator:
+            self.coordinator.state["buzzer"] = state
+            self.coordinator._notify_listeners()
+
+        if hasattr(self.device, "set_buzzer"):
+            await self.device.set_buzzer(state)
+        elif self.coordinator and hasattr(self.coordinator, "hub") and getattr(self.coordinator.hub, "broker", None):
+            await self.coordinator.hub.broker.set_buzzer(self.device.control_topic, state)
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+        LOGGER.debug("Successfully added buzzer switch to HA")
+        if self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
+
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
+        self.device.register_callback(self._device_callback)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        LOGGER.debug("Successfully removed buzzer switch from HA")
         if hasattr(self, "_device_callback"):
             self.device.remove_callback(self._device_callback)
 

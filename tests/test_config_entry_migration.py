@@ -1,6 +1,6 @@
 """Unit test verifying Config Entry Migration from v1 to v2."""
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from tests.ha_stub import setup_ha_stubs
 setup_ha_stubs()
@@ -145,6 +145,46 @@ class TestConfigEntryMigration(unittest.IsolatedAsyncioTestCase):
 
         # Parent entry must NOT be removed on failure
         hass.config_entries.async_remove.assert_not_called()
+
+    async def test_v1_to_v2_migration_with_orphan_buzzer_pruning(self):
+        """Verify direct v1 to v2 migration prunes orphaned buzzer entities for unsupported models."""
+        from custom_components.miraie_in.switch import async_setup_entry as async_setup_switch
+        from custom_components.miraie_in.const import DOMAIN
+
+        hass = MagicMock()
+        mock_entry = MagicMock()
+        mock_entry.data = {"device_id": "dev_migrated", "is_ir_only": False}
+
+        mock_hub = MagicMock()
+        mock_entry.runtime_data = mock_hub
+
+        dev = MagicMock(id="dev_migrated", friendly_name="Migrated AC")
+        dev.details = MagicMock(model_number="CS-CU-EU18CKY5XFM", brand="Panasonic", firmware_version="3.02")
+        dev.status = MagicMock(is_online=True, buzzer=False)
+
+        coord = MagicMock()
+        coord.has_wifi = True
+        coord.blaster_entity_id = None
+        coord.capabilities = {"has_buzzer": False, "h_vane_enabled": 1}
+        coord.state = {"buzzer": False}
+
+        mock_hub.home = MagicMock(devices=[dev])
+        mock_hub.coordinators = {"dev_migrated": coord}
+
+        mock_ent_reg = MagicMock()
+        # Simulate legacy entity in registry created under v1.x
+        mock_ent_reg.async_get_entity_id.return_value = "switch.migrated_ac_buzzer"
+
+        with patch("custom_components.miraie_in.switch.er.async_get", return_value=mock_ent_reg):
+            entities = []
+            await async_setup_switch(hass, mock_entry, lambda ents: entities.extend(ents))
+
+            # Verify no buzzer switch was created
+            buzzer_ents = [e for e in entities if e._attr_translation_key == "buzzer"]
+            self.assertEqual(len(buzzer_ents), 0)
+
+            # Verify orphaned buzzer switch from v1.x was pruned
+            mock_ent_reg.async_remove.assert_called_with("switch.migrated_ac_buzzer")
 
 
 if __name__ == "__main__":

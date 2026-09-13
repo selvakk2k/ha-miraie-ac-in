@@ -188,6 +188,9 @@
       "display": {
         "name": "Display"
       },
+      "buzzer": {
+        "name": "Buzzer"
+      },
       "nanoe": {
         "name": "Nanoe"
       },
@@ -253,6 +256,9 @@
       },
       "model_capabilities": {
         "name": "Model Capabilities"
+      },
+      "error_code": {
+        "name": "Diagnostic Error Code"
       }
     }
   },

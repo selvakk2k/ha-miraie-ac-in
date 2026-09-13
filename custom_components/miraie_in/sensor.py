@@ -458,6 +458,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         coordinator = coordinators.get(device.id)
         if not is_ir_entry and (not coordinator or coordinator.has_wifi):
             pushed_sensors.append(MirAIeRoomTemperatureSensor(device))
+            pushed_sensors.append(MirAIeErrorCodeSensor(device, coordinator))
         pushed_sensors.append(MirAIeModelCapabilitiesSensor(device, coordinator))
 
         if not is_ir_entry and (not coordinator or coordinator.has_wifi):
@@ -543,6 +544,65 @@ class MirAIeWifiSignalSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
+        def _safe_device_cb(*args, **kwargs) -> None:
+            if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
+                self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+            else:
+                self.async_write_ha_state()
+
+        self._device_callback = _safe_device_cb
+        self.device.register_callback(self._device_callback)
+
+    async def async_will_remove_from_hass(self):
+        if hasattr(self, "_device_callback"):
+            self.device.remove_callback(self._device_callback)
+
+
+class MirAIeErrorCodeSensor(SensorEntity):
+    """Exposes AC hardware diagnostic error code."""
+
+    def __init__(self, device: MirAIeDevice, coordinator=None):
+        self._attr_should_poll = False
+        self._attr_has_entity_name = True
+        self._attr_unique_id = f"{device.id}_error_code"
+        self._attr_translation_key = "error_code"
+        self.device = device
+        self.coordinator = coordinator
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:alert-circle-outline"
+
+    @property
+    def native_value(self) -> str:
+        if self.coordinator and self.coordinator.state and "error_code" in self.coordinator.state:
+            err = self.coordinator.state.get("error_code")
+            return str(err) if err else "OK"
+        raw_err = getattr(getattr(self.device, "status", None), "error_code", "")
+        return str(raw_err) if raw_err else "OK"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {}
+        if self.coordinator and self.coordinator.state and "warning_code" in self.coordinator.state:
+            attrs["warning_code"] = str(self.coordinator.state.get("warning_code", ""))
+        elif hasattr(self.device, "status"):
+            attrs["warning_code"] = str(getattr(self.device.status, "warning_code", ""))
+        return attrs
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device.id)},
+            name=self.device.friendly_name,
+            manufacturer=getattr(getattr(self.device, "details", None), "brand", "Panasonic"),
+            model=getattr(getattr(self.device, "details", None), "model_number", ""),
+            sw_version=getattr(getattr(self.device, "details", None), "firmware_version", ""),
+        )
+
+    async def async_added_to_hass(self):
+        if self.coordinator:
+            self.async_on_remove(
+                self.coordinator.async_add_listener(self.async_write_ha_state)
+            )
         def _safe_device_cb(*args, **kwargs) -> None:
             if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):
                 self.hass.loop.call_soon_threadsafe(self.async_write_ha_state)

@@ -64,6 +64,14 @@ class MirAIeDeviceCoordinator:
         # Resolve hardware capabilities
         self.lookup = lookup if lookup is not None else ACModelLookup()
         self.capabilities = self.lookup.get_capabilities(model_code)
+        if "swing_type" in self.capabilities:
+            self.capabilities["h_vane_enabled"] = 0 if self.capabilities["swing_type"] == "2-way" else 1
+        elif "h_vane_enabled" not in self.capabilities:
+            self.capabilities["h_vane_enabled"] = 1
+        if "has_buzzer" not in self.capabilities:
+            self.capabilities["has_buzzer"] = False
+
+        self.model_capabilities: Dict[str, Any] = {}
 
         # State storage
         # For cloud-capable Wi-Fi devices, always start as Cloud even if an IR blaster is also configured.
@@ -80,6 +88,10 @@ class MirAIeDeviceCoordinator:
             "eco": False,
             "nanoe": False,
             "display": "on",
+            "buzzer": False,
+            "error_code": "OK",
+            "warning_code": "",
+            "filter_clean_alert": False,
             "last_controlled_by": init_origin,
             "provisional": False,
         }
@@ -112,6 +124,27 @@ class MirAIeDeviceCoordinator:
         """Notify all entities of a state update."""
         for update_callback in self._listeners:
             update_callback()
+
+    @callback
+    def update_model_capabilities(self, model_caps: Dict[str, Any]) -> None:
+        """Merge dynamic cloud model capabilities into coordinator capabilities."""
+        if not model_caps or not isinstance(model_caps, dict):
+            return
+        self.model_capabilities = model_caps
+        ctrl_caps = model_caps.get("controlCapabilities", {})
+        if "BuzzerControl" in ctrl_caps:
+            self.capabilities["has_buzzer"] = True
+        else:
+            self.capabilities["has_buzzer"] = False
+
+        if "HorizontalVaneControl" in ctrl_caps:
+            self.capabilities["h_vane_enabled"] = 1
+        elif "HorizontalVaneControl" in model_caps.get("displayCapabilities", {}):
+            self.capabilities["h_vane_enabled"] = 1
+        elif ctrl_caps:
+            self.capabilities["h_vane_enabled"] = 0
+
+        self._notify_listeners()
 
     async def async_handle_cloud_update(self, cloud_data: Dict[str, Any]) -> None:
         """Process incoming Cloud MQTT state payload.
@@ -193,6 +226,15 @@ class MirAIeDeviceCoordinator:
                 self.state["h_vane"] = str(cloud_data["achs"]).upper()
         if "acngs" in cloud_data:
             self.state["nanoe"] = str(cloud_data["acngs"]).lower() in ["on", "1", "true"]
+        if "bzr" in cloud_data:
+            self.state["buzzer"] = str(cloud_data["bzr"]).lower() in ["on", "1", "true"]
+        if "errors" in cloud_data:
+            err = str(cloud_data["errors"]).strip()
+            self.state["error_code"] = err if err else "OK"
+        if "warnings" in cloud_data:
+            self.state["warning_code"] = str(cloud_data["warnings"]).strip()
+        if "acfc" in cloud_data:
+            self.state["filter_clean_alert"] = str(cloud_data["acfc"]).lower() in ["on", "1", "true"]
 
         # Origin tracking: preserve "IR" origins during active IR control
         if not in_ir_grace_window:

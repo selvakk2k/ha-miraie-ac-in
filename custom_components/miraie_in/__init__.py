@@ -475,11 +475,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             lookup=lookup,
         )
         coordinator.hub = hub
+        model_caps = getattr(device, "model_capabilities", None)
+        if model_caps:
+            coordinator.update_model_capabilities(model_caps)
         coordinator.async_setup_receiver()
         coordinators[device.id] = coordinator
 
         if not is_ir_only:
-            device.register_callback(_make_cloud_cb(hass, coordinator, device))
+            cloud_cb = _make_cloud_cb(hass, coordinator, device)
+            device.register_callback(cloud_cb)
+            if getattr(device, "status", None):
+                cloud_cb()
 
     setattr(hub, "coordinators", coordinators)
 
@@ -678,6 +684,10 @@ def _make_cloud_cb(hass: HomeAssistant, coord: MirAIeDeviceCoordinator, dev: Any
                 "acec": "on" if preset_val == "eco" else "off",
                 "acngs": "on" if str(nanoe_val).lower() in ("on", "1", "true") else "off",
                 "acdc": "on" if str(disp_val).lower() in ("on", "1", "true") else "off",
+                "bzr": "on" if getattr(status_obj, "buzzer", False) else "off",
+                "errors": getattr(status_obj, "error_code", ""),
+                "warnings": getattr(status_obj, "warning_code", ""),
+                "acfc": "on" if getattr(status_obj, "filter_clean_alert", False) else "off",
                 "converti": c_val,
                 "preset": preset_val,
             }
