@@ -126,20 +126,6 @@ def _migrate_unique_ids(
                 if reg_entry.config_entry_id is None and dev_id in (reg_entry.unique_id or ""):
                     LOGGER.info("Removing orphaned climate entity %s", reg_entry.entity_id)
                     registry.async_remove(reg_entry.entity_id)
-
-    # Normalize active climate entity IDs if they contain duplicated device name segments
-    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if entity_entry.domain == "climate" and entity_entry.unique_id in device_ids:
-            dev = next((d for d in hub.home.devices if d.id == entity_entry.unique_id), None)
-            base_name = dev.friendly_name.lower().replace(" ", "_") if dev else "panasonic_ac"
-            clean_eid = f"climate.{base_name}"
-            if entity_entry.entity_id != clean_eid and not registry.async_is_registered(clean_eid):
-                try:
-                    LOGGER.info("Normalizing climate entity_id from %s to %s", entity_entry.entity_id, clean_eid)
-                    registry.async_update_entity(entity_entry.entity_id, new_entity_id=clean_eid)
-                except Exception as ex:
-                    LOGGER.debug("Could not rename %s to %s: %s", entity_entry.entity_id, clean_eid, ex)
-
     if migrated:
         LOGGER.info("Migrated %d entity unique_id(s) to new format", migrated)
 
