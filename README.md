@@ -1,5 +1,9 @@
 # Panasonic AC India Integration (formerly MirAIe AC India) (`ha-miraie-ac-in`)
 
+<p align="center">
+  <img src="custom_components/miraie_in/brand/logo.png" alt="Panasonic AC India Logo" width="380">
+</p>
+
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
 [![Stable](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in?label=Stable&style=flat-square)](https://github.com/selvakk2k/ha-miraie-ac-in/releases/latest)
 [![Beta](https://img.shields.io/github/v/release/selvakk2k/ha-miraie-ac-in?include_prereleases&label=Beta&color=orange&style=flat-square)](https://github.com/selvakk2k/ha-miraie-ac-in/releases)
@@ -13,6 +17,10 @@ A comprehensive Home Assistant custom integration for Panasonic Air Conditioners
 
 > [!TIP]
 > A companion Lovelace dashboard card is available: **[miraie-ac-card-in](https://github.com/selvakk2k/miraie-ac-card-in)** (Panasonic AC India Card).
+
+> [!NOTE]
+> ### Upgrading from 1.x to 2.0
+> Upgrading requires zero configuration changes. The integration domain remains `miraie_in`. All existing climate entities, automations, and dashboard cards continue working without reconfiguration. Dual-transport local IR failover is completely optional and can be enabled at any time via device Options.
 
 ---
 
@@ -56,6 +64,9 @@ Verified on physical Indian inverter hardware:
 | **CS-CU-XU18YKYF** | XU Series (1.5T Inverter) | Nanoe™ Air Purifier, Converti 8-in-1 | ✅ Hardware Verified |
 | **CS-CU-KZ18XKY** | KZ Series (Hot & Cold) | Gated Heat Mode, Converti Series | ✅ Hardware Verified |
 
+> [!NOTE]
+> Models not listed in this table are not blocked during setup. Any Indian-market Panasonic inverter split AC (including Converti 7-in-1 and Converti 8-in-1 series) sharing this remote protocol or connected via the Indian MirAIe mobile app will function normally. The table above lists physically lab-verified hardware, not a hard compatibility limit.
+
 ---
 
 ## Hybrid Dual Transport Architecture
@@ -75,8 +86,10 @@ The integration supports dual-backend communication for resilient control:
           • Automatic cloud failover target       • Native Home Assistant Infrared
 ```
 
+* **Unified Single Climate Entity**: Thermostat commands and controls route through your existing `climate.<device>` entity without generating duplicate entities.
 * **Auto Failover Mode**: Thermostat commands are sent over local IR for instant response, while status updates are confirmed via cloud MQTT. If the internet connection drops, local commands continue functioning without interruption.
-* **Manual Selection**: Use the integration's backend switch entity (`switch.<device>_backend`) to lock control to Cloud-only or IR-only modes.
+* **Manual Backend Selection**: Use the integration's backend switch entity (`switch.<device>_backend`) to lock control to Cloud-only or IR-only modes manually or via automations.
+* **Optional IR Receiver**: An IR receiver is optional. In Hybrid mode, Cloud MQTT acts as the authoritative state feedback loop, preventing state drift without extra receiver hardware.
 
 ---
 
@@ -89,6 +102,8 @@ The integration supports dual-backend communication for resilient control:
 ---
 
 ## Installation
+
+* **Prerequisites**: Home Assistant **2024.1.0** or newer.
 
 ### Method 1: Using HACS (Recommended)
 
@@ -112,10 +127,10 @@ The integration supports dual-backend communication for resilient control:
 3. Enter your MirAIe App credentials (10-digit mobile number or email address and password).
 
 ### Per-Device Custom Tuning
-Click **Configure** on any discovered Panasonic AC device card to customize its hardware bindings and hybrid behavior:
+Click **Configure** on any discovered Panasonic AC device card to customize its hardware bindings and hybrid behavior. All IR signal encoding is handled automatically—simply select your existing blaster entity:
 * **Installation Date**: Select the installation date to set the historical energy statistics import window (defaults to 6 months ago).
 * **IR Transmitter**: Select an `infrared` or `remote` entity (e.g. ESPHome, Broadlink, Tuya) for zero-latency local control. Leaving this empty operates in Cloud-Only mode.
-* **IR Receiver**: Select an `infrared` or `remote` receiver entity to capture physical remote control signals and keep Home Assistant state synchronized.
+* **IR Receiver**: Optional. Select an `infrared` or `remote` receiver entity to capture physical remote control signals.
 * **External Room Temperature Sensor**: Bind an external temperature sensor (`sensor.*` with `temperature` device class) for accurate room temperature reporting.
 * **IR Encoding Format**: Select the IR signal encoding format (`Auto-Detect`, `Home Assistant Infrared / ESPHome Raw`, `Tasmota / AEHA Hex`, `Broadlink Base64`, or `Tuya Base64`).
 * **Primary Backend**: Set the default transport for thermostat commands (`Cloud` or `Infrared`).
@@ -171,7 +186,7 @@ logger:
 * Upstream feature contributions by [@deCodeIt](https://github.com/deCodeIt) and [@gutpull](https://github.com/gutpull).
 
 ### Fork Maintainers & Contributors
-* **Lead Architecture & Hardware Validation**: [@selvakk2k](https://github.com/selvakk2k) — physical hardware captures, BEE taxonomy analysis, and domain requirements.
+* **Lead Architecture & Hardware Validation**: [@selvakk2k](https://github.com/selvakk2k) — physical hardware captures and domain requirements.
 * **Historical Energy Backfill**: Contributed by [@shashi278](https://github.com/shashi278).
 * **Code Implementation & Engineering**: **Antigravity** (Google DeepMind) — Hybrid transport failover, firmware 3.02+ parsing, long-term statistics reconciliation, and automated test suites.
 * **Pre-Release Code Review & Auditing**: **Claude** (Anthropic) — independent architectural review, edge-case analysis, and verification of upstream compatibility.
