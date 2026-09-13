@@ -140,7 +140,7 @@ class TestMirAIeLibraryContract(unittest.TestCase):
                 "connect", "register_device_callback", "remove_device_callback", "set_converti_mode",
                 "set_display_mode", "set_fan_mode", "set_h_swing_mode", "set_hvac_mode", "set_power",
                 "set_preset_mode", "set_temperature", "set_topics", "set_v_swing_mode", "set_nanoe",
-                "use_ssl", "_callbacks"
+                "use_ssl", "_callbacks", "connected"
             },
         }
 

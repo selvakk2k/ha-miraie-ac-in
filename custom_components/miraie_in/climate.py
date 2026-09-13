@@ -91,6 +91,7 @@ class MirAIeClimate(ClimateEntity):
         self.coordinator = coordinator
         self._attr_should_poll: bool = False
         self._attr_has_entity_name: bool = True
+        self._attr_name: str | None = None
 
         model_number = getattr(getattr(device, "details", None), "model_number", None)
 
@@ -256,9 +257,9 @@ class MirAIeClimate(ClimateEntity):
                 await _run_cloud_coro()
 
     @property
-    def name(self) -> str:
-        """Return the display name of this light."""
-        return self.device.friendly_name
+    def name(self) -> str | None:
+        """Return None as primary climate entity so device name is used directly."""
+        return None
 
     @property
     def translation_key(self) -> str:

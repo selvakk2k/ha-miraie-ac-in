@@ -120,6 +120,27 @@ def _migrate_unique_ids(
         registry.async_update_entity(entity_entry.entity_id, new_unique_id=new_uid)
         migrated += 1
 
+    # Clean up orphaned 1.x climate entities without a config entry
+    for dev_id in device_ids:
+        for reg_entry in list(registry.entities.values()):
+            if reg_entry.platform == DOMAIN and reg_entry.domain == "climate":
+                if reg_entry.config_entry_id is None and dev_id in (reg_entry.unique_id or ""):
+                    LOGGER.info("Removing orphaned climate entity %s", reg_entry.entity_id)
+                    registry.async_remove(reg_entry.entity_id)
+
+    # Normalize active climate entity IDs if they contain duplicated device name segments
+    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if entity_entry.domain == "climate" and entity_entry.unique_id in device_ids:
+            dev = next((d for d in hub.home.devices if d.id == entity_entry.unique_id), None)
+            base_name = dev.friendly_name.lower().replace(" ", "_") if dev else "panasonic_ac"
+            clean_eid = f"climate.{base_name}"
+            if entity_entry.entity_id != clean_eid and not registry.async_is_registered(clean_eid):
+                try:
+                    LOGGER.info("Normalizing climate entity_id from %s to %s", entity_entry.entity_id, clean_eid)
+                    registry.async_update_entity(entity_entry.entity_id, new_entity_id=clean_eid)
+                except Exception as ex:
+                    LOGGER.debug("Could not rename %s to %s: %s", entity_entry.entity_id, clean_eid, ex)
+
     if migrated:
         LOGGER.info("Migrated %d entity unique_id(s) to new format", migrated)
 
@@ -255,6 +276,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     )
                     hub.background_tasks.add(b_task)
                     b_task.add_done_callback(hub.background_tasks.remove)
+                    conn = getattr(broker, "connected", None)
+                    if conn is not None and hasattr(conn, "wait"):
+                        try:
+                            await asyncio.wait_for(conn.wait(), timeout=10.0)
+                        except (asyncio.TimeoutError, TimeoutError):
+                            LOGGER.warning("Broker reconnect wait timed out for %s; continuing async", username_key)
                 except Exception as err:
                     LOGGER.warning("Could not restart broker task for %s: %s", username_key, err)
         else:
@@ -498,6 +525,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Immediately push current device status to Home Assistant so entities
+    # evaluate availability and state without waiting for a state change.
+    for dev in target_devices:
+        try:
+            dev.refresh()
+        except Exception as ref_err:
+            LOGGER.debug("Initial device refresh for %s encountered: %s", dev.id, ref_err)
 
     # Register listener for option updates to automatically reload entry when options change
     entry.async_on_unload(entry.add_update_listener(async_update_options))

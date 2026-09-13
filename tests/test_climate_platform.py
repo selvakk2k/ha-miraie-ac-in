@@ -113,7 +113,8 @@ class TestClimatePlatform(unittest.IsolatedAsyncioTestCase):
     async def test_climate_properties(self):
         """Test climate property mappings."""
         self.assertEqual(self.climate._attr_unique_id, "dev_test")
-        self.assertEqual(self.climate.name, "Living Room AC")
+        self.assertIsNone(self.climate.name)
+        self.assertIsNone(self.climate._attr_name)
         self.assertEqual(self.climate._attr_temperature_unit, UnitOfTemperature.CELSIUS)
         self.assertEqual(self.climate.target_temperature, 24)
         self.assertEqual(self.climate.current_temperature, 26.0)
