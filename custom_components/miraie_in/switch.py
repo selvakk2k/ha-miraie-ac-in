@@ -223,8 +223,8 @@ class MirAIeDisplaySwitch(SwitchEntity):
                             _on_blaster_change,
                         )
                     )
-                except Exception:
-                    pass
+                except Exception as err:
+                    LOGGER.debug("Could not track blaster state change for %s: %s", self.entity_id, err)
 
         def _safe_device_cb(*args, **kwargs) -> None:
             if hasattr(self, "hass") and self.hass and hasattr(self.hass, "loop"):

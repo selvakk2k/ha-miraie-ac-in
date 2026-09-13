@@ -38,9 +38,11 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     hub: MirAIeHub = entry.runtime_data
+    coordinators = getattr(hub, "coordinators", {})
 
     diagnostics_data = {
         "info": async_redact_data(entry.data, TO_REDACT),
+        "options": async_redact_data(dict(getattr(entry, "options", {})), TO_REDACT),
         "devices": []
     }
     
@@ -48,9 +50,23 @@ async def async_get_config_entry_diagnostics(
 
 
     for device in devices:
+        coord = coordinators.get(device.id) if coordinators else None
+        coord_info = None
+        if coord:
+            coord_info = {
+                "primary_backend": getattr(coord, "primary_backend", None),
+                "hybrid_submode": getattr(coord, "hybrid_submode", None),
+                "working_ir_format": getattr(coord, "_working_ir_format", None),
+                "configured_ir_format": getattr(coord, "ir_format", None),
+                "has_blaster": bool(getattr(coord, "blaster_entity_id", None)),
+                "has_receiver": bool(getattr(coord, "receiver_entity_id", None)),
+                "has_wifi": getattr(coord, "has_wifi", True),
+            }
+
         device_data = {
             "id": device.id,
             "friendly_name": device.friendly_name,
+            "coordinator": coord_info,
             "status": async_redact_data(device.status.__dict__, TO_REDACT) if hasattr(device, "status") else None,
             "details": async_redact_data(device.details.__dict__, TO_REDACT) if hasattr(device, "details") else None,
             "integration_features": {
@@ -73,6 +89,7 @@ async def async_get_device_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a device."""
     hub: MirAIeHub = entry.runtime_data
+    coordinators = getattr(hub, "coordinators", {})
     
     miraie_device_id = next(
         (identifier[1] for identifier in device.identifiers if identifier[0] == DOMAIN), 
@@ -82,14 +99,29 @@ async def async_get_device_diagnostics(
 
     diagnostics_data = {
         "info": async_redact_data(entry.data, TO_REDACT),
+        "options": async_redact_data(dict(getattr(entry, "options", {})), TO_REDACT),
     }
 
     if miraie_device_id:
         for miraie_device in hub.home.devices:
             if miraie_device.id == miraie_device_id:
+                coord = coordinators.get(miraie_device.id) if coordinators else None
+                coord_info = None
+                if coord:
+                    coord_info = {
+                        "primary_backend": getattr(coord, "primary_backend", None),
+                        "hybrid_submode": getattr(coord, "hybrid_submode", None),
+                        "working_ir_format": getattr(coord, "_working_ir_format", None),
+                        "configured_ir_format": getattr(coord, "ir_format", None),
+                        "has_blaster": bool(getattr(coord, "blaster_entity_id", None)),
+                        "has_receiver": bool(getattr(coord, "receiver_entity_id", None)),
+                        "has_wifi": getattr(coord, "has_wifi", True),
+                    }
+
                 device_data = {
                     "id": miraie_device.id,
                     "friendly_name": miraie_device.friendly_name,
+                    "coordinator": coord_info,
                     "status": async_redact_data(miraie_device.status.__dict__, TO_REDACT) if hasattr(miraie_device, "status") else None,
                     "details": async_redact_data(miraie_device.details.__dict__, TO_REDACT) if hasattr(miraie_device, "details") else None,
                     "integration_features": {

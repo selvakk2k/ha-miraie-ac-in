@@ -491,7 +491,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     from .panasonic_ac_models import ACModelLookup
                 lookup = await self.hass.async_add_executor_job(ACModelLookup)
                 caps = lookup.get_capabilities(model_code)
-            except Exception:
+            except Exception as err:
+                _LOGGER.debug("Model capability lookup for %s failed (%s), using safe defaults", model_code, err)
                 caps = {
                     "has_wifi": 1,
                     "has_heat_mode": 0,
@@ -672,7 +673,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:
+            except Exception as err:
+                _LOGGER.debug("Unexpected error during re-authentication confirmation: %s", err, exc_info=True)
                 errors["base"] = "unknown"
             else:
                 if getattr(self, "_reauth_entry", None):

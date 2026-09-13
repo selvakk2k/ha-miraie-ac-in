@@ -43,7 +43,6 @@ from .utils import six_months_ago, get_devices_for_entry
 
 
 
-# For your initial PR, limit it to 1 platform.
 PLATFORMS: list[Platform] = [
     Platform.CLIMATE,
     Platform.SENSOR,

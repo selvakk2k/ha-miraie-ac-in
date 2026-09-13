@@ -83,10 +83,15 @@ class TestDiagnosticsPlatform(unittest.IsolatedAsyncioTestCase):
         self.assertIn("info", diag)
         self.assertEqual(diag["info"]["password"], "**REDACTED**")
         self.assertEqual(diag["info"]["username"], "**REDACTED**")
+        self.assertIn("options", diag)
+        self.assertEqual(diag["options"]["install_date"], "2026-01-01")
         self.assertIn("devices", diag)
         self.assertEqual(len(diag["devices"]), 1)
         self.assertEqual(diag["devices"][0]["details"]["mac_address"], "**REDACTED**")
         self.assertEqual(diag["devices"][0]["details"]["serial_number"], "**REDACTED**")
+        self.assertIn("coordinator", diag["devices"][0])
+        self.assertEqual(diag["devices"][0]["coordinator"]["primary_backend"], "cloud")
+        self.assertEqual(diag["devices"][0]["coordinator"]["hybrid_submode"], "auto")
 
 
 if __name__ == "__main__":

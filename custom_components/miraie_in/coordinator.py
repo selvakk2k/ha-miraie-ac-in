@@ -100,7 +100,9 @@ class MirAIeDeviceCoordinator:
         self.cloud_mqtt_connected = False
         self.device_online = False
         self.ir_blaster_available = False
-        self._working_ir_format: Optional[str] = ir_format
+        self._working_ir_format: Optional[str] = (
+            ir_format if ir_format and ir_format.lower() not in ("auto", "") else None
+        )
         self._is_esphome_blaster: bool = False
 
         self._last_ir_command_timestamp: float = 0.0
@@ -462,7 +464,7 @@ class MirAIeDeviceCoordinator:
                     "remote",
                     "send_command",
                     {"entity_id": self.blaster_entity_id, "command": cmd_payload},
-                    blocking=False,
+                    blocking=True,
                 )
                 self._working_ir_format = label
                 LOGGER.info("Device %s: Locked in working IR format: %s", self.device_id, label)

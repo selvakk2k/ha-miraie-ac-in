@@ -14,7 +14,7 @@ class TestIRDispatchPayloads(unittest.IsolatedAsyncioTestCase):
         service_calls = []
 
         async def mock_call_service(domain, service, service_data, blocking=True):
-            service_calls.append((domain, service, service_data))
+            service_calls.append((domain, service, service_data, blocking))
             # Fail the first attempt (b64 with prefix) to test fallback
             if len(service_calls) == 1:
                 raise ValueError("Broadlink prefix not supported on this entity")
@@ -40,12 +40,27 @@ class TestIRDispatchPayloads(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(res)
         self.assertEqual(len(service_calls), 2)
+        # Verify 1st attempt during discovery used blocking=True
+        self.assertTrue(service_calls[0][3], "Auto-detect attempt should use blocking=True")
+        # Verify 2nd attempt during discovery used blocking=True
+        self.assertTrue(service_calls[1][3], "Auto-detect attempt should use blocking=True")
         # Verify 2nd attempt transmitted raw b64 payload in a list
-        domain, service, data = service_calls[1]
+        domain, service, data, blocking = service_calls[1]
         self.assertEqual(domain, "remote")
         self.assertEqual(service, "send_command")
         self.assertEqual(data["entity_id"], "remote.bedroom_ir_blaster")
         self.assertIsInstance(data["command"], list)
+
+        # Now test that cached format uses blocking=False for zero-latency fire-and-forget
+        res2 = await coord.async_dispatch_ir_command(
+            mode="cool",
+            target_temp=25,
+            fan="low",
+            v_vane="V1",
+        )
+        self.assertTrue(res2)
+        self.assertEqual(len(service_calls), 3)
+        self.assertFalse(service_calls[2][3], "Cached format transmission should use blocking=False")
 
     async def test_eco_mode_hardware_ir_dispatch(self):
         from custom_components.miraie_in.coordinator import MirAIeDeviceCoordinator
