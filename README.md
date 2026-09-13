@@ -126,29 +126,31 @@ The integration supports three operating modes depending on how you set up your 
 
 ## Configuration & Per-Device Options
 
-When adding the integration (**Settings → Devices & Services → Add Integration → Panasonic AC India**), you are presented with two setup paths:
+When adding the integration (**Settings → Devices & Services → Add Integration → Panasonic AC India**), the setup wizard prompts you to **Select Setup Mode**:
 
-### Path A: MirAIe Cloud Account (Wi-Fi ACs)
-1. Select **MirAIe Cloud Account** in the setup wizard.
-2. Enter your MirAIe App credentials (10-digit mobile number or email address and password).
+### Option 1: MirAIe Cloud (Wi-Fi Models)
+1. Select **MirAIe Cloud (Wi-Fi Models)** in the setup menu.
+2. In the **MirAIe Cloud Login** screen, enter your **Username** (10-digit mobile number or email address) and **Password**.
 3. The integration discovers all ACs linked to your account and provisions them in **Cloud-Only** mode.
-4. *(Optional Hybrid Upgrade)*: To enable **Hybrid** control, click **Configure** on any device card and select your local IR blaster entity.
+4. *(Optional Hybrid Upgrade)*: To enable **Hybrid** control, click **Configure** on any device card and select your **IR Transmitter Entity (Optional)**.
 
-### Path B: Standalone IR Device (Non-Wi-Fi ACs & Offline Setups)
-1. Select **Standalone IR Device** in the setup wizard. No cloud login or Wi-Fi AC is required.
-2. Choose your Panasonic AC model / series from the hardware database.
-3. Select your IR blaster entity (`remote.*` or `infrared.*`) and optional room temperature sensor.
-4. The integration provisions a 100% local, standalone **IR-Only** climate entity with model-accurate presets, temperature ranges, and swing modes.
+### Option 2: Infrared Remote (Non-Wi-Fi Models)
+1. Select **Infrared Remote (Non-Wi-Fi Models)** in the setup menu. No cloud login or Wi-Fi AC is required.
+2. In **Step 1: Model Details**, enter your **AC Unit Name** and **Panasonic AC Model Code** (e.g. `CS-CU-RU18CKY-1`, `CS-KN12AKY`).
+3. In **Step 2: Capabilities**, review the auto-detected features (Heat Mode, Nanoe, Convertible Capacity tier, Horizontal Swing).
+4. In **Step 3: Attach IR Hardware**, select your **IR Transmitter Entity**, optional **IR Receiver Entity**, and optional **Room Temperature Sensor**.
+5. The integration provisions a 100% local, standalone **IR-Only** climate entity with model-accurate presets, temperature ranges, and swing modes.
 
 ### Per-Device Custom Tuning
-Click **Configure** on any Panasonic AC device card to adjust hardware bindings and control preferences:
-* **Primary Backend**: For Hybrid devices, choose whether commands prefer `Cloud` or `Infrared` by default.
-* **Hybrid Submode**: Choose between `Automatic Failover` (switches transport automatically if a connection drops) or `Manual Control`.
-* **IR Transmitter**: Select an `infrared` or `remote` entity (e.g. ESPHome, Broadlink, Tuya) to enable Local IR or Hybrid control. Leaving this empty operates in Cloud-Only mode.
-* **IR Receiver**: Optional. Select an `infrared` or `remote` receiver entity to capture physical remote control signals.
-* **External Room Temperature Sensor**: Bind an external temperature sensor (`sensor.*` with `temperature` device class) for accurate room temperature reporting.
-* **IR Encoding Format**: Select the IR signal encoding format (`Auto-Detect`, `Home Assistant Infrared / ESPHome Raw`, `Tasmota / AEHA Hex`, `Broadlink Base64`, or `Tuya Base64`).
-* **Installation Date**: Select the installation date to set the historical energy statistics import window (defaults to 6 months ago).
+Click **Configure** on any Panasonic AC device card to customize hardware bindings and control preferences:
+* **Primary Control**: Choose whether commands prefer `Cloud` or `Infrared` by default in Hybrid mode.
+* **Hybrid Failover**: Choose between `Automatic Failover (Switch to secondary transport on outage)` or `Manual Control`.
+* **IR Transmitter Entity (Optional)**: Select an `infrared` or `remote` entity (e.g. ESPHome, Broadlink, Tuya) to enable Local IR or Hybrid control. Leaving this empty operates in Cloud-Only mode.
+* **IR Receiver Entity (Optional)**: Select an `infrared` or `remote` receiver entity to capture physical remote control button presses for state synchronization.
+* **Room Temperature Sensor (Optional)**: Bind an external temperature sensor (`sensor.*` with `temperature` device class) for accurate room temperature reporting.
+* **IR Protocol / Format**: Select the signal encoding format expected by your blaster (`Auto-Detect (Recommended)`, `Home Assistant Infrared / ESPHome`, `Tasmota / AEHA Hex`, `Broadlink Base64`, or `Tuya Base64`).
+* **Energy History Start Date**: Select the date to begin importing historical energy statistics from the MirAIe cloud (defaults to 6 months ago, up to ~8 months supported).
+
 
 ---
 
